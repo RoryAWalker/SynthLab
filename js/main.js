@@ -202,7 +202,7 @@ function setHelp(open) {
   document.body.classList.toggle('help-open', open);
   document.getElementById('btn-help').setAttribute('aria-pressed', String(open));
   savePref('nf1.help', open ? '1' : '0');
-  if (!open) help.show('intro');
+  if (!open) help.hide();
   fit();
 }
 document.getElementById('btn-help').addEventListener('click', () => setHelp(!document.body.classList.contains('help-open')));

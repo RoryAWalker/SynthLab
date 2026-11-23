@@ -1,20 +1,11 @@
-// Help text for every control and feature, shown in the Help panel on hover.
+// Help text for every control and feature, shown in the Help panel when the mouse
+// rests on a control for a second.
 // Keys: a param id ('filt.cutoff'), 'section:<id>', a feature name ('scope'),
 // or an option ('wave:saw', 'lfo:sh').
 // Each entry: title, body (array of paragraphs), optional tip ("Try this").
 // Edit freely: this file is plain text for teachers to refine.
 
 export const HELP = {
-  // ---- intro (shown when nothing is hovered) ---------------------------------
-  intro: {
-    title: 'Help',
-    body: [
-      'Hover over any knob, switch, section title or display to see what it does.',
-      'The NF-1 is a subtractive synthesiser. Sound flows left to right across the panel: the oscillators make a bright, buzzy tone; the mixer blends them; the filter carves away harmonics; the envelopes shape how each note changes over time; and the LFO adds movement.',
-    ],
-    tip: 'Press Init, hold a key (A on your computer keyboard plays C) and turn one knob at a time while watching the oscilloscope and spectrum.',
-  },
-
   // ---- sections ----------------------------------------------------------------
   'section:osc1': {
     title: 'Oscillator 1',
@@ -313,7 +304,7 @@ export const HELP = {
   },
   help: {
     title: 'Help',
-    body: ['Opens and closes this panel.'],
+    body: ['Turns hover help on or off. When it is on, rest the mouse on any knob, switch or display for a second to see an explanation.', 'Grab a knob straight away to use it without help. Grab it once the help has appeared and the help stays open while you turn it.'],
   },
 };
 

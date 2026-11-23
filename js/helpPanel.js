@@ -13,46 +13,78 @@ function rangeText(id) {
   return `${p.fmt(p.min)} to ${p.fmt(p.max)}`;
 }
 
-// Side panel that explains whatever element (with a data-help attribute) is hovered.
+const DWELL_MS = 1000; // how long to rest on a control before its help appears
+
+const helpTarget = (node) => (node && node.closest ? node.closest('[data-help]') : null);
+
+// Hover help. Rest the mouse on any control for a second and the panel appears on the
+// far side of the screen; move off and it disappears. Grabbing a knob before the
+// second is up means "just let me use it": no help for that visit. Grabbing a knob
+// once its help is showing keeps the help open while you turn it.
 export class HelpPanel {
   constructor(el, getPatch) {
     this.el = el;
     this.getPatch = getPatch;
-    this.key = null;
     this.body = el.querySelector('.help-content');
-    this.show('intro');
+    this.key = null;
+    this.current = null;    // help element under the pointer
+    this.shownFor = null;   // element whose help is showing
+    this.suppressed = null; // element the user grabbed before its help appeared
+    this.pinned = false;    // help is showing and its knob is being turned
+    this.timer = null;
 
-    const onHover = (e) => {
-      if (!this.open || document.body.classList.contains('knob-dragging')) return;
-      const t = e.target.closest && e.target.closest('[data-help]');
-      if (t && !el.contains(t)) {
-        this.show(t.dataset.help);
-        if (e.type === 'focusin') this.moveAwayFromElement(t); // keyboard users
-      }
-    };
-    document.addEventListener('mouseover', onHover);
-    document.addEventListener('focusin', onHover);
-    // The panel lets the mouse pass through. When the pointer goes underneath it,
-    // the panel jumps to the other side of the screen.
-    document.addEventListener('mousemove', (e) => {
-      if (!this.open) return;
-      const r = el.getBoundingClientRect();
-      if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top) this.flip();
+    document.addEventListener('mouseover', (e) => {
+      if (this.pinned || document.body.classList.contains('knob-dragging')) return;
+      this.hoverTo(helpTarget(e.target));
     });
+    document.addEventListener('mouseout', (e) => { if (!e.relatedTarget && !this.pinned) this.hoverTo(null); });
+    document.addEventListener('pointerdown', (e) => this.engage(helpTarget(e.target)), true);
+    document.addEventListener('wheel', (e) => this.engage(helpTarget(e.target)), { capture: true, passive: true });
+    document.addEventListener('keydown', (e) => {
+      if (/^(Arrow|Home$|End$)/.test(e.key)) this.engage(helpTarget(e.target));
+    }, true);
+    document.addEventListener('pointerup', (e) => this.release(e), true);
+    document.addEventListener('pointercancel', (e) => this.release(e), true);
   }
 
-  flip() {
-    this.el.classList.toggle('left');
-    this.el.classList.remove('flipping');
-    void this.el.offsetWidth; // restart the fade
-    this.el.classList.add('flipping');
+  hoverTo(t) {
+    if (t === this.current) return;
+    this.current = t;
+    this.suppressed = null;
+    clearTimeout(this.timer);
+    this.hide();
+    if (!t || !this.open) return;
+    this.timer = setTimeout(() => {
+      if (this.current === t && this.suppressed !== t) this.showFor(t);
+    }, DWELL_MS);
   }
 
-  // For keyboard focus: if the focused control sits under the panel, move the panel.
-  moveAwayFromElement(target) {
-    const r = target.getBoundingClientRect();
-    const p = this.el.getBoundingClientRect();
-    if (r.right > p.left && r.left < p.right && r.width < window.innerWidth - p.width) this.flip();
+  engage(t) {
+    if (!t) return;
+    if (t === this.shownFor) { this.pinned = true; return; } // help already up: keep it while turning
+    if (t === this.current) { clearTimeout(this.timer); this.suppressed = t; } // too soon: no help this visit
+  }
+
+  release(e) {
+    const wasPinned = this.pinned;
+    this.pinned = false;
+    // mouseover is ignored during a drag, so re-check what is under the pointer now
+    const under = helpTarget(document.elementFromPoint(e.clientX, e.clientY));
+    if (under !== this.current || (wasPinned && under !== this.shownFor)) this.hoverTo(under);
+  }
+
+  showFor(t) {
+    this.shownFor = t;
+    this.show(t.dataset.help);
+    // open on the side of the screen away from the control
+    const r = t.getBoundingClientRect();
+    this.el.classList.toggle('left', r.left + r.width / 2 > window.innerWidth / 2);
+    this.el.classList.add('visible');
+  }
+
+  hide() {
+    this.shownFor = null;
+    this.el.classList.remove('visible');
   }
 
   get open() { return document.body.classList.contains('help-open'); }
@@ -77,7 +109,7 @@ export class HelpPanel {
       }
     } else if (rawKey.startsWith('section:')) {
       eyebrow = 'Section';
-    } else if (rawKey !== 'intro') {
+    } else {
       eyebrow = ['scope', 'spectrum', 'timebase', 'hold'].includes(rawKey) ? 'Displays' : 'Feature';
     }
 
@@ -89,6 +121,7 @@ export class HelpPanel {
       ${entry.tip ? `<div class="help-tip"><div class="help-tip-label">Try this</div>${esc(entry.tip)}</div>` : ''}`;
     this.paramId = optValue === undefined && PARAMS[paramId] ? paramId : null;
     this.refresh();
+    this.el.scrollTop = 0;
   }
 
   // Keep the "Now" readout live while the hovered knob is being turned.

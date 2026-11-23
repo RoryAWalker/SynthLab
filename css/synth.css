@@ -457,9 +457,8 @@ body.help-open .help-q { background: var(--accent); color: #1a1206; }
   padding: 26px 26px 32px;
   color: #d9dbdf;
 }
-body.help-open .help-panel { display: block; animation: help-in 0.18s ease-out; }
+body.help-open .help-panel.visible { display: block; animation: help-in 0.15s ease-out; }
 .help-panel.left { right: auto; left: 0; border-left: none; border-right: 1px solid #2e3137; box-shadow: 14px 0 36px rgba(0,0,0,0.5); }
-.help-panel.flipping { animation: help-in 0.18s ease-out; }
 @keyframes help-in { from { opacity: 0; } to { opacity: 1; } }
 .help-eyebrow {
   font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
