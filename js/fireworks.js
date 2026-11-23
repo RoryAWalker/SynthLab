@@ -218,9 +218,9 @@ export function fireworkSound(ctx) {
       o.connect(g); g.connect(dest);
       o.start(t); o.stop(t + 0.45 * len + 0.05);
       noiseBurst(dest, t, 0.9 * len, 0.55 * loud, 'lowpass', (1400 + Math.random() * 600) * pitch);
-      // crackle: tiny bright grains scattered after the bang (more of them for big bursts)
+      // crackle: tiny bright grains scattered after the bang (more of them for big bursts), kept quiet
       const grains = Math.round(8 + 14 * s);
-      for (let i = 0; i < grains; i++) noiseBurst(dest, t + 0.15 + Math.random() * 0.9 * len, 0.025, 0.12 + Math.random() * 0.12, 'highpass', 2500 * Math.sqrt(pitch));
+      for (let i = 0; i < grains; i++) noiseBurst(dest, t + 0.15 + Math.random() * 0.9 * len, 0.025, 0.06 + Math.random() * 0.06, 'highpass', 2500 * Math.sqrt(pitch));
     },
   };
 }
