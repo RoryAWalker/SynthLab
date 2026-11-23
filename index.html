@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SynthLab · NF-1</title>
+  <link rel="stylesheet" href="css/synth.css">
+</head>
+<body data-skin="classic">
+  <header class="appbar">
+    <div class="appbar-title"><b>SynthLab</b><span>Sound design workbench</span></div>
+    <div class="appbar-controls">
+      <label class="ctl">Patch
+        <select id="preset"></select>
+      </label>
+      <button id="btn-init" class="btn">Init</button>
+      <label class="ctl check"><input type="checkbox" id="show-values"> Show values</label>
+      <div class="dropdown">
+        <button class="btn" id="btn-lock">Lock sections ▾</button>
+        <div class="dropdown-menu" id="lock-menu"></div>
+      </div>
+    </div>
+  </header>
+
+  <main id="fit">
+    <div id="stage">
+      <!-- Test instrument: oscilloscope + spectrum -->
+      <section class="scope-unit">
+        <div class="scope-screen-wrap">
+          <div class="bezel"><canvas id="scope"></canvas><div class="screen-glass"></div></div>
+          <div class="screen-caption"><span>OSCILLOSCOPE</span><span id="tb-readout">2 ms/div</span><span id="trig-led" class="led-small"></span><span class="trig-label">TRIG</span></div>
+        </div>
+        <div class="scope-controls">
+          <div class="scope-ctl-title">TIME / DIV</div>
+          <div class="tb-buttons" id="tb-buttons"></div>
+          <button class="hold-btn" id="hold-btn">HOLD</button>
+          <div class="scope-brand">NF SCOPE-2<br><small>DUAL DISPLAY</small></div>
+        </div>
+        <div class="scope-screen-wrap">
+          <div class="bezel"><canvas id="spectrum"></canvas><div class="screen-glass"></div></div>
+          <div class="screen-caption"><span>SPECTRUM</span><span>20 Hz – 20 kHz · log</span></div>
+        </div>
+      </section>
+
+      <!-- The synthesizer -->
+      <section class="synth">
+        <div class="cheek left"></div>
+        <div class="synth-body">
+          <div class="panel" id="panel">
+            <div class="panel-sections" id="sections"></div>
+            <div class="panel-footer">
+              <div class="brand"><span class="brand-mark">NoFoe</span><span class="brand-model">NF-1</span></div>
+              <div class="brand-sub">MONOPHONIC ANALOG-STYLE SYNTHESIZER</div>
+            </div>
+          </div>
+          <div class="keybed">
+            <div class="wheels">
+              <div class="oct-block">
+                <div class="oct-title">OCTAVE</div>
+                <div class="oct-buttons">
+                  <button class="oct-btn" id="oct-down" title="Octave down (Z)">−</button>
+                  <div class="oct-readout" id="oct-readout">C3</div>
+                  <button class="oct-btn" id="oct-up" title="Octave up (X)">+</button>
+                </div>
+                <div class="oct-hint">Play with A–K · Z/X octave</div>
+              </div>
+            </div>
+            <div class="keys" id="keys"></div>
+          </div>
+        </div>
+        <div class="cheek right"></div>
+      </section>
+    </div>
+  </main>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
