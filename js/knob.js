@@ -27,7 +27,7 @@ export class Knob {
     if (this.stepped) {
       const n = this.spec.options.length;
       const stepDeg = Math.min(48, 300 / (n - 1));
-      this.span = stepDeg * (n - 1);
+      this.span = this.spec.span || stepDeg * (n - 1); // spec.span: e.g. 180 for 9-to-3 o'clock
     } else {
       this.span = 300;
     }
@@ -112,7 +112,12 @@ export class Knob {
         }
         spec.marks.forEach(([v, text]) => { const n = toNorm(this.id, v); tick(n, true); label(n, text); });
       } else {
-        for (let i = 0; i <= 10; i++) { tick(i / 10, true); label(i / 10, String(i)); }
+        // 0-10 scale; spec.evens prints only 0, 2, 4, 6, 8, 10 (odd positions keep a small tick)
+        for (let i = 0; i <= 10; i++) {
+          const show = !spec.evens || i % 2 === 0;
+          tick(i / 10, show);
+          if (show) label(i / 10, String(i));
+        }
       }
     }
     if (spec.unit) {

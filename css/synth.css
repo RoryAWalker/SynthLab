@@ -659,8 +659,8 @@ body[data-skin="vintage"] {
   --wood-3: #82492a;
   --accent: #ffb547;
   --led: #ff3b2f;
-  --panel: #151515;
-  --panel-hi: #202020;
+  --panel: #2b2d30;    /* dark grey, so the black pots stand out */
+  --panel-hi: #34363a;
   --ink: #f2f0ea;
   --ink-dim: #b9b6ad;
   --rule: rgba(242, 240, 234, 0.6);
@@ -815,7 +815,7 @@ body[data-skin="slate"] .perf .knob-label { height: 24px; }
 .panel-column.bridge .section { padding: 0; }
 .panel-column.bridge .section-title { border-bottom-color: transparent; }
 .panel-column.bridge .section-title span::after { content: "\00a0"; } /* keep the title's height so rows line up */
-.panel-column.bridge .toggle-cell { position: relative; z-index: 1; background: var(--panel); border-radius: 6px; padding-bottom: 6px; }
+.panel-column.bridge .toggle-cell { position: relative; z-index: 1; padding-bottom: 6px; } /* the switch sits on the line */
 
 /* ==========================================================================
    MiniNFoog: bigger pots and lettering, using the space the layout frees
@@ -852,3 +852,30 @@ body[data-skin="vintage"] .perf .section-title { font-size: 13px; }
 
 .panel-column.bridge .section-grid { align-items: center; }
 .panel-column.bridge .knob-cell.blank { height: 0; }
+
+/* ---- wood band between the panel and the keys, with a name plate (vintage look) ---- */
+.wood-band { display: none; }
+body[data-skin="vintage"] .wood-band {
+  display: flex; align-items: center; justify-content: flex-end; height: 96px; padding: 0 44px;
+  background-color: var(--wood-1);
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='120'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.008 0.6' numOctaves='3' seed='11'/%3E%3CfeColorMatrix values='0 0 0 0 0.18 0 0 0 0 0.08 0 0 0 0 0.02 0 0 0 0.7 0'/%3E%3C/filter%3E%3Crect width='900' height='120' filter='url(%23g)'/%3E%3C/svg%3E"),
+    linear-gradient(var(--wood-3), var(--wood-1) 45%, var(--wood-2));
+  box-shadow: inset 0 3px 4px rgba(0,0,0,0.55), inset 0 -2px 3px rgba(0,0,0,0.5);
+}
+body[data-skin="vintage"] .nameplate {
+  display: flex; align-items: baseline; gap: 12px; padding: 12px 22px; border-radius: 6px;
+  background: linear-gradient(#2a2b2d, #17181a); color: #e9e7e1;
+  box-shadow: 0 0 0 2px #0c0c0c, 0 0 0 3px rgba(255,255,255,0.12), 0 6px 10px rgba(0,0,0,0.5);
+}
+body[data-skin="vintage"] .np-mark { font: italic 700 24px Georgia, "Times New Roman", serif; }
+body[data-skin="vintage"] .np-model { font-size: 20px; font-weight: 800; letter-spacing: 0.2em; }
+/* the name now lives on the plate; keep the panel's bottom edge clean */
+body[data-skin="vintage"] .panel-footer { display: none; }
+
+/* vintage panel: an even dark grey (no fade to black) */
+body[data-skin="vintage"] .panel {
+  background:
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0 1px, transparent 1px 2px),
+    linear-gradient(180deg, var(--panel-hi), var(--panel) 25%, #26282b);
+}

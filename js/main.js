@@ -186,6 +186,7 @@ function fit() {
 
 // ---- boot ------------------------------------------------------------------------------------
 document.querySelector('.brand-model').textContent = SYNTH.name;
+document.querySelector('.np-model').textContent = SYNTH.name; // name plate on the wood band (vintage look)
 document.querySelector('.brand-sub').textContent = SYNTH.brandSub;
 document.title = `SynthLab · ${SYNTH.name}`;
 buildPanel();

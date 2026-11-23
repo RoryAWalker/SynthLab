@@ -37,7 +37,7 @@ const WAVES_3 = [
 ];
 const FREQ_MARKS = [[-7, '−7'], [-5, '−5'], [-3, '−3'], [0, '0'], [3, '+3'], [5, '+5'], [7, '+7']];
 const fmtSt = (v) => (v > 0.005 ? '+' : '') + v.toFixed(2) + ' st';
-const level = (label, def) => ({ type: 'cont', label, min: 0, max: 1, def, curve: 'lin', fmt: fmtPct });
+const level = (label, def) => ({ type: 'cont', label, min: 0, max: 1, def, curve: 'lin', fmt: fmtPct, evens: true });
 const time = (label, def) => ({ type: 'cont', label, min: 0.001, max: 10, def, curve: 'log', fmt: fmtTime, unit: 'sec', marks: TIME_MARKS });
 
 export const PARAMS = {
@@ -52,14 +52,14 @@ export const PARAMS = {
   // oscillator bank
   'osc.mod':     sw('Oscillator Modulation', 'off'),
   'osc3.ctrl':   sw('Osc. 3 Control', 'on', { vertical: true }),
-  'osc1.range':  { type: 'step', label: 'Range', options: RANGES, def: 0 },
-  'osc2.range':  { type: 'step', label: 'Range', options: RANGES, def: 0 },
-  'osc3.range':  { type: 'step', label: 'Range', options: RANGES, def: 0 },
+  'osc1.range':  { type: 'step', label: 'Range', options: RANGES, def: 0, span: 180 },
+  'osc2.range':  { type: 'step', label: 'Range', options: RANGES, def: 0, span: 180 },
+  'osc3.range':  { type: 'step', label: 'Range', options: RANGES, def: 0, span: 180 },
   'osc2.freq':   { type: 'cont', label: 'Frequency', min: -7, max: 7, def: 0, curve: 'lin', fmt: fmtSt, unit: 'semi', marks: FREQ_MARKS },
   'osc3.freq':   { type: 'cont', label: 'Frequency', min: -7, max: 7, def: 0, curve: 'lin', fmt: fmtSt, unit: 'semi', marks: FREQ_MARKS },
-  'osc1.wave':   { type: 'step', label: 'Waveform', options: WAVES_12, def: 'saw' },
-  'osc2.wave':   { type: 'step', label: 'Waveform', options: WAVES_12, def: 'saw' },
-  'osc3.wave':   { type: 'step', label: 'Waveform', options: WAVES_3, def: 'tri' },
+  'osc1.wave':   { type: 'step', label: 'Waveform', options: WAVES_12, def: 'saw', span: 180 },
+  'osc2.wave':   { type: 'step', label: 'Waveform', options: WAVES_12, def: 'saw', span: 180 },
+  'osc3.wave':   { type: 'step', label: 'Waveform', options: WAVES_3, def: 'tri', span: 180 },
 
   // mixer (a level of 0 is off)
   'mix.osc1':    level('Osc. 1', 0.8),
@@ -76,7 +76,7 @@ export const PARAMS = {
   'filt.cutoff': { type: 'cont', label: 'Cutoff Frequency', min: 20, max: 20000, def: 20000, curve: 'log', fmt: fmtHz, unit: 'Hz',
                    marks: [[20, '20'], [100, '100'], [500, '500'], [2000, '2k'], [10000, '10k'], [20000, '20k']] },
   'filt.res':    { type: 'cont', label: 'Emphasis', min: 0, max: 1, def: 0, curve: 'lin', fmt: fmtPct },
-  'filt.env':    { type: 'cont', label: 'Amount of Contour', min: 0, max: 1, def: 0, curve: 'lin', fmt: (v) => fmtOct(v * 7) },
+  'filt.env':    { type: 'cont', label: 'Amount of Contour', min: 0, max: 1, def: 0, curve: 'lin', fmt: (v) => fmtOct(v * 7), evens: true },
   'fenv.a':      time('Attack Time', 0.005),
   'fenv.d':      time('Decay Time', 0.4),
   'fenv.s':      level('Sustain Level', 0.3),
