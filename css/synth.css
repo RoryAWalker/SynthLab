@@ -838,8 +838,18 @@ body[data-skin="vintage"] .brand-model { font-size: 22px; }
 body[data-skin="vintage"] .keybed { height: 262px; }
 body[data-skin="vintage"] .perf .wheel-slot { height: 150px; width: 38px; }
 /* win back height so the larger pots show larger on screen */
-body[data-skin="vintage"] .bezel { height: 190px; }
-body[data-skin="vintage"] .scope-unit { margin-bottom: 14px; padding-top: 12px; }
+/* NiniFoog: scopes are a slim strip (it is not the beginners' synth, so the displays can be compact) */
+body[data-skin="vintage"] .scope-unit { margin-bottom: 12px; padding: 8px 18px 6px; gap: 16px; align-items: center; }
+body[data-skin="vintage"] .bezel { height: 112px; padding: 6px; border-radius: 10px; }
+body[data-skin="vintage"] .screen-glass { inset: 6px; border-radius: 7px; }
+body[data-skin="vintage"] .bezel canvas { border-radius: 7px; }
+body[data-skin="vintage"] .scope-screen-wrap { gap: 4px; }
+body[data-skin="vintage"] .scope-controls { width: auto; padding-top: 0; gap: 6px; }
+body[data-skin="vintage"] .tb-group { gap: 6px; }
+body[data-skin="vintage"] .tb-buttons { grid-template-columns: repeat(6, 34px); gap: 5px; }
+body[data-skin="vintage"] .tb-btn { height: 24px; }
+body[data-skin="vintage"] .hold-btn { width: 100%; height: 24px; }
+body[data-skin="vintage"] .scope-brand { display: none; }
 body[data-skin="vintage"] .panel { padding-top: 10px; }
 body[data-skin="vintage"] .panel-column.stacked, body[data-skin="vintage"] .panel-column { gap: 6px; }
 body[data-skin="vintage"] .perf .wheel-label { font-size: 12px; }
