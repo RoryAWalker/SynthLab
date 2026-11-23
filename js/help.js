@@ -92,6 +92,14 @@ export const HELP = {
     ],
     tip: 'Turn Osc 2 up in the Mixer, then set Detune to +7 cents. Watch the waveform on the oscilloscope slowly change shape as the two waves drift.',
   },
+  beatlight: {
+    title: 'Beat light',
+    body: [
+      'Pulses in time with the beating between the two oscillators while a note plays. It is brightest when the two waves line up and add together, and darkest when they cancel.',
+      'The beat rate equals the difference between the two frequencies in Hz, so the same Detune beats faster on higher notes.',
+    ],
+    tip: 'Set both Mixer levels equal, Detune to about +5 cents, and hold a low note, then a high one. Watch the light speed up.',
+  },
   'wave:sine': {
     title: 'Sine wave',
     body: ['The purest sound: just the fundamental, with no harmonics at all. Smooth and round, like a whistle or a tuning fork. Ideal for sub-bass.', 'Because there are no harmonics, the filter has almost nothing to remove.'],

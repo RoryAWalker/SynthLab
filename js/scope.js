@@ -78,6 +78,10 @@ export class Scope {
     const { ctx, w, h } = this.a;
     ctx.clearRect(0, 0, w, h);
     drawGraticule(ctx, w, h, 10, 8);
+    if (this.overlay && this.overlay.group === 'detune') {
+      const a = this.overlay.alpha();
+      if (a) { this.drawBeating(ctx, w, h, a); return; }
+    }
     const an = this.engine.scope;
     const mixAlpha = this.overlay && this.overlay.group === 'mix' ? this.overlay.alpha() : 0;
     if (!an || !this.engine.running) {
@@ -161,6 +165,61 @@ export class Scope {
     }
     ctx.stroke();
     ctx.restore();
+  }
+
+  // While Detune is being adjusted: zoom the timebase out to 2 seconds so the slow swell
+  // of the two detuned waves is visible. The dense wave is drawn as a band whose height is
+  // the combined loudness; the amber outline is the beating envelope.
+  drawBeating(ctx, w, h, alpha) {
+    const d = this.overlay.detuneInfo();
+    const live = this.engine.live;
+    const span = 2;
+    const mid = h / 2, amp = h * 0.42;
+    const level = (phase) => this.overlay.constructor.beatLevel(d.m1, d.m2, phase);
+    // phase of the beat at the right-hand edge (now): from the engine when a note sounds
+    const now = performance.now() / 1000;
+    const phaseNow = live && live.gate ? live.beat : (now * d.df) % 1;
+    const phaseAt = (secsAgo) => phaseNow - d.df * secsAgo;
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = 'rgba(141, 255, 176, 0.35)';
+    ctx.beginPath();
+    for (let x = 0; x <= w; x++) ctx.lineTo(x, mid - level(phaseAt(span * (1 - x / w))) * amp);
+    for (let x = w; x >= 0; x--) ctx.lineTo(x, mid + level(phaseAt(span * (1 - x / w))) * amp);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#ffb547';
+    ctx.lineWidth = 2;
+    [1, -1].forEach((sgn) => {
+      ctx.beginPath();
+      for (let x = 0; x <= w; x += 2) {
+        const y = mid - sgn * level(phaseAt(span * (1 - x / w))) * amp;
+        if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    });
+
+    // beat markers at each loudness peak
+    if (d.df > 0.25 && d.df < 15) {
+      const per = 1 / d.df;
+      const firstAgo = ((phaseNow % 1) + 1) % 1 / d.df; // seconds since the last peak
+      let labelled = false;
+      for (let ago = firstAgo; ago < span; ago += per) {
+        const x = w * (1 - ago / span);
+        ctx.fillStyle = '#ffb547';
+        ctx.fillRect(x - 0.5, h - 16, 1, 10);
+        const xPrev = w * (1 - (ago + per) / span);
+        if (!labelled && xPrev > 0) {
+          label(ctx, '1 beat = ' + (per < 1 ? Math.round(per * 1000) + ' ms' : per.toFixed(2) + ' s'), (x + xPrev) / 2, h - 6, '#ffb547', 'center', 10, 700);
+          labelled = true;
+        }
+      }
+    }
+    label(ctx, 'SLOWED TO 2 s   ·   Osc 1 + Osc 2 swell and fade as they drift in and out of step', 10, 16, '#ffb547', 'left', 10, 800);
+    if (d.m1 < 0.01 || d.m2 < 0.01) label(ctx, 'Turn up both oscillators in the Mixer to hear beating', w / 2, mid - 14, '#fff0cf', 'center', 12, 700);
+    ctx.restore();
+    this.triggered = false;
   }
 
   drawSpectrum() {

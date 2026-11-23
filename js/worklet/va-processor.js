@@ -226,9 +226,15 @@ class VAProcessor extends AudioWorkletProcessor {
     this.lfoT += dtB;
     if (++this.blocks % 4 === 0) {
       const env = (e) => ({ s: e.stage, v: e.v, tOn: e.tOn, tOff: e.tOff });
+      // Beat phase: how far apart the two oscillators are in their cycles (0..1). When the
+      // ranges differ, compare against the matching harmonic of the lower oscillator.
+      const k = (p['osc2.range'] || 0) - (p['osc1.range'] || 0);
+      const a = k >= 0 ? this.ph1 * Math.pow(2, k) : this.ph1;
+      const b = k >= 0 ? this.ph2 : this.ph2 * Math.pow(2, -k);
+      const beat = (((b - a) % 1) + 1) % 1;
       this.port.postMessage({
         type: 'state', gate: this.notes.length > 0, note: this.note, target: this.target, fc: this.lastFc,
-        a: env(this.aenv), f: env(this.fenv), lfo: this.lastLfo, lfoT: this.lfoT,
+        a: env(this.aenv), f: env(this.fenv), lfo: this.lastLfo, lfoT: this.lfoT, beat,
       });
     }
     return true;

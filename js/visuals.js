@@ -8,6 +8,7 @@
 //   range      -> each oscillator's fundamental, and where every octave step puts it
 //   glide      -> pitch over time, showing the slide between notes
 //   mixer      -> (drawn on the oscilloscope by scope.js) each oscillator and their sum
+//   detune     -> zoomed spectrum of the two close peaks; scope.js shows the slow beating
 
 import { PARAMS, formatValue } from './params.js';
 
@@ -52,6 +53,7 @@ export function overlayGroup(key) {
   if (id === 'osc1.range' || id === 'osc2.range') return 'range';
   if (id === 'ctrl.glide' || id === 'ctrl.mode') return 'glide';
   if (id === 'mix.osc1' || id === 'mix.osc2') return 'mix';
+  if (id === 'osc2.fine') return 'detune';
   if (id.startsWith('aenv.')) return 'aenv';
   if (id.startsWith('fenv.') || id === 'filt.env') return 'fenv';
   if (id === 'filt.cutoff' || id === 'filt.res') return 'filter';
@@ -144,8 +146,9 @@ export class Overlay {
     if (!a || this.scopeOnly) return;
     ctx.save();
     ctx.globalAlpha = a;
-    // darken the spectrum a little so the graph reads clearly
-    ctx.fillStyle = 'rgba(3, 10, 6, 0.45)';
+    // darken the spectrum so the graph reads clearly (almost fully for the zoomed detune view,
+    // whose frequency axis differs from the spectrum's)
+    ctx.fillStyle = this.group === 'detune' ? 'rgba(3, 10, 6, 0.9)' : 'rgba(3, 10, 6, 0.45)';
     ctx.fillRect(0, 0, w, h);
     const box = { x: PAD.l, y: PAD.t, w: w - PAD.l - PAD.r, h: h - PAD.t - PAD.b };
     if (this.group === 'aenv' || this.group === 'fenv') this.drawEnvelope(ctx, w, h, box);
@@ -154,6 +157,7 @@ export class Overlay {
     else if (this.group === 'harm') this.drawHarmonics(ctx, w, h, spectrum);
     else if (this.group === 'range') this.drawRange(ctx, w, h, box);
     else if (this.group === 'glide') this.drawGlide(ctx, w, h, box);
+    else if (this.group === 'detune') this.drawDetune(ctx, w, h);
     ctx.restore();
   }
 
@@ -591,5 +595,83 @@ export class Overlay {
 
     label(ctx, `GLIDE   ·   ${G > 0.0005 ? formatValue('ctrl.glide', G) : 'off'}   ·   ${legato ? 'Legato: only overlapping notes slide' : 'Mono: every note slides'}`, box.x, 16, AMBER, 'left', 10.5, 800);
     label(ctx, played ? 'pitch over the last 3 seconds  ·  dashed = notes played' : 'example: play notes to see your own slides  ·  dashed = notes played', w - PAD.r, h - 8, AMBER_DIM, 'right', 9.5, 600);
+  }
+
+  // ---- detune -------------------------------------------------------------------------------
+  // Which frequencies beat against each other. With equal ranges it is the two fundamentals;
+  // otherwise Osc 2 beats against the matching harmonic of the lower oscillator.
+  detuneInfo() {
+    const p = this.getPatch();
+    const k = p['osc2.range'] - p['osc1.range'];
+    const fa = this.oscHz(1) * Math.pow(2, Math.max(0, k));
+    const fb = this.oscHz(2) * Math.pow(2, Math.max(0, -k));
+    const nth = (m) => (m === 2 ? '2nd' : m + 'th');
+    let what = 'Osc 1 and Osc 2';
+    if (k > 0) what = `Osc 2 and Osc 1's ${nth(2 ** k)} harmonic`;
+    if (k < 0) what = `Osc 1 and Osc 2's ${nth(2 ** -k)} harmonic`;
+    return { fa, fb, df: Math.abs(fb - fa), what, m1: p['mix.osc1'], m2: p['mix.osc2'], k };
+  }
+
+  // Loudness of two summed waves of levels m1, m2 whose cycles are `phase` (0..1) apart,
+  // relative to their maximum. This is the swell you hear as beating.
+  static beatLevel(m1, m2, phase) {
+    if (m1 + m2 < 1e-6) return 0;
+    return Math.sqrt(Math.max(0, m1 * m1 + m2 * m2 + 2 * m1 * m2 * Math.cos(2 * Math.PI * phase))) / (m1 + m2);
+  }
+
+  drawDetune(ctx, w, h) {
+    const d = this.detuneInfo();
+    const half = Math.max(4, d.df * 3);
+    const lo = d.fa - half, hi = d.fa + half;
+    const xOf = (f) => ((f - lo) / (hi - lo)) * w;
+    const base = h - 26, top = 46;
+
+    // frequency grid
+    ctx.strokeStyle = 'rgba(120, 255, 170, 0.12)';
+    ctx.lineWidth = 1;
+    const step = half > 30 ? 10 : half > 12 ? 5 : half > 5 ? 2 : 1;
+    for (let f = Math.ceil(lo / step) * step; f <= hi; f += step) {
+      const x = Math.round(xOf(f)) + 0.5;
+      ctx.beginPath(); ctx.moveTo(x, top - 10); ctx.lineTo(x, base); ctx.stroke();
+      label(ctx, String(f), x, h - 10, 'rgba(140, 255, 180, 0.45)', 'center', 9);
+    }
+
+    // the two peaks, heights by mixer level
+    const peak = (f, level, color, name) => {
+      const x = xOf(f), y = base - (base - top) * Math.max(0.04, level);
+      ctx.save();
+      ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      for (let i = 0; i <= w; i++) {
+        const fr = lo + (i / w) * (hi - lo);
+        const g = Math.exp(-Math.pow((fr - f) / (half * 0.04), 2));
+        const yy = base - (base - y) * g;
+        if (i === 0) ctx.moveTo(i, yy); else ctx.lineTo(i, yy);
+      }
+      ctx.stroke();
+      ctx.restore();
+      label(ctx, name, x, y - 8, color, 'center', 10.5, 800);
+      return { x, y };
+    };
+    const A = peak(d.fa, d.m1, AMBER, d.k > 0 ? `Osc 1 ×${2 ** d.k}` : 'Osc 1');
+    const B = peak(d.fb, d.m2, '#78cdff', d.k < 0 ? `Osc 2 ×${2 ** -d.k}` : 'Osc 2');
+
+    // the gap
+    if (d.df > 0.005) {
+      const y = Math.min(A.y, B.y) - 26;
+      ctx.strokeStyle = HI; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(A.x, y); ctx.lineTo(B.x, y); ctx.stroke();
+      [A.x, B.x].forEach((x) => { ctx.beginPath(); ctx.moveTo(x, y - 4); ctx.lineTo(x, y + 4); ctx.stroke(); });
+      label(ctx, `gap ${d.df.toFixed(2)} Hz`, (A.x + B.x) / 2, y - 7, HI, 'center', 11, 800);
+    }
+
+    label(ctx, 'DETUNE   ·   SPECTRUM ZOOMED IN', 12, 16, AMBER, 'left', 10.5, 800);
+    let rate;
+    if (d.df < 0.005) rate = 'same pitch: no beating';
+    else if (d.df > 15) rate = `${d.df.toFixed(1)} per second: too fast to hear as beats, heard as roughness`;
+    else rate = `beating ${d.df.toFixed(2)} times per second`;
+    label(ctx, rate, w - 12, 16, HI, 'right', 11, 800);
+    label(ctx, `${d.what}: ${fmtHz(d.fa)} and ${fmtHz(d.fb)}`, w - 12, 31, AMBER_DIM, 'right', 10, 600);
+    if (d.m1 < 0.01 || d.m2 < 0.01) label(ctx, 'Turn up both oscillators in the Mixer to hear beating', w / 2, top + 6, HI, 'center', 11, 700);
   }
 }

@@ -480,3 +480,16 @@ body.help-open .help-panel.visible { display: block; animation: help-in 0.15s ea
   font-size: 14px; line-height: 1.55; color: #e6dcc8;
 }
 .help-tip-label { font-size: 10.5px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin-bottom: 4px; }
+
+/* ---- beat light by the Detune knob ---- */
+.knob-cell { position: relative; }
+.beat-led { position: absolute; top: 20px; right: 2px; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.beat-lamp {
+  --glow: 0;
+  width: 10px; height: 10px; border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%,
+    color-mix(in srgb, #ffe7b0 calc(var(--glow) * 100%), #4a2f0c),
+    color-mix(in srgb, #ffb547 calc(var(--glow) * 100%), #241605) 70%);
+  box-shadow: 0 0 0 1px #000, 0 0 calc(var(--glow) * 12px) calc(var(--glow) * 3px) rgba(255, 181, 71, calc(var(--glow) * 0.8));
+}
+.beat-label { font-size: 8.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-dim); }

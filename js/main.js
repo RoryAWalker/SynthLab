@@ -220,6 +220,30 @@ function setHelp(open) {
 document.getElementById('btn-help').addEventListener('click', () => setHelp(!document.body.classList.contains('help-open')));
 setHelp(loadPref('nf1.help', '1') === '1'); // on by default: this is a learning tool
 
+// ---- beat light by the Detune knob ----
+// Glows with the combined loudness of the two oscillators, so it pulses at the beat rate.
+const beatLed = document.createElement('div');
+beatLed.className = 'beat-led';
+beatLed.innerHTML = '<span class="beat-lamp"></span><span class="beat-label">Beat</span>';
+beatLed.dataset.help = 'beatlight';
+knobs['osc2.fine'].el.appendChild(beatLed);
+const beatLamp = beatLed.querySelector('.beat-lamp');
+(function beatLoop() {
+  requestAnimationFrame(beatLoop);
+  const l = engine.live;
+  let glow = 0;
+  if (l && l.gate && l.a.s !== 0 && engine.running) {
+    const d = overlay.detuneInfo();
+    if (d.df > 0.005 && d.df <= 15 && d.m1 > 0.01 && d.m2 > 0.01) {
+      // swing from dark (out of step) to bright (in step)
+      const lvl = Overlay.beatLevel(d.m1, d.m2, l.beat);
+      const minLvl = Math.abs(d.m1 - d.m2) / (d.m1 + d.m2);
+      glow = minLvl < 0.999 ? (lvl - minLvl) / (1 - minLvl) : 0;
+    }
+  }
+  beatLamp.style.setProperty('--glow', glow.toFixed(3));
+})();
+
 fit();
 window.addEventListener('resize', fit);
 document.addEventListener('visibilitychange', () => {
