@@ -360,10 +360,27 @@ function audible(target, compare) {
 // Does the student's sound match the target? Compared by what is heard, not by knob
 // positions: the pitch each oscillator sounds is the key played plus its Range in octaves,
 // so F#3 with Range +1 matches F#4 with Range 0 (they sound identical).
-export function soundMatches(player, playerNote, target, targetNote, compareAll) {
+// The two oscillators are interchangeable: square on Osc 1 with sine on Osc 2 sounds the
+// same as the reverse (with their levels swapped too). Detune only describes how far apart
+// they are, so it stays as it is.
+function swapOscillators(p) {
+  const s = { ...p };
+  for (const k of ['wave', 'range']) { s[`osc1.${k}`] = p[`osc2.${k}`]; s[`osc2.${k}`] = p[`osc1.${k}`]; }
+  s['mix.osc1'] = p['mix.osc2']; s['mix.osc2'] = p['mix.osc1'];
+  return s;
+}
+// both oscillators are being matched (not just Oscillator 1)
+const bothOscillators = (compare) => compare.includes('osc1.wave') && compare.includes('osc2.wave');
+
+function matchesAsIs(player, playerNote, target, targetNote, compareAll) {
   const compare = audible(target, compareAll);
   return compare.every((id) => controlMatches(id, player, playerNote, target, targetNote))
     && (compare.some((id) => id.endsWith('.range')) || playerNote === targetNote);
+}
+
+export function soundMatches(player, playerNote, target, targetNote, compare) {
+  return matchesAsIs(player, playerNote, target, targetNote, compare)
+    || (bothOscillators(compare) && matchesAsIs(swapOscillators(player), playerNote, target, targetNote, compare));
 }
 
 // Knob-for-knob comparison (used to make sure a new target differs from the start).
@@ -375,6 +392,12 @@ export function patchMatches(player, target, compare) {
 // Stepped controls count as right or wrong; smooth ones count by how far off they are.
 export function closeness(player, playerNote, target, targetNote, compareAll) {
   if (playerNote == null) return 0;
+  const asIs = closenessAsIs(player, playerNote, target, targetNote, compareAll);
+  if (!bothOscillators(compareAll)) return asIs;
+  return Math.max(asIs, closenessAsIs(swapOscillators(player), playerNote, target, targetNote, compareAll));
+}
+
+function closenessAsIs(player, playerNote, target, targetNote, compareAll) {
   const compare = audible(target, compareAll);
   const scores = compare.map((id) => {
     if (controlMatches(id, player, playerNote, target, targetNote)) return 1;
