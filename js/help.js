@@ -296,7 +296,19 @@ export const HELP = {
   // ---- top bar -------------------------------------------------------------------------
   presets: {
     title: 'Patch',
-    body: ['Factory sounds. Each one demonstrates a technique: load one, play it, then look at how its knobs are set to work out how it was made.'],
+    body: ['Factory sounds, plus any patches you have saved under My patches. Each factory patch demonstrates a technique: load one, play it, then look at how its knobs are set to work out how it was made.'],
+  },
+  save: {
+    title: 'Save',
+    body: ['Saves the current sound under a name of your choice. Your patches appear under "My patches" in the Patch menu.', 'They are stored in this browser. Use the ⋯ menu to export them to a file, to keep a backup or move them to another computer.'],
+  },
+  delete: {
+    title: 'Delete',
+    body: ['Deletes the selected patch from My patches. Factory patches cannot be deleted.'],
+  },
+  patchfiles: {
+    title: 'Export and import',
+    body: ['Export saves all your patches into one file. Import loads patches from such a file, for example one shared by a classmate or teacher. Imported patches never replace yours: a patch with the same name is added with a number after it.'],
   },
   init: {
     title: 'Init',

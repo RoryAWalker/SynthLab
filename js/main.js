@@ -8,6 +8,7 @@ import { HelpPanel } from './helpPanel.js';
 import { Overlay } from './visuals.js';
 import { ZoomPan } from './zoom.js';
 import { LessonController } from './lessonUI.js';
+import { PatchMenu } from './patches.js';
 
 const engine = new Engine();
 let patch = defaultPatch();
@@ -85,7 +86,7 @@ function onKnob(id, value) {
   if (lesson) lesson.onPatchChange();
   if (help) help.refresh(id);
   overlay.activate(id);
-  if (presetSel.value !== '') presetSel.value = '';
+  if (patchMenu) patchMenu.markEdited();
 }
 
 // ---- patch API (used by presets now, by the game layer later) --------------------------
@@ -104,19 +105,9 @@ function lockSection(id, locked = true) {
 }
 
 // ---- toolbar ------------------------------------------------------------------------------
-const presetSel = document.getElementById('preset');
+let patchMenu = null; // Patch menu with factory and saved patches (patches.js)
 function buildToolbar() {
-  const custom = document.createElement('option');
-  custom.value = ''; custom.textContent = '— edited —'; custom.disabled = true;
-  presetSel.appendChild(custom);
-  Object.keys(PRESETS).forEach((name) => {
-    const o = document.createElement('option');
-    o.value = name; o.textContent = name;
-    presetSel.appendChild(o);
-  });
-  presetSel.value = 'Init';
-  presetSel.addEventListener('change', () => { setPatch(PRESETS[presetSel.value]); presetSel.blur(); });
-  document.getElementById('btn-init').addEventListener('click', () => { setPatch({}); presetSel.value = 'Init'; });
+  patchMenu = new PatchMenu({ getPatch: () => ({ ...patch }), setPatch });
 
   const showValues = document.getElementById('show-values');
   document.body.classList.toggle('show-values', showValues.checked);
@@ -249,12 +240,11 @@ lesson = new LessonController({
   getPatch: () => ({ ...patch }), setPatch, engine, scope, keyboard, lockSection, ensureAudio,
   onModeChange: (mode) => {
     document.querySelectorAll('#mode-switch button').forEach((b) => b.classList.toggle('on', b.dataset.mode === mode));
-    savePref('nf1.mode', mode);
     requestAnimationFrame(fit);
   },
 });
 document.querySelectorAll('#mode-switch button').forEach((b) => b.addEventListener('click', () => lesson.setMode(b.dataset.mode)));
-lesson.setMode(loadPref('nf1.mode', 'lessons'));
+lesson.setMode('free'); // always open in Free play; Lessons is one click away
 
 fit();
 window.addEventListener('resize', fit);

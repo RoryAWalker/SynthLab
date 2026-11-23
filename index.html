@@ -17,6 +17,16 @@
       <label class="ctl free-only" data-help="presets">Patch
         <select id="preset"></select>
       </label>
+      <button id="btn-save" class="btn free-only" data-help="save">Save</button>
+      <button id="btn-delete" class="btn free-only btn-danger" data-help="delete" hidden>Delete</button>
+      <div class="more-wrap free-only">
+        <button id="patch-more" class="btn" aria-label="More patch options" data-help="patchfiles">⋯</button>
+        <div class="more-menu" id="patch-more-menu" hidden>
+          <button id="btn-export">Export my patches…</button>
+          <button id="btn-import">Import patches…</button>
+        </div>
+        <input type="file" id="import-file" accept=".json,application/json" hidden>
+      </div>
       <button id="btn-init" class="btn free-only" data-help="init">Init</button>
       <label class="ctl check" data-help="showvalues"><input type="checkbox" id="show-values" checked> Show values</label>
       <div class="zoom-ctl" data-help="zoom">
@@ -118,6 +128,20 @@
       </div>
     </div>
   </div>
+
+  <div class="lesson-modal" id="save-dialog" hidden>
+    <form class="lm-card save-card" id="save-form" role="dialog" aria-labelledby="save-title">
+      <h2 class="save-title" id="save-title">Save patch</h2>
+      <label class="save-label" for="save-name">Name</label>
+      <input id="save-name" class="save-input" maxlength="40" placeholder="Warm detuned bass" autocomplete="off">
+      <div class="save-error" id="save-error" role="alert"></div>
+      <div class="save-actions">
+        <button type="button" class="lb-btn quiet" id="save-cancel">Cancel</button>
+        <button type="submit" class="lb-btn primary" id="save-ok">Save</button>
+      </div>
+    </form>
+  </div>
+  <div class="toast" id="toast" role="status"></div>
 
   <aside class="help-panel" id="help-panel" aria-label="Help">
     <div class="help-content"></div>

@@ -582,3 +582,34 @@ body.auditioning #lb-hear, body.auditioning #lb-reset, body.auditioning .lb-step
 }
 .key.black.target-key::before { bottom: 14px; width: 15px; height: 15px; margin-left: -7.5px; }
 @keyframes key-pulse { 50% { box-shadow: 0 0 4px 1px rgba(255, 181, 71, 0.45); } }
+
+/* ---- patch saving ---- */
+.btn-danger { color: #ffb3b3; }
+.btn-danger:hover { background: #3a2427; }
+.more-wrap { position: relative; }
+.more-menu {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 50; min-width: 200px; padding: 6px;
+  background: #24262b; border: 1px solid #3a3d44; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+.more-menu[hidden] { display: none; }
+.more-menu button {
+  display: block; width: 100%; text-align: left; padding: 7px 10px; border: none; border-radius: 5px;
+  background: none; color: #e1e3e7; font: 13px var(--font); cursor: pointer;
+}
+.more-menu button:hover { background: #30333a; }
+.save-card { text-align: left; width: min(420px, calc(100vw - 32px)); padding: 24px 26px 20px; }
+.save-title { margin: 0 0 16px; font-size: 20px; color: #fff; }
+.save-label { display: block; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #9a9ea5; margin-bottom: 6px; }
+.save-input {
+  width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #454850; background: #15171a;
+  color: #fff; font: 15px var(--font); outline: none;
+}
+.save-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255,181,71,0.2); }
+.save-error { min-height: 20px; margin-top: 6px; font-size: 13px; color: #ffb3a1; }
+.save-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px; }
+.toast {
+  position: fixed; left: 50%; bottom: 28px; transform: translate(-50%, 20px); z-index: 80;
+  padding: 10px 16px; border-radius: 8px; background: #2b2e34; border: 1px solid #454850; color: #fff;
+  font: 600 13px var(--font); opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }

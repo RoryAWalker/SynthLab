@@ -32,7 +32,7 @@ export class LessonController {
     this.lastNote = null;
     this.note = loadNote();   // the lesson's key: found in challenge 1, reused (and marked) after
     this.progress = loadProgress();
-    this.mode = 'free';
+    this.mode = null; // set by setMode() at start-up
 
     // celebrations drawn on the two screens: a smiley per matched sound, fireworks per lesson
     this.smileys = [new Smiley(), new Smiley()];
