@@ -2,9 +2,9 @@
 // Saved patches live in this browser (localStorage); Export/Import moves them between
 // browsers and computers as a .json file.
 
-import { PARAMS, PRESETS, defaultPatch } from './params.js';
+import { PARAMS, PRESETS, defaultPatch, SYNTH, SYNTHS } from './params.js';
 
-const STORE = 'nf1.userPatches';
+const STORE = `${SYNTH.id}.userPatches`; // each synth keeps its own saved patches
 const FILE_FORMAT = 'synthlab-patches';
 
 function load() {
@@ -146,10 +146,10 @@ export class PatchMenu {
   exportFile() {
     const names = Object.keys(this.user);
     if (!names.length) { this.toast('You have no saved patches to export yet'); return; }
-    const data = JSON.stringify({ format: FILE_FORMAT, version: 1, patches: this.user }, null, 2);
+    const data = JSON.stringify({ format: FILE_FORMAT, version: 1, synth: SYNTH.id, patches: this.user }, null, 2);
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([data], { type: 'application/json' }));
-    a.download = 'synthlab-patches.json';
+    a.download = `synthlab-${SYNTH.id}-patches.json`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
     this.toast(`Exported ${names.length} patch${names.length > 1 ? 'es' : ''}`);
@@ -160,6 +160,12 @@ export class PatchMenu {
     let data;
     try { data = JSON.parse(await file.text()); } catch { this.toast("That file isn't a SynthLab patch file"); return; }
     if (!data || data.format !== FILE_FORMAT || typeof data.patches !== 'object') { this.toast("That file isn't a SynthLab patch file"); return; }
+    const fileSynth = data.synth || 'nf1'; // files from before the second synth are NF-1 patches
+    if (fileSynth !== SYNTH.id) {
+      const other = SYNTHS.find((s) => s.id === fileSynth);
+      this.toast(`Those patches are for the ${other ? other.name : 'another synth'}. Switch synth to import them.`);
+      return;
+    }
     let count = 0;
     for (const [rawName, p] of Object.entries(data.patches)) {
       let name = String(rawName).trim().slice(0, 40) || 'Imported';

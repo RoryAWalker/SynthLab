@@ -10,13 +10,16 @@ export class Toggle {
     const [a, b] = this.spec.options;
 
     this.el = document.createElement('div');
-    this.el.className = 'toggle-cell';
+    this.el.className = 'toggle-cell' + (this.spec.titled ? ' titled' : '');
     this.el.dataset.param = id;
     this.el.dataset.help = id;
     this.el.innerHTML = `
-      <button class="toggle-label" data-v="${a.v}">${a.label}</button>
-      <button class="toggle" role="switch" aria-label="${this.spec.label}"><span class="toggle-lever"></span></button>
-      <button class="toggle-label" data-v="${b.v}">${b.label}</button>`;
+      ${this.spec.titled ? `<div class="toggle-title">${this.spec.label}</div>` : ''}
+      <div class="toggle-row">
+        <button class="toggle-label" data-v="${a.v}">${a.label}</button>
+        <button class="toggle" role="switch" aria-label="${this.spec.label || 'on/off'}"><span class="toggle-lever"></span></button>
+        <button class="toggle-label" data-v="${b.v}">${b.label}</button>
+      </div>`;
 
     this.sw = this.el.querySelector('.toggle');
     this.sw.addEventListener('click', () => this.commit(this.value === a.v ? b.v : a.v));

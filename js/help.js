@@ -342,6 +342,7 @@ export const HELP = {
     title: 'Show target on scopes',
     body: ['Shows the target sound as a dashed amber trace on the oscilloscope and spectrum. Turn it off to match by ear alone.'],
   },
+  synths: { title: 'Synths', body: ['Opens the start menu to choose a different synth. Each synth has its own panel, sound and saved patches.'] },
   zoom: {
     title: 'Zoom',
     body: [
@@ -357,9 +358,76 @@ export const HELP = {
 
 // Some options share one explanation across controls.
 export function helpKeyFor(key) {
-  const m = /^(osc[12]\.wave|lfo\.shape)=(.+)$/.exec(key);
+  const m = /^(osc[123]\.wave|lfo\.shape)=(.+)$/.exec(key);
   if (m) return (m[1] === 'lfo.shape' ? 'lfo:' : 'wave:') + m[2];
-  if (key === 'osc2.range') return 'osc1.range';
-  if (key === 'osc2.wave') return 'osc1.wave';
+  if (key === 'osc2.range' || key === 'osc3.range') return 'osc1.range';
+  if (key === 'osc2.wave' || key === 'osc3.wave') return 'osc1.wave';
+  if (key === 'osc3.freq') return 'osc2.freq';
+  if (/^mix\.(osc[123]|ext|noise)on$/.test(key)) return 'mix.switch';
   return key;
 }
+
+// Entries that differ on the MiniNFoog (nf3), or exist only there. Looked up first on that synth.
+export const HELP_NF3 = {
+  'section:ctrl': { title: 'Controllers', body: ['Overall tuning, the glide (portamento) time, and Modulation Mix, which chooses what the modulation wheel applies: Oscillator 3, noise, or a blend.'] },
+  'section:oscs': {
+    title: 'Oscillator Bank',
+    body: ['Three oscillators, each with an octave Range and a Waveform. Oscillators 2 and 3 can be tuned against Oscillator 1 with Frequency, for detuned thickness or chords such as fifths.',
+      'Oscillator 3 has a second job: switch Osc. 3 Control off and set its Range to LO, and it becomes a slow modulation source (an LFO) for vibrato and filter sweeps.'],
+  },
+  'section:mix': { title: 'Mixer', body: ['Sets the level of each sound source going into the filter: the three oscillators, noise, and the External Input. Each has an on/off switch, so a source can be silenced without losing its level.', 'Turning several sources up drives the filter into a warm overload.'] },
+  'section:mods': {
+    title: 'Modifiers',
+    body: ['The low-pass filter and the two contour generators (envelopes). The filter carves harmonics away; the Filter Contour moves the cutoff on every note; the Loudness Contour shapes the volume.',
+      'Contours have Attack, Decay and Sustain. Release (after letting go) is set by the Decay switch beside the keyboard: off, notes stop almost at once; on, they fade using the Decay time.'],
+  },
+  'section:out': { title: 'Output', body: ['Main volume and on/off, an A-440 reference tone for tuning, and the Feedback amount for the External Input loop.'] },
+  'section:perf': { title: 'Controllers', body: ['Glide and Decay switches, the pitch wheel (springs back to centre) and the modulation wheel (stays where you leave it).'] },
+  'osc1.range': {
+    title: 'Range',
+    body: ["The octave, in organ-pipe feet: 8' is normal pitch, each halving (4', 2') is an octave up and each doubling (16', 32') an octave down.",
+      'LO drops the oscillator far below hearing, so it slowly wobbles rather than sounds. On Oscillator 3 that turns it into a modulation source.'],
+    tip: "Set Oscillator 2 to 16' under Oscillator 1 at 8' for a solid octave bass.",
+  },
+  'osc2.freq': {
+    title: 'Frequency',
+    body: ['Tunes this oscillator up or down by up to 7 semitones against Oscillator 1. A tiny amount gives a slow, thickening beat; +7 gives a perfect fifth; +5 a fourth.'],
+    tip: 'Turn Osc. 2 up in the Mixer, then set Frequency to +0.1 semitones and listen for the slow beating.',
+  },
+  'osc.mod': { title: 'Oscillator Modulation', body: ['When on, the modulation source (set by Modulation Mix, scaled by the mod wheel) bends the pitch of Oscillators 1 and 2: vibrato, trills or sirens.'] },
+  'osc3.ctrl': { title: 'Oscillator 3 Control', body: ['On: Oscillator 3 follows the keyboard like the others. Off: it ignores the keyboard and holds a fixed pitch, which is how it is used as a modulation source (with Range set to LO).'] },
+  'ctrl.modmix': { title: 'Modulation Mix', body: ['Chooses the modulation source: fully left is Oscillator 3, fully right is noise, in between blends them. Oscillator 3 gives regular wobbles; noise gives random, jittery movement.', 'Nothing happens until the mod wheel is raised and Osc. Modulation or Filter Modulation is switched on.'] },
+  'ctrl.tune': { title: 'Tune', body: ['Fine-tunes the whole synth by up to a semitone up or down. Use the A-440 tone in the Output section as a reference.'] },
+  'ctrl.glide': { title: 'Glide', body: ['How long the pitch takes to slide from one note to the next. Only works while the Glide switch by the keyboard is on.'] },
+  'mix.osc3': { title: 'Osc. 3 level', body: ['How much of Oscillator 3 is heard. When Oscillator 3 is used as a modulation source, turn this down so you only hear its effect.'] },
+  'mix.ext': { title: 'External Input', body: ['Level of the External Input. Here it is wired to the synth\'s own output, a feedback loop: with the Feedback knob up, the sound feeds back into the filter for extra drive, grit and growl.'] },
+  'mix.noise': { title: 'Noise level', body: ['Level of the noise generator. White noise is bright and hissy; pink noise is darker and fuller. Use it for wind, breath, percussion, or as a modulation source.'] },
+  'mix.noisetype': { title: 'White or Pink noise', body: ['White noise has equal energy at every frequency, so it sounds bright. Pink noise falls away towards the treble, so it sounds softer and more natural (rain, surf, wind).'] },
+  'mix.switch': { title: 'On / Off', body: ['Switches this source in or out of the mixer without changing its level.'] },
+  'filt.res': { title: 'Emphasis', body: ['Emphasis is the classic name for resonance: it boosts the frequencies around the cutoff. Near the top, the filter rings and starts to whistle on its own.'], tip: 'Set Emphasis to about 70% and sweep the Cutoff Frequency.' },
+  'filt.env': { title: 'Amount of Contour', body: ['How far the Filter Contour pushes the cutoff up on each note, up to 7 octaves. At 0 the contour has no effect.'], tip: 'Cutoff low, Amount of Contour about 50%, short Decay, Sustain 0: a classic plucked bass.' },
+  'filt.mod': { title: 'Filter Modulation', body: ['When on, the modulation source (Modulation Mix, scaled by the mod wheel) sweeps the filter cutoff: wah and wobble with Oscillator 3, random burbles with noise.'] },
+  'filt.kb1': { title: 'Keyboard Control 1', body: ['Makes the cutoff follow the keyboard by one third. With Keyboard Control 2 as well, the cutoff tracks fully, so high notes stay as bright as low ones.'] },
+  'filt.kb2': { title: 'Keyboard Control 2', body: ['Makes the cutoff follow the keyboard by two thirds. With Keyboard Control 1 as well, the cutoff tracks fully. With high Emphasis and full tracking, the self-oscillating filter plays in tune.'] },
+  'fenv.a': { title: 'Attack Time (filter)', body: ['Time for the filter contour to rise to its peak after a key is pressed.'] },
+  'fenv.d': { title: 'Decay Time (filter)', body: ['Time to fall from the peak to the Sustain Level. With the Decay switch on, also the time it takes to fall away after the key is released.'] },
+  'fenv.s': { title: 'Sustain Level (filter)', body: ['Where the filter contour settles while the key is held.'] },
+  'aenv.d': { title: 'Decay Time (loudness)', body: ['Time to fall from full volume to the Sustain Level. With the Decay switch on, also the fade-out time after the key is released.'] },
+  'out.volume': { title: 'Volume', body: ['Main output level.'] },
+  'out.on': { title: 'Main Output', body: ['Switches the main output on or off.'] },
+  'out.a440': { title: 'A-440', body: ['Plays a steady 440 Hz tone (the A above middle C), the standard tuning reference. Play an A and use Tune until the two stop beating against each other.'] },
+  'out.feedback': {
+    title: 'Feedback',
+    body: ['How much of the output is sent back into the External Input. Players used to patch the headphone socket back into the External Input for extra punch; this knob plays the role of the headphone volume.',
+      'It only works when the External Input is switched on and turned up in the Mixer. Push both up for growl and grit; very high settings can squeal.'],
+    tip: 'Mixer: External on at 80%. Feedback at 60%. Play a low note and sweep the cutoff.',
+  },
+  'perf.glideon': { title: 'Glide switch', body: ['Turns glide on or off. The glide time is set by the Glide knob in the Controllers section.'] },
+  'perf.decay': { title: 'Decay switch', body: ['Off: notes stop quickly when you let go. On: both contours fade out using their Decay times after you let go, so notes ring on.'] },
+  'perf.bend': { title: 'Pitch wheel', body: ['Bends the pitch up or down by up to 2 semitones. It springs back to the centre when you let go.'] },
+  'perf.mod': { title: 'Modulation wheel', body: ['How much modulation is applied. The source is set by Modulation Mix; where it goes is set by the Osc. Modulation and Filter Modulation switches.'], tip: 'Load the Osc 3 Vibrato patch and slowly raise the mod wheel.' },
+  'wave:shark': { title: 'Shark tooth', body: ['A blend of triangle and sawtooth: softer than a sawtooth but brighter than a triangle, with all harmonics present but fading faster.'] },
+  'wave:revsaw': { title: 'Reverse sawtooth', body: ['A sawtooth that falls instead of rising. It sounds the same as a sawtooth, but as a modulation source it gives falling ramps rather than rising ones.'] },
+  'wave:wide': { title: 'Wide pulse', body: ['A pulse wave that is high for about 30% of each cycle: hollow but a little brighter and more nasal than a square wave.'] },
+};
+

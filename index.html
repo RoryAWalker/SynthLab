@@ -8,7 +8,7 @@
 </head>
 <body data-skin="classic">
   <header class="appbar">
-    <div class="appbar-title"><b>SynthLab</b><span>Sound design workbench</span></div>
+    <div class="appbar-title"><b>SynthLab</b><button class="btn btn-synths" id="btn-synths" data-help="synths">Synths</button></div>
     <div class="appbar-controls">
       <div class="mode-switch" id="mode-switch" data-help="mode" role="tablist">
         <button data-mode="lessons" role="tab">Lessons</button>
@@ -115,6 +115,15 @@
       </section>
     </div>
   </main>
+
+  <div class="start-menu" id="start-menu" hidden>
+    <div class="sm-inner" role="dialog" aria-labelledby="sm-title">
+      <button class="sm-close" id="sm-close" aria-label="Close">×</button>
+      <div class="sm-eyebrow">SynthLab</div>
+      <h1 class="sm-title" id="sm-title">Choose a synth</h1>
+      <div class="sm-cards" id="sm-cards"></div>
+    </div>
+  </div>
 
   <div class="lesson-modal" id="lesson-modal" hidden>
     <div class="lm-card" role="dialog" aria-labelledby="lm-title">

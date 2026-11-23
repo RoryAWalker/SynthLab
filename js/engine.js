@@ -2,7 +2,10 @@
 // and two analysers (oscilloscope + spectrum).
 
 export class Engine {
-  constructor() {
+  // module / processor: the synth's AudioWorklet file and processor name
+  constructor({ module = 'js/worklet/va-processor.js', processor = 'va-processor' } = {}) {
+    this.module = module;
+    this.processor = processor;
     this.ctx = null;
     this.node = null;
     this.ready = false;
@@ -19,8 +22,8 @@ export class Engine {
 
   async _create(patch) {
     this.ctx = new AudioContext({ latencyHint: 'interactive' });
-    await this.ctx.audioWorklet.addModule('js/worklet/va-processor.js');
-    this.node = new AudioWorkletNode(this.ctx, 'va-processor', { numberOfInputs: 0, numberOfOutputs: 2, outputChannelCount: [2, 2] });
+    await this.ctx.audioWorklet.addModule(this.module);
+    this.node = new AudioWorkletNode(this.ctx, this.processor, { numberOfInputs: 0, numberOfOutputs: 2, outputChannelCount: [2, 2] });
 
     this.scope = this.ctx.createAnalyser();
     this.scope.fftSize = 16384;

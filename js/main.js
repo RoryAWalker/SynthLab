@@ -1,6 +1,8 @@
-import { PARAMS, LAYOUT, KEYBED_SECTIONS, ALL_SECTIONS, PRESETS, defaultPatch } from './params.js';
+import { PARAMS, LAYOUT, KEYBED_SECTIONS, ALL_SECTIONS, defaultPatch, SYNTH } from './params.js';
 import { Knob } from './knob.js';
 import { Toggle } from './toggle.js';
+import { Wheel } from './wheel.js';
+import { StartMenu } from './startMenu.js';
 import { Engine } from './engine.js';
 import { Scope, TIMEBASES } from './scope.js';
 import { Keyboard, noteName } from './keyboard.js';
@@ -10,7 +12,9 @@ import { ZoomPan } from './zoom.js';
 import { LessonController } from './lessonUI.js';
 import { PatchMenu } from './patches.js';
 
-const engine = new Engine();
+const engine = new Engine({ module: SYNTH.module, processor: SYNTH.processor });
+document.body.dataset.skin = SYNTH.skin;
+document.body.dataset.synth = SYNTH.id;
 let patch = defaultPatch();
 const knobs = {};
 const sections = {};
@@ -27,11 +31,22 @@ function buildSection(sec) {
   const grid = el.querySelector('.section-grid');
   const cols = Math.max(...sec.rows.map((r) => r.length));
   grid.style.gridTemplateColumns = `repeat(${cols}, var(--cell-w))`;
-  sec.rows.forEach((row) => {
+  sec.rows.forEach((row, ri) => {
+    // optional row header (e.g. "Oscillator 2"), spanning the whole section
+    if (sec.rowTitles && sec.rowTitles[ri] !== undefined) {
+      const rt = document.createElement('div');
+      rt.className = 'row-title';
+      rt.innerHTML = `<span>${sec.rowTitles[ri].trim()}</span>`;
+      if (!sec.rowTitles[ri].trim()) rt.classList.add('blank');
+      grid.appendChild(rt);
+    }
     for (let c = 0; c < cols; c++) {
       const id = row[c];
       if (id) {
-        const k = PARAMS[id].ui === 'toggle' ? new Toggle(id, patch[id], onKnob) : new Knob(id, patch[id], onKnob);
+        const spec = PARAMS[id];
+        const k = spec.ui === 'toggle' ? new Toggle(id, patch[id], onKnob)
+          : spec.type === 'wheel' ? new Wheel(id, patch[id], onKnob)
+          : new Knob(id, patch[id], onKnob);
         knobs[id] = k;
         grid.appendChild(k.el);
       } else {
@@ -152,6 +167,9 @@ function fit() {
 }
 
 // ---- boot ------------------------------------------------------------------------------------
+document.querySelector('.brand-model').textContent = SYNTH.name;
+document.querySelector('.brand-sub').textContent = SYNTH.brandSub;
+document.title = `SynthLab · ${SYNTH.name}`;
 buildPanel();
 alignRows();
 buildToolbar();
@@ -217,7 +235,7 @@ const beatLed = document.createElement('div');
 beatLed.className = 'beat-led';
 beatLed.innerHTML = '<span class="beat-lamp"></span><span class="beat-label">Beat</span>';
 beatLed.dataset.help = 'beatlight';
-knobs['osc2.fine'].el.appendChild(beatLed);
+if (knobs['osc2.fine']) knobs['osc2.fine'].el.appendChild(beatLed); // NF-1's Detune knob
 const beatLamp = beatLed.querySelector('.beat-lamp');
 (function beatLoop() {
   requestAnimationFrame(beatLoop);
@@ -244,7 +262,12 @@ lesson = new LessonController({
   },
 });
 document.querySelectorAll('#mode-switch button').forEach((b) => b.addEventListener('click', () => lesson.setMode(b.dataset.mode)));
+document.getElementById('mode-switch').hidden = !SYNTH.lessons; // lessons are written for the NF-1
 lesson.setMode('free'); // always open in Free play; Lessons is one click away
+
+// ---- start menu: choose a synth ----
+const startMenu = new StartMenu();
+document.getElementById('btn-synths').addEventListener('click', () => startMenu.open());
 
 fit();
 window.addEventListener('resize', fit);
@@ -263,6 +286,7 @@ window.synth = {
   noteOff: (n) => engine.noteOff(n),
   setKeyboardOctaves: (o) => keyboard.setOctaves(o),
   get lesson() { return lesson; },
+  get engine() { return engine; }, // for inspecting the audio in the console
   params: PARAMS,
   noteName,
 };

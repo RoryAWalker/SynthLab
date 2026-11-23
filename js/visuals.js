@@ -25,12 +25,13 @@ const noteHz = (n) => 440 * Math.pow(2, (n - 69) / 12);
 const fmtHz = (f) => (f >= 1000 ? (f / 1000).toFixed(2) + ' kHz' : f.toFixed(f < 100 ? 1 : 0) + ' Hz');
 
 // Theoretical harmonic amplitudes (relative to the fundamental) for each waveform.
-const PULSE = { square: 0.5, pulse: 0.25, narrow: 0.1 };
+const PULSE = { square: 0.5, pulse: 0.25, narrow: 0.1, wide: 0.3 };
 function harmonicAmp(wave, n) {
   switch (wave) {
     case 'sine': return n === 1 ? 1 : 0;
-    case 'saw': return 1 / n;
+    case 'saw': case 'revsaw': return 1 / n;
     case 'tri': return n % 2 ? 1 / (n * n) : 0;
+    case 'shark': return Math.abs(0.5 / n + (n % 2 ? 0.5 * (8 / (Math.PI * Math.PI)) / (n * n) * (Math.PI / 2) : 0)) / (0.5 + 0.5 * 4 / Math.PI);
     default: { // square and pulses: |sin(pi n d)| / n, normalised to the fundamental
       const d = PULSE[wave];
       const a = Math.abs(Math.sin(Math.PI * n * d)) / (n * Math.sin(Math.PI * d));
@@ -45,12 +46,15 @@ const WAVE_RECIPE = {
   square: 'odd harmonics only (1, 3, 5…), each 1/n as loud',
   pulse: 'every harmonic except every 4th',
   narrow: 'every harmonic except every 10th, fading slowly',
+  wide: 'every harmonic, with gaps near every 3rd and 10th',
+  shark: 'every harmonic, fading faster than a sawtooth',
+  revsaw: 'every harmonic, each one 1/n as loud (a sawtooth reversed)',
 };
 
 export function overlayGroup(key) {
   const id = key.split('=')[0];
-  if (id === 'osc1.wave' || id === 'osc2.wave') return 'harm';
-  if (id === 'osc1.range' || id === 'osc2.range') return 'range';
+  if (/^osc[123]\.wave$/.test(id)) return 'harm';
+  if (/^osc[123]\.range$/.test(id)) return 'range';
   if (id === 'ctrl.glide' || id === 'ctrl.mode') return 'glide';
   if (id === 'mix.osc1' || id === 'mix.osc2') return 'mix';
   if (id === 'osc2.fine') return 'detune';
@@ -166,9 +170,14 @@ export class Overlay {
     const p = this.getPatch();
     const loud = this.group === 'aenv';
     const pre = loud ? 'aenv.' : 'fenv.';
-    const A = p[pre + 'a'], D = p[pre + 'd'], R = p[pre + 'r'];
-    const S = loud ? p['aenv.s'] : 0;
+    // MiniNFoog: both contours are ADS, and Release comes from the Decay switch
+    const decaySwitch = p['perf.decay'];
+    const adsFilter = !loud && p['fenv.s'] !== undefined;
+    const A = p[pre + 'a'], D = p[pre + 'd'];
+    const R = p[pre + 'r'] !== undefined ? p[pre + 'r'] : decaySwitch === 'on' ? D : 0.012;
+    const S = loud ? p['aenv.s'] : adsFilter ? p['fenv.s'] : 0;
     const amt = loud ? 1 : p['filt.env'];
+    const loudStyle = loud || adsFilter; // drawn with a sustain plateau
     const stage = this.param === 'filt.env' ? 'amt' : this.param.split('.')[1];
 
     // Horizontal layout: real (linear) time, but every stage keeps a visible minimum width.
@@ -176,7 +185,7 @@ export class Overlay {
     // and shows Release as a dashed branch from half-way through the decay.
     const minW = 16;
     let segs;
-    if (loud) {
+    if (loudStyle) {
       const holdW = box.w * 0.2;
       const avail = box.w - holdW;
       const T = A + D + R;
@@ -194,12 +203,14 @@ export class Overlay {
     // Vertical: loudness 0..1 (bottom..top). Filter envelope is bipolar around the Cutoff setting.
     const yOf = loud
       ? (v) => box.y + (1 - v) * box.h
-      : (v) => box.y + box.h / 2 - v * amt * (box.h / 2);
+      : adsFilter
+        ? (v) => box.y + (1 - v * Math.max(0.04, amt)) * box.h
+        : (v) => box.y + box.h / 2 - v * amt * (box.h / 2);
 
     // axes
     ctx.lineWidth = 1;
     ctx.strokeStyle = AMBER_FAINT;
-    if (loud) {
+    if (loudStyle) {
       ctx.beginPath(); ctx.moveTo(box.x, yOf(0) + 0.5); ctx.lineTo(box.x + box.w, yOf(0) + 0.5); ctx.stroke();
       label(ctx, '100%', box.x - 6, yOf(1) + 4, AMBER_DIM, 'right', 9);
       label(ctx, '0', box.x - 6, yOf(0) + 3, AMBER_DIM, 'right', 9);
@@ -235,7 +246,7 @@ export class Overlay {
     const [ax, aw] = segs.a, [dx, dw] = segs.d, [rx, rw] = segs.r;
     strokeStage('a', (t) => attackAt(t, A), ax, aw, A);
     strokeStage('d', (t) => decayAt(t, D, S), dx, dw, D);
-    if (loud) {
+    if (loudStyle) {
       const [sx, sw] = segs.s;
       strokeStage('s', () => S, sx, sw, 1);
       strokeStage('r', (t) => releaseAt(t, R, S), rx, rw, R);
@@ -245,19 +256,20 @@ export class Overlay {
     }
 
     // stage labels along the bottom
-    const names = loud ? ['a', 'd', 's', 'r'] : ['a', 'd', 'r'];
+    const names = loudStyle ? ['a', 'd', 's', 'r'] : ['a', 'd', 'r'];
     const letters = { a: 'A', d: 'D', s: 'S', r: 'R' };
     names.forEach((n) => {
       const [x0, wpx] = segs[n];
-      const val = n === 's' ? Math.round(S * 100) + '%' : formatValue(pre + n, p[pre + n]);
+      let val = n === 's' ? Math.round(S * 100) + '%' : PARAMS[pre + n] ? formatValue(pre + n, p[pre + n]) : '';
+      if (n === 'r' && PARAMS[pre + 'r'] === undefined) val = decaySwitch === 'on' ? '= Decay (switch on)' : 'short (Decay switch off)';
       const hi = stage === n;
-      const text = (n === 'r' && !loud ? 'R (if let go early) ' : letters[n] + ' ') + val;
+      const text = (n === 'r' && !loudStyle ? 'R (if let go early) ' : letters[n] + ' ') + val;
       label(ctx, text, x0 + wpx / 2, h - 8, hi ? HI : AMBER_DIM, 'center', hi ? 11 : 10, hi ? 800 : 600);
     });
 
     // title
     let title = loud ? 'LOUDNESS ENVELOPE' : 'FILTER ENVELOPE';
-    if (!loud) title += `   ·   Env Amount ${formatValue('filt.env', amt)}`;
+    if (!loud) title += `   ·   ${PARAMS['filt.env'].label} ${formatValue('filt.env', amt)}`;
     label(ctx, title, box.x, 16, AMBER, 'left', 10.5, 800);
 
     // live playhead
@@ -266,11 +278,11 @@ export class Overlay {
     if (env && env.s !== 0) {
       let x;
       const t = env.tOn;
-      if (env.s === 3 && loud) x = rx + Math.min(1, env.tOff / R) * rw;
+      if (env.s === 3 && loudStyle) x = rx + Math.min(1, env.tOff / R) * rw;
       else if (t <= A) x = ax + (t / A) * aw;
       else if (t <= A + D) x = dx + ((t - A) / D) * dw;
-      else x = loud ? segs.s[0] + Math.min(1, (t - A - D) / 2) * segs.s[1] : dx + dw;
-      if (env.s === 3 && !loud) x = Math.min(box.x + box.w, x);
+      else x = loudStyle ? segs.s[0] + Math.min(1, (t - A - D) / 2) * segs.s[1] : dx + dw;
+      if (env.s === 3 && !loudStyle) x = Math.min(box.x + box.w, x);
       dot(ctx, x, yOf(env.v));
     }
   }
@@ -427,14 +439,15 @@ export class Overlay {
   oscHz(osc, range) {
     const p = this.getPatch();
     const r = range === undefined ? p[`osc${osc}.range`] : range;
-    const fine = osc === 2 ? p['osc2.fine'] / 100 : 0;
+    // NF-1: Detune in cents on Osc 2. MiniNFoog: Frequency in semitones on Osc 2 and 3.
+    const fine = (osc === 2 ? (p['osc2.fine'] || 0) / 100 : 0) + (p[`osc${osc}.freq`] || 0);
     return noteHz(this.lastNote + r * 12 + fine);
   }
 
   // ---- waveform harmonics -------------------------------------------------------------------
   drawHarmonics(ctx, w, h, spectrum) {
     const p = this.getPatch();
-    const osc = this.param === 'osc2.wave' ? 2 : 1;
+    const osc = Number(this.param[3]);
     const wave = this.option || p[`osc${osc}.wave`];
     const f0 = this.oscHz(osc);
     const fMin = 20, fMax = 20000;
@@ -481,7 +494,7 @@ export class Overlay {
     }
     ctx.restore();
 
-    const waveName = PARAMS['osc1.wave'].options.find((o) => o.v === wave).label.toUpperCase();
+    const waveName = PARAMS[`osc${osc}.wave`].options.find((o) => o.v === wave).label.toUpperCase();
     label(ctx, `OSC ${osc} · ${waveName} · EXPECTED HARMONICS`, PAD.l, 16, AMBER, 'left', 10.5, 800);
     label(ctx, WAVE_RECIPE[wave], PAD.l, 30, HI, 'left', 10.5, 600);
     let note = `fundamental ${fmtHz(f0)} (${noteName(this.lastNote + p[`osc${osc}.range`] * 12)})`;
@@ -493,7 +506,7 @@ export class Overlay {
   // ---- oscillator range -----------------------------------------------------------------------
   drawRange(ctx, w, h, box) {
     const p = this.getPatch();
-    const osc = this.param === 'osc2.range' ? 2 : 1;
+    const osc = Number(this.param[3]);
     const other = osc === 1 ? 2 : 1;
     const cur = p[`osc${osc}.range`];
     const fMin = 20, fMax = 20000;
@@ -535,8 +548,9 @@ export class Overlay {
   // ---- glide ------------------------------------------------------------------------------------
   drawGlide(ctx, w, h, box) {
     const p = this.getPatch();
-    const G = p['ctrl.glide'];
+    const G = p['perf.glideon'] === 'off' ? 0 : p['ctrl.glide']; // MiniNFoog: the Glide switch must be on
     const legato = p['ctrl.mode'] === 'legato';
+    const glideOff = p['perf.glideon'] === 'off'; // MiniNFoog: glide needs its switch
     const span = 3; // seconds across
     const now = performance.now() / 1000;
     const hist = this.history.filter((s) => s.t >= now - span);
@@ -593,7 +607,8 @@ export class Overlay {
     ctx.restore();
     if (played) { const s = pts[pts.length - 1]; if (hist[hist.length - 1].g) dot(ctx, xOf(s.t), yOf(s.n)); }
 
-    label(ctx, `GLIDE   ·   ${G > 0.0005 ? formatValue('ctrl.glide', G) : 'off'}   ·   ${legato ? 'Legato: only overlapping notes slide' : 'Mono: every note slides'}`, box.x, 16, AMBER, 'left', 10.5, 800);
+    const modeText = p['ctrl.mode'] === undefined ? 'lowest note wins' : legato ? 'Legato: only overlapping notes slide' : 'Mono: every note slides';
+    label(ctx, `GLIDE   ·   ${glideOff ? 'switch off' : G > 0.0005 ? formatValue('ctrl.glide', G) : 'off'}   ·   ${modeText}`, box.x, 16, AMBER, 'left', 10.5, 800);
     label(ctx, played ? 'pitch over the last 3 seconds  ·  dashed = notes played' : 'example: play notes to see your own slides  ·  dashed = notes played', w - PAD.r, h - 8, AMBER_DIM, 'right', 9.5, 600);
   }
 

@@ -1,0 +1,181 @@
+// MiniNFoog (working name; internal id nf3): a three-oscillator monosynth whose controls
+// and panel layout follow the classic 1970s three-oscillator design. Oscillator 3 can
+// leave the keyboard and run slowly, becoming the modulation source, blended with noise
+// by Modulation Mix and applied with the modulation wheel. All names and artwork are our own.
+
+import { fmtHz, fmtTime, fmtPct, fmtOct, TIME_MARKS } from './nf1.js';
+
+const NAME = 'MiniNFoog'; // placeholder name: change it here
+
+const OFF_ON = [{ v: 'off', label: 'Off' }, { v: 'on', label: 'On' }];
+const sw = (label, def, extra = {}) => ({ type: 'step', ui: 'toggle', titled: !!label, label: label || '', options: OFF_ON, def, ...extra });
+
+// Range in organ-pipe feet, plus LO (far below hearing: Oscillator 3 becomes an LFO).
+const RANGES = [
+  { v: -7, label: 'LO' },
+  { v: -2, label: "32'" },
+  { v: -1, label: "16'" },
+  { v: 0, label: "8'" },
+  { v: 1, label: "4'" },
+  { v: 2, label: "2'" },
+];
+const WAVES_12 = [
+  { v: 'tri', label: 'triangle', icon: 'tri' },
+  { v: 'shark', label: 'shark tooth', icon: 'shark' },
+  { v: 'saw', label: 'sawtooth', icon: 'saw' },
+  { v: 'square', label: 'square', icon: 'square' },
+  { v: 'wide', label: 'wide pulse', icon: 'wide' },
+  { v: 'narrow', label: 'narrow pulse', icon: 'narrow' },
+];
+const WAVES_3 = [
+  { v: 'tri', label: 'triangle', icon: 'tri' },
+  { v: 'revsaw', label: 'reverse sawtooth', icon: 'revsaw' },
+  { v: 'saw', label: 'sawtooth', icon: 'saw' },
+  { v: 'square', label: 'square', icon: 'square' },
+  { v: 'wide', label: 'wide pulse', icon: 'wide' },
+  { v: 'narrow', label: 'narrow pulse', icon: 'narrow' },
+];
+const FREQ_MARKS = [[-7, '−7'], [-5, '−5'], [-3, '−3'], [0, '0'], [3, '+3'], [5, '+5'], [7, '+7']];
+const fmtSt = (v) => (v > 0.005 ? '+' : '') + v.toFixed(2) + ' st';
+const level = (label, def) => ({ type: 'cont', label, min: 0, max: 1, def, curve: 'lin', fmt: fmtPct });
+const time = (label, def) => ({ type: 'cont', label, min: 0.001, max: 10, def, curve: 'log', fmt: fmtTime, unit: 'sec', marks: TIME_MARKS });
+
+export const PARAMS = {
+  // controllers
+  'ctrl.tune':   { type: 'cont', label: 'Tune', min: -100, max: 100, def: 0, curve: 'lin', unit: 'cents',
+                   fmt: (v) => (v > 0.5 ? '+' : '') + Math.round(v) + ' ct', marks: [[-100, '−100'], [-50, '−50'], [0, '0'], [50, '+50'], [100, '+100']] },
+  'ctrl.glide':  { type: 'cont', label: 'Glide', min: 0, max: 3, def: 0.12, curve: 'pow', k: 3, fmt: fmtTime, unit: 'sec',
+                   marks: [[0, '0'], [0.03, '.03'], [0.25, '.25'], [1, '1'], [3, '3']] },
+  'ctrl.modmix': { type: 'cont', label: 'Modulation Mix', min: 0, max: 1, def: 0, curve: 'lin',
+                   fmt: (v) => (v < 0.02 ? 'Osc 3' : v > 0.98 ? 'Noise' : `${Math.round((1 - v) * 100)}% Osc 3`), marks: [[0, 'Osc 3'], [1, 'Noise']] },
+
+  // oscillator bank
+  'osc.mod':     sw('Osc. Modulation', 'off'),
+  'osc3.ctrl':   sw('Osc. 3 Control', 'on'),
+  'osc1.range':  { type: 'step', label: 'Range', options: RANGES, def: 0 },
+  'osc2.range':  { type: 'step', label: 'Range', options: RANGES, def: 0 },
+  'osc3.range':  { type: 'step', label: 'Range', options: RANGES, def: 0 },
+  'osc2.freq':   { type: 'cont', label: 'Frequency', min: -7, max: 7, def: 0, curve: 'lin', fmt: fmtSt, unit: 'semi', marks: FREQ_MARKS },
+  'osc3.freq':   { type: 'cont', label: 'Frequency', min: -7, max: 7, def: 0, curve: 'lin', fmt: fmtSt, unit: 'semi', marks: FREQ_MARKS },
+  'osc1.wave':   { type: 'step', label: 'Waveform', options: WAVES_12, def: 'saw' },
+  'osc2.wave':   { type: 'step', label: 'Waveform', options: WAVES_12, def: 'saw' },
+  'osc3.wave':   { type: 'step', label: 'Waveform', options: WAVES_3, def: 'tri' },
+
+  // mixer
+  'mix.osc1':    level('Osc. 1', 0.8),
+  'mix.osc2':    level('Osc. 2', 0),
+  'mix.osc3':    level('Osc. 3', 0),
+  'mix.ext':     level('External', 0),
+  'mix.noise':   level('Noise', 0),
+  'mix.osc1on':  sw('', 'on'),
+  'mix.osc2on':  sw('', 'on'),
+  'mix.osc3on':  sw('', 'on'),
+  'mix.exton':   sw('', 'off'),
+  'mix.noiseon': sw('', 'off'),
+  'mix.noisetype': { type: 'step', ui: 'toggle', titled: true, label: 'Noise', options: [{ v: 'white', label: 'White' }, { v: 'pink', label: 'Pink' }], def: 'white' },
+
+  // modifiers: filter
+  'filt.mod':    sw('Filter Modulation', 'off'),
+  'filt.kb1':    sw('Keyboard Control 1', 'off'),
+  'filt.kb2':    sw('Keyboard Control 2', 'off'),
+  'filt.cutoff': { type: 'cont', label: 'Cutoff Frequency', min: 20, max: 20000, def: 20000, curve: 'log', fmt: fmtHz, unit: 'Hz',
+                   marks: [[20, '20'], [100, '100'], [500, '500'], [2000, '2k'], [10000, '10k'], [20000, '20k']] },
+  'filt.res':    { type: 'cont', label: 'Emphasis', min: 0, max: 1, def: 0, curve: 'lin', fmt: fmtPct },
+  'filt.env':    { type: 'cont', label: 'Amount of Contour', min: 0, max: 1, def: 0, curve: 'lin', fmt: (v) => fmtOct(v * 7) },
+  'fenv.a':      time('Attack Time', 0.005),
+  'fenv.d':      time('Decay Time', 0.4),
+  'fenv.s':      level('Sustain Level', 0.3),
+  'aenv.a':      time('Attack Time', 0.003),
+  'aenv.d':      time('Decay Time', 0.3),
+  'aenv.s':      level('Sustain Level', 1),
+
+  // output
+  'out.volume':  level('Volume', 0.7),
+  'out.on':      sw('Main Output', 'on'),
+  'out.a440':    sw('A-440', 'off'),
+  'out.feedback': level('Feedback', 0),
+
+  // left of the keyboard
+  'perf.glideon': sw('Glide', 'off'),
+  'perf.decay':   sw('Decay', 'off'),
+  'perf.bend':   { type: 'wheel', label: 'Pitch', min: -1, max: 1, def: 0, spring: true,
+                   fmt: (v) => (Math.abs(v) < 0.01 ? 'centre' : (v > 0 ? '+' : '') + (v * 2).toFixed(2) + ' st') },
+  'perf.mod':    { type: 'wheel', label: 'Mod', min: 0, max: 1, def: 0, fmt: fmtPct },
+};
+
+// Panel: Controllers | Oscillator Bank | Mixer | Modifiers | Output.
+// rowTitles label each row (Oscillator 1 / 2 / 3; Filter / Filter Contour / Loudness Contour).
+export const LAYOUT = [
+  [{ id: 'ctrl', title: 'Controllers', rowTitles: [' ', ' ', ' '], rows: [['ctrl.tune'], ['ctrl.glide'], ['ctrl.modmix']] }],
+  [{
+    id: 'oscs', title: 'Oscillator Bank', rowTitles: ['Oscillator 1', 'Oscillator 2', 'Oscillator 3'],
+    rows: [['osc.mod', 'osc1.range', null, 'osc1.wave'], [null, 'osc2.range', 'osc2.freq', 'osc2.wave'], ['osc3.ctrl', 'osc3.range', 'osc3.freq', 'osc3.wave']],
+  }],
+  [{
+    id: 'mix', title: 'Mixer', rowTitles: [' ', ' ', ' '],
+    rows: [['mix.osc1', 'mix.osc1on', 'mix.ext', 'mix.exton'], ['mix.osc2', 'mix.osc2on', 'mix.noise', 'mix.noiseon'], ['mix.osc3', 'mix.osc3on', 'mix.noisetype', null]],
+  }],
+  [{
+    id: 'mods', title: 'Modifiers', rowTitles: ['Filter', 'Filter Contour', 'Loudness Contour'],
+    rows: [['filt.mod', 'filt.cutoff', 'filt.res', 'filt.env'], ['filt.kb1', 'fenv.a', 'fenv.d', 'fenv.s'], ['filt.kb2', 'aenv.a', 'aenv.d', 'aenv.s']],
+  }],
+  [{ id: 'out', title: 'Output', rowTitles: [' ', ' ', ' '], rows: [['out.volume'], ['out.on'], ['out.a440'], ['out.feedback']] }],
+];
+export const KEYBED_SECTIONS = [{ id: 'perf', title: 'Controllers', rows: [['perf.glideon', 'perf.decay'], ['perf.bend', 'perf.mod']] }];
+
+// Factory patches: only the values that differ from Init.
+export const PRESETS = {
+  'Init': {},
+  'Three-Oscillator Bass': {
+    'osc1.range': -2, 'osc2.range': -2, 'osc2.freq': 0.08, 'osc3.range': -1, 'osc3.wave': 'square',
+    'mix.osc1': 0.9, 'mix.osc2': 0.8, 'mix.osc3': 0.55,
+    'filt.cutoff': 230, 'filt.res': 0.25, 'filt.env': 0.55, 'filt.kb1': 'on',
+    'fenv.a': 0.002, 'fenv.d': 0.35, 'fenv.s': 0.1, 'aenv.d': 0.6, 'aenv.s': 0.8,
+  },
+  'Gliding Lead': {
+    'osc2.freq': 0.1, 'osc3.wave': 'saw', 'osc3.freq': -0.08, 'mix.osc1': 0.8, 'mix.osc2': 0.7, 'mix.osc3': 0.6,
+    'filt.cutoff': 1500, 'filt.res': 0.45, 'filt.env': 0.3, 'filt.kb1': 'on', 'filt.kb2': 'on',
+    'perf.glideon': 'on', 'ctrl.glide': 0.08, 'perf.decay': 'on', 'aenv.d': 0.5, 'aenv.s': 0.9,
+  },
+  'Osc 3 Vibrato': {
+    'osc2.freq': 0.06, 'mix.osc2': 0.6, 'osc3.range': -7, 'osc3.ctrl': 'off', 'osc3.freq': 4, 'mix.osc3': 0,
+    'osc.mod': 'on', 'perf.mod': 0.22, 'filt.cutoff': 2500, 'filt.res': 0.2,
+  },
+  'Osc 3 Filter Wobble': {
+    'osc1.range': -1, 'osc2.range': -1, 'osc2.freq': 0.12, 'mix.osc2': 0.7,
+    'osc3.range': -7, 'osc3.ctrl': 'off', 'osc3.freq': 7, 'mix.osc3': 0,
+    'filt.mod': 'on', 'perf.mod': 0.65, 'filt.cutoff': 320, 'filt.res': 0.6,
+  },
+  'Fifth Stack': {
+    'osc2.freq': 7, 'osc3.range': -1, 'osc3.wave': 'saw', 'mix.osc2': 0.7, 'mix.osc3': 0.5,
+    'filt.cutoff': 900, 'filt.res': 0.3, 'filt.env': 0.35, 'fenv.d': 0.5, 'fenv.s': 0.2,
+  },
+  'Pluck': {
+    'osc1.wave': 'square', 'mix.osc1': 0.9, 'filt.cutoff': 200, 'filt.env': 0.6, 'filt.kb1': 'on', 'filt.kb2': 'on',
+    'fenv.a': 0.001, 'fenv.d': 0.2, 'fenv.s': 0, 'aenv.a': 0.001, 'aenv.d': 0.5, 'aenv.s': 0, 'perf.decay': 'on',
+  },
+  'Wind': {
+    'mix.osc1': 0, 'mix.noiseon': 'on', 'mix.noise': 0.9, 'mix.noisetype': 'pink',
+    'osc3.range': -7, 'osc3.ctrl': 'off', 'osc3.freq': -7, 'mix.osc3': 0, 'filt.mod': 'on', 'perf.mod': 0.7,
+    'filt.cutoff': 700, 'filt.res': 0.8, 'aenv.a': 1.2, 'aenv.d': 2.5, 'perf.decay': 'on',
+  },
+  'Feedback Growl': {
+    'osc1.range': -1, 'mix.osc1': 0.8, 'mix.exton': 'on', 'mix.ext': 0.8, 'out.feedback': 0.7,
+    'filt.cutoff': 900, 'filt.res': 0.3, 'filt.env': 0.3, 'fenv.d': 0.6, 'fenv.s': 0.4,
+  },
+};
+
+export const NF3 = {
+  id: 'nf3',
+  name: NAME,
+  brandSub: 'THREE-OSCILLATOR MONOPHONIC SYNTHESIZER',
+  skin: 'slate',
+  module: 'js/worklet/va3-processor.js',
+  processor: 'va3-processor',
+  lessons: false,
+  card: {
+    tagline: 'Three oscillators, 1970s style',
+    text: 'A classic three-oscillator layout: Oscillator 3 doubles as a modulation source, plus noise, a feedback loop, a ladder filter with keyboard tracking, and pitch and mod wheels.',
+  },
+  PARAMS, LAYOUT, KEYBED_SECTIONS, PRESETS,
+};

@@ -409,7 +409,10 @@ body.show-values .knob-value { opacity: 1; }
 .key.black.in-range::after { background: rgba(255, 181, 71, 0.5); }
 
 /* ---- two-position lever switch (Mono / Legato) ---- */
-.toggle-cell { width: var(--cell-w); display: flex; align-items: center; justify-content: center; gap: 6px; padding: 2px 0 4px; }
+.toggle-cell { width: var(--cell-w); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; padding: 2px 0 4px; }
+.toggle-row { display: flex; align-items: center; justify-content: center; gap: 6px; }
+.toggle-title { font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink); text-align: center; line-height: 1.2; }
+.toggle-cell.titled { padding-top: 10px; }
 .toggle-label {
   border: none; background: none; padding: 2px 0; cursor: pointer;
   font: 700 10.5px var(--font); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-dim);
@@ -613,3 +616,119 @@ body.auditioning #lb-hear, body.auditioning #lb-reset, body.auditioning .lb-step
   font: 600 13px var(--font); opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s;
 }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* ==========================================================================
+   Row headers inside a section (e.g. Oscillator 1 / 2 / 3)
+   ========================================================================== */
+.row-title {
+  grid-column: 1 / -1; text-align: center; margin: 6px 0 0;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-dim);
+  height: 14px;
+}
+.row-title span { padding: 0 8px; }
+.row-title.blank span { display: none; }
+
+/* ==========================================================================
+   Pitch and mod wheels
+   ========================================================================== */
+.wheel-cell { width: var(--cell-w); display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.wheel-label { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); }
+.wheel-slot {
+  position: relative; width: 34px; height: 112px; border-radius: 6px; cursor: ns-resize; outline: none; touch-action: none;
+  background: #050505; box-shadow: inset 0 2px 6px #000, 0 1px 0 rgba(255,255,255,0.08);
+  overflow: hidden;
+}
+.wheel-slot:focus-visible { box-shadow: 0 0 0 2px rgba(255,181,71,0.7); }
+.wheel-drum {
+  position: absolute; inset: 3px 4px; border-radius: 4px;
+  background: repeating-linear-gradient(0deg, #1a1a1a 0 3px, #3a3a3a 3px 4px, #121212 4px 6px);
+}
+.wheel-shade { position: absolute; inset: 3px 4px; border-radius: 4px; pointer-events: none;
+  background: linear-gradient(#000 0%, transparent 28%, transparent 72%, #000 100%); }
+.wheel-mark { position: absolute; left: 4px; right: 4px; height: 3px; margin-top: -1.5px; background: #f1f1f1; border-radius: 1px; box-shadow: 0 0 4px rgba(255,255,255,0.4); }
+.wheel-value { margin-top: 0; }
+
+/* ==========================================================================
+   MiniNFoog (nf3) skin: slate panel, cream legends, brushed aluminium ends,
+   black knobs. Same layout as the classic three-oscillator design, our own look.
+   ========================================================================== */
+body[data-skin="slate"] {
+  --panel: #1f2428;
+  --panel-hi: #2a3036;
+  --ink: #efe4cb;
+  --ink-dim: #b8ae98;
+  --rule: rgba(239, 228, 203, 0.5);
+  --accent: #ffb547;
+}
+body[data-skin="slate"] .cheek {
+  background:
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.05) 0 1px, transparent 1px 3px),
+    linear-gradient(90deg, #6f757b, #c9cdd1 35%, #9ea3a8 65%, #6a7075);
+}
+body[data-skin="slate"] .panel {
+  background:
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.012) 0 1px, transparent 1px 3px),
+    linear-gradient(180deg, var(--panel-hi), var(--panel) 30%, #191d21);
+}
+body[data-skin="slate"] .knob-cap {
+  background: radial-gradient(circle at 50% 40%, #2c2c2c, #0d0d0d 75%);
+  box-shadow: inset 0 0 0 1px #000, inset 0 1px 1px rgba(255,255,255,0.12), 0 1px 2px rgba(0,0,0,0.7);
+}
+body[data-skin="slate"] .knob-pointer { background: #f4ecd8; }
+body[data-skin="slate"] .stepped .knob-cap { background: linear-gradient(90deg, #0d0d0d, #3b3b3b 45%, #1a1a1a 60%, #080808); }
+body[data-skin="slate"] .section-title { color: var(--ink); }
+body[data-skin="slate"] .keybed { background: linear-gradient(#141619, #1d2024); }
+body[data-skin="slate"] .perf { gap: 2px; }
+body[data-skin="slate"] .perf .knob-label { visibility: visible; height: 15px; }
+
+/* ==========================================================================
+   Start menu
+   ========================================================================== */
+.btn-synths { margin-left: 12px; }
+.start-menu {
+  position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; overflow-y: auto;
+  background: radial-gradient(ellipse at 50% 0%, #2a2d33, #121316 70%);
+  animation: help-in 0.25s ease-out;
+}
+.start-menu[hidden] { display: none; }
+.sm-inner { position: relative; width: min(980px, calc(100vw - 32px)); padding: 40px 0; text-align: center; }
+.sm-close {
+  position: absolute; top: 34px; right: 0; width: 36px; height: 36px; border-radius: 8px;
+  border: 1px solid #3a3d44; background: #24262b; color: #d6d8dc; font-size: 20px; cursor: pointer;
+}
+.sm-close[hidden] { display: none; }
+.sm-eyebrow { font-size: 12px; font-weight: 800; letter-spacing: 0.22em; text-transform: uppercase; color: var(--accent); }
+.sm-title { margin: 6px 0 28px; font-size: 34px; color: #fff; }
+.sm-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 22px; }
+.sm-card {
+  text-align: left; padding: 0 0 20px; border-radius: 16px; cursor: pointer; overflow: hidden;
+  background: #1c1e23; border: 1px solid #34373e; color: inherit; font: inherit;
+  transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.sm-card:hover, .sm-card:focus-visible { transform: translateY(-3px); border-color: var(--accent); box-shadow: 0 16px 40px rgba(0,0,0,0.45); outline: none; }
+.sm-card > :not(.sm-preview) { margin-left: 22px; margin-right: 22px; }
+.sm-preview {
+  height: 120px; margin-bottom: 16px; display: grid; gap: 10px 14px; align-content: center; justify-content: center;
+  grid-template-columns: repeat(6, 18px);
+}
+.sm-preview i { width: 18px; height: 18px; border-radius: 50%; display: block;
+  background: radial-gradient(circle at 40% 35%, #e3e6e9, #8e9398 70%); box-shadow: 0 2px 3px rgba(0,0,0,0.6), 0 0 0 3px #0b0b0b; }
+.sm-preview-nf1 { background: linear-gradient(90deg, #5b3219 0 22px, #1a1b1d 22px calc(100% - 22px), #5b3219 calc(100% - 22px)); }
+.sm-preview-nf3 { grid-template-columns: repeat(9, 16px); gap: 12px 12px;
+  background: linear-gradient(90deg, #9ea3a8 0 18px, #22272b 18px calc(100% - 18px), #9ea3a8 calc(100% - 18px)); }
+.sm-preview-nf3 i { width: 16px; height: 16px; background: radial-gradient(circle at 45% 40%, #3a3a3a, #0b0b0b 75%); box-shadow: 0 2px 3px rgba(0,0,0,0.6), 0 0 0 2px #000, inset 0 -6px 0 -4px #f4ecd8; }
+.sm-tag { font-size: 11px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent); }
+.sm-name { font-size: 28px; font-weight: 800; color: #fff; margin-top: 2px; letter-spacing: 0.02em; }
+.sm-text { font-size: 14.5px; line-height: 1.55; color: #c3c6cc; margin-top: 8px; min-height: 66px; }
+.sm-foot { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+.sm-play { font-weight: 700; color: #ffd9a0; }
+.sm-badge { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 20px; background: #2f3238; color: #c9ccd1; }
+.sm-badge.current { background: #2f8a55; color: #fff; }
+
+.mode-switch[hidden] { display: none; }
+/* MiniNFoog: longer classic control names wrap onto two lines */
+body[data-skin="slate"] .knob-label {
+  white-space: normal; text-align: center; line-height: 1.1; height: 24px; width: calc(var(--cell-w) - 6px);
+  display: flex; align-items: flex-end; justify-content: center; font-size: 10.5px;
+}
+body[data-skin="slate"] .perf .knob-label { height: 24px; }

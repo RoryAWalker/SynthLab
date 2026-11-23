@@ -1,5 +1,8 @@
-import { HELP, helpKeyFor } from './help.js';
-import { PARAMS, ALL_SECTIONS, formatValue } from './params.js';
+import { HELP, HELP_NF3, helpKeyFor } from './help.js';
+import { PARAMS, ALL_SECTIONS, formatValue, SYNTH } from './params.js';
+
+const HELP_FOR_SYNTH = SYNTH.id === 'nf3' ? HELP_NF3 : {};
+const lookup = (k) => HELP_FOR_SYNTH[k] || HELP[k];
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -10,6 +13,7 @@ function sectionOf(paramId) {
 function rangeText(id) {
   const p = PARAMS[id];
   if (p.type === 'step') return p.options.map((o) => o.label).join(' · ');
+  if (p.type === 'wheel') return `${p.fmt(p.min)} to ${p.fmt(p.max)}`;
   return `${p.fmt(p.min)} to ${p.fmt(p.max)}`;
 }
 
@@ -95,7 +99,7 @@ export class HelpPanel {
     if (rawKey === this.key) return;
     this.key = rawKey;
     const [paramId, optValue] = rawKey.split('=');
-    const entry = HELP[helpKeyFor(rawKey)] || HELP[paramId];
+    const entry = lookup(rawKey) || lookup(helpKeyFor(rawKey)) || lookup(paramId);
     if (!entry) return;
 
     let eyebrow = '';
