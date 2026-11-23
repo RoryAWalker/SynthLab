@@ -343,6 +343,10 @@ export const HELP = {
     body: ['Shows the target sound as a dashed amber trace on the oscilloscope and spectrum. Turn it off to match by ear alone.'],
   },
   synths: { title: 'Menu', body: ['Opens the start menu to choose a different synth. Each synth has its own panel, sound and saved patches.'] },
+  scopes: {
+    title: 'Scopes',
+    body: ['Shows or hides the oscilloscope and spectrum analyser. Hidden, the synth grows to fill the screen; shown, you can see the waveform and harmonics of everything you play, along with the teaching graphs.'],
+  },
   zoom: {
     title: 'Zoom',
     body: [

@@ -172,6 +172,7 @@ export const NF3 = {
   lessons: false,
   keyboard: [41, 84], // fixed 44 keys, F to C (3½ octaves); no octave shift
   narrowSwitches: true, // vertical rockers in narrow columns, as on the original
+  optionalScopes: true, // oscilloscope and spectrum hidden until the Scopes button is pressed
   card: {
     tagline: 'Three oscillators, 1970s style',
     text: 'A classic three-oscillator layout: Oscillator 3 doubles as a modulation source, plus noise, a feedback loop with an overload light, a ladder filter with keyboard tracking, and pitch and mod wheels.',

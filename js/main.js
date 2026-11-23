@@ -14,6 +14,9 @@ import { PatchMenu } from './patches.js';
 
 const engine = new Engine({ module: SYNTH.module, processor: SYNTH.processor });
 document.body.dataset.skin = SYNTH.skin;
+// ?preview=1: just the synth on a transparent page, for capturing the start-menu pictures
+const PREVIEW = new URLSearchParams(location.search).has('preview');
+document.body.classList.toggle('preview', PREVIEW);
 document.body.dataset.synth = SYNTH.id;
 let patch = defaultPatch();
 const knobs = {};
@@ -308,8 +311,24 @@ if (knobs['mix.feedback']) {
 }
 
 // ---- start menu: choose a synth ----
-const startMenu = new StartMenu();
+const startMenu = new StartMenu({ skip: PREVIEW });
 document.getElementById('btn-synths').addEventListener('click', () => startMenu.open());
+
+// ---- optional scopes (NiniFoog): hidden by default so the synth fills the screen ----
+if (SYNTH.optionalScopes) {
+  const btn = document.getElementById('btn-scopes');
+  btn.hidden = false;
+  const setScopes = (on) => {
+    document.body.classList.toggle('scopes-hidden', !on);
+    btn.classList.toggle('on', on);
+    btn.setAttribute('aria-pressed', String(on));
+    savePref(`${SYNTH.id}.scopes`, on ? '1' : '0');
+    fit();
+    scope.resize(); // the screens had no size while hidden
+  };
+  btn.addEventListener('click', () => setScopes(document.body.classList.contains('scopes-hidden')));
+  setScopes(!PREVIEW && loadPref(`${SYNTH.id}.scopes`, '0') === '1');
+}
 
 fit();
 window.addEventListener('resize', fit);

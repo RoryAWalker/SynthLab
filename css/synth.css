@@ -780,16 +780,12 @@ body[data-skin="vintage"] .perf { padding: 8px 10px; }
 .sm-card:hover, .sm-card:focus-visible { transform: translateY(-3px); border-color: var(--accent); box-shadow: 0 16px 40px rgba(0,0,0,0.45); outline: none; }
 .sm-card > :not(.sm-preview) { margin-left: 22px; margin-right: 22px; }
 .sm-preview {
-  height: 120px; margin-bottom: 16px; display: grid; gap: 10px 14px; align-content: center; justify-content: center;
-  grid-template-columns: repeat(6, 18px);
+  height: 190px; margin-bottom: 16px; padding: 14px 16px 0; display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(ellipse at 50% 30%, #2a2c31, #17181b 75%);
+  border-bottom: 1px solid #2c2f35;
 }
-.sm-preview i { width: 18px; height: 18px; border-radius: 50%; display: block;
-  background: radial-gradient(circle at 40% 35%, #e3e6e9, #8e9398 70%); box-shadow: 0 2px 3px rgba(0,0,0,0.6), 0 0 0 3px #0b0b0b; }
-.sm-preview-nf1 { background: linear-gradient(90deg, #5b3219 0 22px, #1a1b1d 22px calc(100% - 22px), #5b3219 calc(100% - 22px)); }
-.sm-preview-nf3 { grid-template-columns: repeat(9, 16px); gap: 12px 12px;
-  background: linear-gradient(#7a4524 0 10px, transparent 10px),
-    linear-gradient(90deg, #5b3219 0 24px, #151515 24px calc(100% - 24px), #5b3219 calc(100% - 24px)); }
-.sm-preview-nf3 i { width: 16px; height: 16px; }
+.sm-preview img { max-width: 100%; max-height: 100%; object-fit: contain; filter: drop-shadow(0 10px 14px rgba(0,0,0,0.55)); transition: transform 0.2s; }
+.sm-card:hover .sm-preview img { transform: scale(1.03); }
 .sm-tag { font-size: 11px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent); }
 .sm-name { font-size: 28px; font-weight: 800; color: #fff; margin-top: 2px; letter-spacing: 0.02em; }
 .sm-text { font-size: 14.5px; line-height: 1.55; color: #c3c6cc; margin-top: 8px; min-height: 66px; }
@@ -883,3 +879,13 @@ body[data-skin="vintage"] .panel {
 /* synth names: bold capitals, lighter lower-case (e.g. NiniFoog) */
 .synth-name { font-weight: 400; }
 .synth-name b { font-weight: 900; }
+
+/* ---- optional scopes ---- */
+body.scopes-hidden .scope-unit { display: none; }
+.btn-scopes.on { background: #3b3220; border-color: #8a6a2c; color: #ffd9a0; }
+
+/* ---- preview mode (?preview=1): only the synth, for start-menu pictures ---- */
+body.preview { background: transparent; min-height: 0; }
+body.preview .appbar, body.preview .scope-unit, body.preview .lesson-bar,
+body.preview .help-panel, body.preview .toast, body.preview .start-menu { display: none !important; }
+body.preview #fit { margin: 0; }
