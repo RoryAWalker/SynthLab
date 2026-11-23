@@ -167,8 +167,7 @@ export class Smiley {
   }
 }
 
-// Synthesised firework sounds: a rising whistle per rocket, then a bang and crackle per
-// burst, panned to where it bursts. Plays straight to the speakers (not via the scopes).
+// Synthesised firework sounds: a bang and crackle per burst, panned to where it bursts. Plays straight to the speakers (not via the scopes).
 export function fireworkSound(ctx) {
   if (!ctx) return null;
   const out = ctx.createGain();
@@ -197,20 +196,7 @@ export function fireworkSound(ctx) {
     src.start(t, Math.random() * 0.5, dur + 0.05);
   };
   return {
-    launch(x) {
-      if (live > 6) return;
-      const t = ctx.currentTime;
-      const o = ctx.createOscillator();
-      const g = ctx.createGain();
-      o.type = 'sine';
-      o.frequency.setValueAtTime(700 + Math.random() * 300, t);
-      o.frequency.exponentialRampToValueAtTime(2200 + Math.random() * 900, t + 0.55);
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(0.045, t + 0.08);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.6);
-      o.connect(g); g.connect(panned(x));
-      o.start(t); o.stop(t + 0.65);
-    },
+    launch() {}, // rockets are silent: just the bangs and crackles
     // size: 0.55 (small) to 1.55 (big). Bigger bursts are lower, louder and longer.
     burst(x, size = 1) {
       if (live > 6) return;
