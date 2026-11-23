@@ -142,12 +142,21 @@ function lockSection(id, locked = true) {
 
 // ---- toolbar ------------------------------------------------------------------------------
 let patchMenu = null; // Patch menu with factory and saved patches (patches.js)
+// Saved settings (per browser). Function declarations, so they can be used anywhere below.
+function loadPref(k, d) { try { return localStorage.getItem(k) ?? d; } catch { return d; } }
+function savePref(k, v) { try { localStorage.setItem(k, v); } catch { /* storage unavailable */ } }
+
 function buildToolbar() {
   patchMenu = new PatchMenu({ getPatch: () => ({ ...patch }), setPatch });
 
+  // Show values: off by default, remembered
   const showValues = document.getElementById('show-values');
+  showValues.checked = loadPref('sl.values', '0') === '1';
   document.body.classList.toggle('show-values', showValues.checked);
-  showValues.addEventListener('change', (e) => document.body.classList.toggle('show-values', e.target.checked));
+  showValues.addEventListener('change', (e) => {
+    document.body.classList.toggle('show-values', e.target.checked);
+    savePref('sl.values', e.target.checked ? '1' : '0');
+  });
 
 
   // scope timebase
@@ -196,8 +205,6 @@ buildPanel();
 alignRows();
 buildToolbar();
 
-const loadPref = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } };
-const savePref = (k, v) => { try { localStorage.setItem(k, v); } catch { /* storage unavailable */ } };
 
 const keyboard = new Keyboard(document.getElementById('keys'), {
   octaves: Number(loadPref('nf1.octaves', 2)),
@@ -246,12 +253,12 @@ help.onHide = () => overlay.release();
 function setHelp(open) {
   document.body.classList.toggle('help-open', open);
   document.getElementById('btn-help').setAttribute('aria-pressed', String(open));
-  savePref('nf1.help', open ? '1' : '0');
+  savePref('sl.help', open ? '1' : '0');
   if (!open) help.hide();
   fit();
 }
 document.getElementById('btn-help').addEventListener('click', () => setHelp(!document.body.classList.contains('help-open')));
-setHelp(loadPref('nf1.help', '1') === '1'); // on by default: this is a learning tool
+setHelp(loadPref('sl.help', '0') === '1'); // off by default; the Help button turns hover help on
 
 // ---- beat light by the Detune knob ----
 // Glows with the combined loudness of the two oscillators, so it pulses at the beat rate.
@@ -277,11 +284,28 @@ const beatLamp = beatLed.querySelector('.beat-lamp');
   beatLamp.style.setProperty('--glow', glow.toFixed(3));
 })();
 
+// ---- scopes: hidden by default (the synth fills the screen); the Scopes button shows them ----
+const scopesBtn = document.getElementById('btn-scopes');
+scopesBtn.hidden = PREVIEW;
+const scopesPref = `sl.scopes.${SYNTH.id}`;
+function setScopes(on, remember = true) {
+  document.body.classList.toggle('scopes-hidden', !on);
+  scopesBtn.classList.toggle('on', on);
+  scopesBtn.setAttribute('aria-pressed', String(on));
+  if (remember) savePref(scopesPref, on ? '1' : '0');
+  fit();
+  scope.resize(); // the screens had no size while hidden
+}
+scopesBtn.addEventListener('click', () => setScopes(document.body.classList.contains('scopes-hidden')));
+setScopes(!PREVIEW && loadPref(scopesPref, '0') === '1', false);
+
 // ---- lessons ----
 lesson = new LessonController({
   getPatch: () => ({ ...patch }), setPatch, engine, scope, keyboard, lockSection, ensureAudio,
   onModeChange: (mode) => {
     document.querySelectorAll('#mode-switch button').forEach((b) => b.classList.toggle('on', b.dataset.mode === mode));
+    // lessons show the target on the scopes, so they switch the scopes on; Free play restores your setting
+    setScopes(mode === 'lessons' || loadPref(scopesPref, '0') === '1', false);
     requestAnimationFrame(fit);
   },
 });
@@ -313,22 +337,6 @@ if (knobs['mix.feedback']) {
 // ---- start menu: choose a synth ----
 const startMenu = new StartMenu({ skip: PREVIEW });
 document.getElementById('btn-synths').addEventListener('click', () => startMenu.open());
-
-// ---- optional scopes (NiniFoog): hidden by default so the synth fills the screen ----
-if (SYNTH.optionalScopes) {
-  const btn = document.getElementById('btn-scopes');
-  btn.hidden = false;
-  const setScopes = (on) => {
-    document.body.classList.toggle('scopes-hidden', !on);
-    btn.classList.toggle('on', on);
-    btn.setAttribute('aria-pressed', String(on));
-    savePref(`${SYNTH.id}.scopes`, on ? '1' : '0');
-    fit();
-    scope.resize(); // the screens had no size while hidden
-  };
-  btn.addEventListener('click', () => setScopes(document.body.classList.contains('scopes-hidden')));
-  setScopes(!PREVIEW && loadPref(`${SYNTH.id}.scopes`, '0') === '1');
-}
 
 fit();
 window.addEventListener('resize', fit);

@@ -345,7 +345,7 @@ export const HELP = {
   synths: { title: 'Menu', body: ['Opens the start menu to choose a different synth. Each synth has its own panel, sound and saved patches.'] },
   scopes: {
     title: 'Scopes',
-    body: ['Shows or hides the oscilloscope and spectrum analyser. Hidden, the synth grows to fill the screen; shown, you can see the waveform and harmonics of everything you play, along with the teaching graphs.'],
+    body: ['Shows or hides the oscilloscope and spectrum analyser. Hidden, the synth grows to fill the screen; shown, you can see the waveform and harmonics of everything you play, along with the teaching graphs.', 'Lessons always show the scopes, because the target sound is drawn on them.'],
   },
   zoom: {
     title: 'Zoom',
