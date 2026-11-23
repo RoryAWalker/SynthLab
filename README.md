@@ -6,7 +6,13 @@
 
 ## What's inside
 
-- **NF-1 synthesiser**: a monophonic virtual-analogue synth in the classic one-knob-per-function style. Two oscillators (six waveforms, octave range, detune), mixer, 24 dB/octave ladder low-pass filter with resonance, filter envelope, loudness envelope, LFO with delay, glide and mono/legato modes.
+Choose a synth from the start menu:
+
+- **NF-1**, the first synth students meet: a monophonic virtual-analogue synth in the classic one-knob-per-function style. Two oscillators (six waveforms, octave range, detune), mixer, 24 dB/octave ladder low-pass filter with resonance, filter envelope, loudness envelope, LFO with delay, glide and mono/legato modes. Comes with lessons.
+- **NiniFoog**, a three-oscillator monosynth laid out in the style of the classic 1970s three-oscillator synths: Oscillator 3 doubles as a modulation source, noise, a feedback loop with an overload light, a ladder filter with keyboard tracking, legato playing, pitch and mod wheels, and free-running, gently drifting oscillators. Its names and artwork are SynthLab's own.
+
+Both synths share:
+
 - **Oscilloscope and spectrum analyser** showing the sound in real time.
 - **Teaching graphs**: turn a knob and its effect is drawn over the displays: envelope shapes with a live playhead, the filter's response curve, the LFO wave, expected waveform harmonics, octave ranges, glide, each oscillator in the mix, and detune beating (with a beat light).
 - **Hover help**: rest the mouse on any control for a second for a plain-English explanation and a "Try this" exercise.
@@ -35,13 +41,16 @@ Then open http://localhost:8660.
 | Path | What it is |
 | --- | --- |
 | `index.html`, `css/synth.css` | Page and styling |
-| `js/params.js` | Every control: ranges, labels, panel layout, factory patches |
-| `js/worklet/va-processor.js` | The audio engine (AudioWorklet): oscillators, filter, envelopes, LFO |
+| `js/synths/` | Each synth's controls, panel layout and factory patches |
+| `js/params.js` | The synth in use, and helpers shared by all synths |
+| `js/worklet/` | The sound engines (AudioWorklets): one per synth |
 | `js/lessons.js` | Lesson and challenge definitions |
 | `js/help.js` | All help text |
 | `js/visuals.js`, `js/scope.js` | Teaching graphs, oscilloscope and spectrum |
 
 Help text and lessons are kept in their own files so teachers can edit them without touching the rest of the code.
+
+The start-menu pictures in `img/` are captured from the running app. After changing a synth's look, start the local server and run `sh tools/make-previews.sh` to refresh them (needs Google Chrome).
 
 ## Licence
 
