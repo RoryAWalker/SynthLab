@@ -239,7 +239,7 @@ export const LESSONS = [
       },
       {
         type: 'question', title: 'Filter a sine wave',
-        text: 'Oscillator 1 is now a sine wave. Hold a note and try to make it darker by turning the Cutoff down, a long way. Listen to the tone colour as you go.',
+        text: 'Oscillator 1 is now a sine wave. Hold a note and try to make it darker.',
         unlocked: FILTER_UNLOCKED, showKey: true,
         make: (c) => ({ start: { 'osc1.wave': 'sine' }, note: c.note }),
         // the question appears only once the student has tried it: Cutoff down at least 3 octaves, with a note played
@@ -251,8 +251,6 @@ export const LESSONS = [
           options: [
             { text: 'Because a sine wave has no harmonics for the filter to remove', correct: true },
             { text: 'Because the Cutoff was not turned down far enough', feedback: 'You turned it down a long way: a sawtooth would have changed completely. Look at how many peaks a sine wave has on the spectrum.' },
-            { text: 'Because Resonance is at 0', feedback: 'Resonance adds a peak at the cutoff, but the filter removes harmonics with or without it.' },
-            { text: 'Because the filter only works on loud sounds', feedback: 'A filter works the same at any volume. Look at the spectrum: what is there to remove?' },
           ],
           explain: 'A low-pass filter changes the tone by removing harmonics above the cutoff. A sine wave is only the fundamental, with no harmonics at all, so there is nothing to remove: the timbre stays the same, and once the cutoff goes below the note it simply gets quieter.',
           hint: 'Look at the spectrum: a sawtooth shows a long row of peaks, a sine wave shows just one.',
