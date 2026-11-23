@@ -146,6 +146,7 @@ export class LessonController {
     this.listens = 0;
     this.wrongAnswers = 0;
     this.revealed = false;
+    this.lowNote = Infinity; this.highNote = -Infinity; // range of notes played in this challenge
     const ch = this.challenge;
     this.target = this.makeTarget(ch);
     this.lockFor(ch.unlocked);
@@ -247,6 +248,8 @@ export class LessonController {
   onNote(n) {
     if (this.mode !== 'lessons' || this.index < 0) return;
     this.lastNote = n;
+    this.lowNote = Math.min(this.lowNote, n);
+    this.highNote = Math.max(this.highNote, n);
     this.held++;
     this.notesPlayed = (this.notesPlayed || 0) + 1;
     this.check();
@@ -264,7 +267,7 @@ export class LessonController {
 
   state() {
     const patch = this.d.getPatch();
-    return { patch, note: this.lastNote, held: this.held > 0, f0: osc1Hz(patch, this.lastNote) };
+    return { patch, note: this.lastNote, held: this.held > 0, f0: osc1Hz(patch, this.lastNote), lowNote: this.lowNote, highNote: this.highNote };
   }
 
   check() {

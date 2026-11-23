@@ -338,6 +338,22 @@ if (knobs['mix.feedback']) {
 const startMenu = new StartMenu({ skip: PREVIEW });
 document.getElementById('btn-synths').addEventListener('click', () => startMenu.open());
 
+// ---- lesson bar: grows over the scopes rather than pushing the synth down ----
+// The page reserves the bar's resting height. When a question, hint or feedback makes it
+// taller, the extra spreads over the scope screens and the synth stays where it is.
+const lessonWrap = document.getElementById('lesson-wrap');
+const lessonBar = document.getElementById('lesson-bar');
+const barExpanded = () => !document.getElementById('lb-question').hidden
+  || !document.getElementById('lb-hintbox').hidden
+  || document.getElementById('lb-feedback').textContent.trim() !== '';
+new ResizeObserver(() => {
+  const resting = lessonBar.hidden ? 0 : lessonBar.offsetHeight;
+  const expanded = !lessonBar.hidden && barExpanded();
+  lessonBar.classList.toggle('overlaying', expanded);
+  if (expanded) return; // keep the reserved height; the bar overlays the scopes
+  if (Math.abs(lessonWrap.offsetHeight - resting) > 1) { lessonWrap.style.height = resting + 'px'; fit(); }
+}).observe(lessonBar);
+
 fit();
 window.addEventListener('resize', fit);
 // fit again once fonts and late layout have settled, so the whole synth stays on screen

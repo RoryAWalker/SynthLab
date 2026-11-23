@@ -285,18 +285,21 @@ export const LESSONS = [
       },
       {
         type: 'question', title: 'High and low notes',
-        text: 'The cutoff is fixed. Play a low note, then a high note, without moving the filter. Which loses more of its brightness?',
+        text: 'The Cutoff is fixed. Play a low note, then a high note.',
         unlocked: FILTER_UNLOCKED,
         make: (c) => ({ start: { 'osc1.wave': 'saw', 'filt.cutoff': 600 }, note: c.note }),
+        // the question appears once they have played notes at least an octave apart
+        revealWhen: (s) => s.highNote - s.lowNote >= 12,
+        hint: 'Play one note near the left of the keyboard and one near the right.',
         question: {
+          prompt: 'Which note lost more of its brightness?',
           options: [
             { text: 'The high note: fewer of its harmonics are below the cutoff', correct: true },
-            { text: 'The low note: low notes always sound darker', feedback: 'Count the peaks to the left of the CUTOFF line for each note.' },
-            { text: 'Both lose the same amount', feedback: 'Play them one after the other and compare the spectrum.' },
+            { text: 'The low note: low notes always sound darker', feedback: 'Count the peaks to the left of the CUTOFF line on the spectrum for each note.' },
           ],
           explain: 'A high note\'s harmonics start higher and are spread further apart, so a fixed cutoff removes more of them. That is why some synths let the cutoff follow the keyboard (the NiniFoog\'s Keyboard Control switches).',
+          hint: 'Play each note again and count how many peaks sit to the left of the CUTOFF line.',
         },
-        hint: 'Watch the spectrum for each note: count how many peaks sit to the left of the CUTOFF line.',
       },
       {
         type: 'goal', title: 'A filter that plays itself',
@@ -309,18 +312,22 @@ export const LESSONS = [
       },
       {
         type: 'question', title: 'Resonance and bass',
-        text: 'Hold a low note and slowly turn Resonance up. Listen to the low end of the sound. What happens?',
+        text: 'Hold a low note and turn Resonance up.',
         unlocked: FILTER_UNLOCKED,
         make: (c) => ({ start: { 'osc1.wave': 'saw', 'osc1.range': -1, 'filt.cutoff': 400 }, note: c.note }),
+        // the question appears once Resonance has been turned well up with a note played
+        revealWhen: (s) => s.note != null && s.patch['filt.res'] >= 0.6,
+        progress: (s) => Math.min(1, s.patch['filt.res'] / 0.6),
+        hint: 'Hold a low key and turn Resonance past 60% while you listen to the low end.',
         question: {
+          prompt: 'What happened to the bass as Resonance went up?',
           options: [
-            { text: 'The bass gets thinner as the peak at the cutoff gets louder', correct: true },
-            { text: 'The bass gets louder', feedback: 'Watch the leftmost peaks on the spectrum as Resonance rises.' },
-            { text: 'Nothing happens to the bass', feedback: 'Listen again with Resonance at 0, then at maximum.' },
+            { text: 'It got thinner as the peak at the cutoff got louder', correct: true },
+            { text: 'It got louder', feedback: 'Watch the leftmost peaks on the spectrum while you turn Resonance up and down.' },
           ],
           explain: 'In a ladder filter like this one, resonance works by feeding the output back against the input, which also cancels some of the low frequencies. More resonance: a stronger peak, but less bass.',
+          hint: 'Turn Resonance from 0 to the top and back while watching the leftmost peaks on the spectrum.',
         },
-        hint: 'Watch the leftmost peaks on the spectrum while Resonance goes from 0 to the top.',
       },
       {
         title: 'Match a filtered sound',
