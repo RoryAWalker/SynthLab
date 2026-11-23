@@ -21,7 +21,7 @@ const RANGES = [
 ];
 
 const SEMIS = [];
-for (let s = -7; s <= 7; s++) SEMIS.push({ v: s, label: s === 0 ? '0' : (s > 0 ? '+' + s : String(s)), minor: s % 7 !== 0 });
+for (let s = -7; s <= 7; s++) SEMIS.push({ v: s, label: s === 0 ? '0' : (s > 0 ? '+' + s : String(s)), minor: false });
 
 const LFO_SHAPES = [
   { v: 'tri', label: 'triangle', icon: 'tri' },
@@ -41,11 +41,13 @@ const fmtOct = (v) => v.toFixed(2) + ' oct';
 // ---- parameter definitions ---------------------------------------------------
 // type 'cont': continuous knob. curve: lin | log | pow (with k).
 // type 'step': rotary switch with fixed options.
-// scale: what is printed around the knob ('0-10', 'bi' for -5..+5, or 'options').
+// marks: [value, label] pairs printed around the knob in real units; without marks the scale is 0-10.
+// unit: shown in the gap at the bottom of the scale.
+const TIME_MARKS = [[0.001, '.001'], [0.01, '.01'], [0.1, '.1'], [1, '1'], [10, '10']];
+
 export const PARAMS = {
-  'ctrl.tune':   { type: 'cont', label: 'Tune', min: -50, max: 50, def: 0, curve: 'lin', scale: 'bi', fmt: fmtCents,
-                   help: 'Master tuning, plus or minus half a semitone.' },
-  'ctrl.glide':  { type: 'cont', label: 'Glide', min: 0, max: 3, def: 0, curve: 'pow', k: 3, scale: '0-10', fmt: fmtTime,
+  'ctrl.glide':  { type: 'cont', label: 'Glide', min: 0, max: 3, def: 0, curve: 'pow', k: 3, fmt: fmtTime, unit: 'sec',
+                   marks: [[0, '0'], [0.03, '.03'], [0.25, '.25'], [1, '1'], [3, '3']],
                    help: 'Portamento: time to slide from one note to the next.' },
 
   'osc1.range':  { type: 'step', label: 'Range', options: RANGES, def: 0,
@@ -55,56 +57,69 @@ export const PARAMS = {
 
   'osc2.range':  { type: 'step', label: 'Range', options: RANGES, def: 0, help: 'Octave of oscillator 2.' },
   'osc2.wave':   { type: 'step', label: 'Waveform', options: WAVES, def: 'saw', help: 'Waveform of oscillator 2.' },
-  'osc2.semi':   { type: 'step', label: 'Interval', options: SEMIS, def: 0, wide: true,
+  'osc2.semi':   { type: 'step', label: 'Interval', options: SEMIS, def: 0,
                    help: 'Transpose oscillator 2 in semitones (+7 is a fifth up).' },
-  'osc2.fine':   { type: 'cont', label: 'Detune', min: -50, max: 50, def: 0, curve: 'lin', scale: 'bi', fmt: fmtCents,
+  'osc2.fine':   { type: 'cont', label: 'Detune', min: -50, max: 50, def: 0, curve: 'lin', fmt: fmtCents, unit: 'cents',
+                   marks: [[-50, '−50'], [-25, '−25'], [0, '0'], [25, '+25'], [50, '+50']],
                    help: 'Fine detune in cents. Small amounts make the two oscillators beat against each other.' },
 
-  'mix.osc1':    { type: 'cont', label: 'Osc 1', min: 0, max: 1, def: 0.8, curve: 'lin', scale: '0-10', fmt: fmtPct, help: 'Level of oscillator 1 into the filter.' },
-  'mix.osc2':    { type: 'cont', label: 'Osc 2', min: 0, max: 1, def: 0, curve: 'lin', scale: '0-10', fmt: fmtPct, help: 'Level of oscillator 2 into the filter.' },
-  'mix.noise':   { type: 'cont', label: 'Noise', min: 0, max: 1, def: 0, curve: 'lin', scale: '0-10', fmt: fmtPct, help: 'Level of white noise into the filter.' },
+  'mix.osc1':    { type: 'cont', label: 'Osc 1', min: 0, max: 1, def: 0.8, curve: 'lin', fmt: fmtPct, help: 'Level of oscillator 1 into the filter.' },
+  'mix.osc2':    { type: 'cont', label: 'Osc 2', min: 0, max: 1, def: 0, curve: 'lin', fmt: fmtPct, help: 'Level of oscillator 2 into the filter.' },
+  'mix.noise':   { type: 'cont', label: 'Noise', min: 0, max: 1, def: 0, curve: 'lin', fmt: fmtPct, help: 'Level of white noise into the filter.' },
 
-  'filt.cutoff': { type: 'cont', label: 'Cutoff', min: 20, max: 20000, def: 20000, curve: 'log', scale: '0-10', fmt: fmtHz,
+  'filt.cutoff': { type: 'cont', label: 'Cutoff', min: 20, max: 20000, def: 20000, curve: 'log', fmt: fmtHz, unit: 'Hz',
+                   marks: [[20, '20'], [100, '100'], [500, '500'], [2000, '2k'], [10000, '10k'], [20000, '20k']],
                    help: 'Frequency above which the 24 dB/oct low-pass filter removes harmonics.' },
-  'filt.res':    { type: 'cont', label: 'Emphasis', min: 0, max: 1, def: 0, curve: 'lin', scale: '0-10', fmt: fmtPct,
-                   help: 'Resonance: boosts frequencies around the cutoff. Near maximum the filter whistles on its own.' },
-  'filt.env':    { type: 'cont', label: 'Env Amount', min: 0, max: 1, def: 0, curve: 'lin', scale: '0-10', fmt: (v) => fmtOct(v * 7),
+  'filt.res':    { type: 'cont', label: 'Resonance', min: 0, max: 1, def: 0, curve: 'lin', fmt: fmtPct,
+                   help: 'Boosts frequencies around the cutoff. Near maximum the filter whistles on its own.' },
+  'filt.env':    { type: 'cont', label: 'Env Amount', min: 0, max: 1, def: 0, curve: 'lin', fmt: (v) => fmtOct(v * 7), unit: 'oct',
+                   marks: [0, 1, 2, 3, 4, 5, 6, 7].map((o) => [o / 7, String(o)]),
                    help: 'How far the filter envelope pushes the cutoff up (up to 7 octaves).' },
-  'filt.key':    { type: 'cont', label: 'Key Track', min: 0, max: 1, def: 0, curve: 'lin', scale: '0-10', fmt: fmtPct,
-                   help: 'How much the cutoff follows the keyboard. At 100% it moves an octave per octave played.' },
 
-  'fenv.a':      { type: 'cont', label: 'Attack', min: 0.001, max: 10, def: 0.005, curve: 'log', scale: '0-10', fmt: fmtTime, help: 'Filter envelope: time to rise to full.' },
-  'fenv.d':      { type: 'cont', label: 'Decay', min: 0.001, max: 10, def: 0.4, curve: 'log', scale: '0-10', fmt: fmtTime, help: 'Filter envelope: time to fall to the sustain level.' },
-  'fenv.s':      { type: 'cont', label: 'Sustain', min: 0, max: 1, def: 0.3, curve: 'lin', scale: '0-10', fmt: fmtPct, help: 'Filter envelope: level held while the key is down.' },
-  'fenv.r':      { type: 'cont', label: 'Release', min: 0.001, max: 10, def: 0.4, curve: 'log', scale: '0-10', fmt: fmtTime, help: 'Filter envelope: time to fall to zero after the key is let go.' },
+  'fenv.a':      { type: 'cont', label: 'Attack', min: 0.001, max: 10, def: 0.005, curve: 'log', fmt: fmtTime, unit: 'sec', marks: TIME_MARKS, help: 'Filter envelope: time to rise to full.' },
+  'fenv.d':      { type: 'cont', label: 'Decay', min: 0.001, max: 10, def: 0.4, curve: 'log', fmt: fmtTime, unit: 'sec', marks: TIME_MARKS, help: 'Filter envelope: time to fall to the sustain level.' },
+  'fenv.s':      { type: 'cont', label: 'Sustain', min: 0, max: 1, def: 0.3, curve: 'lin', fmt: fmtPct, help: 'Filter envelope: level held while the key is down.' },
+  'fenv.r':      { type: 'cont', label: 'Release', min: 0.001, max: 10, def: 0.4, curve: 'log', fmt: fmtTime, unit: 'sec', marks: TIME_MARKS, help: 'Filter envelope: time to fall to zero after the key is let go.' },
 
-  'aenv.a':      { type: 'cont', label: 'Attack', min: 0.001, max: 10, def: 0.002, curve: 'log', scale: '0-10', fmt: fmtTime, help: 'Loudness envelope: time to rise to full volume.' },
-  'aenv.d':      { type: 'cont', label: 'Decay', min: 0.001, max: 10, def: 0.3, curve: 'log', scale: '0-10', fmt: fmtTime, help: 'Loudness envelope: time to fall to the sustain level.' },
-  'aenv.s':      { type: 'cont', label: 'Sustain', min: 0, max: 1, def: 1, curve: 'lin', scale: '0-10', fmt: fmtPct, help: 'Loudness envelope: level held while the key is down.' },
-  'aenv.r':      { type: 'cont', label: 'Release', min: 0.001, max: 10, def: 0.15, curve: 'log', scale: '0-10', fmt: fmtTime, help: 'Loudness envelope: time to fade out after the key is let go.' },
+  'aenv.a':      { type: 'cont', label: 'Attack', min: 0.001, max: 10, def: 0.002, curve: 'log', fmt: fmtTime, unit: 'sec', marks: TIME_MARKS, help: 'Loudness envelope: time to rise to full volume.' },
+  'aenv.d':      { type: 'cont', label: 'Decay', min: 0.001, max: 10, def: 0.3, curve: 'log', fmt: fmtTime, unit: 'sec', marks: TIME_MARKS, help: 'Loudness envelope: time to fall to the sustain level.' },
+  'aenv.s':      { type: 'cont', label: 'Sustain', min: 0, max: 1, def: 1, curve: 'lin', fmt: fmtPct, help: 'Loudness envelope: level held while the key is down.' },
+  'aenv.r':      { type: 'cont', label: 'Release', min: 0.001, max: 10, def: 0.15, curve: 'log', fmt: fmtTime, unit: 'sec', marks: TIME_MARKS, help: 'Loudness envelope: time to fade out after the key is let go.' },
 
-  'lfo.rate':    { type: 'cont', label: 'Rate', min: 0.05, max: 30, def: 5, curve: 'log', scale: '0-10', fmt: fmtHz, help: 'Speed of the low-frequency oscillator.' },
+  'lfo.rate':    { type: 'cont', label: 'Rate', min: 0.05, max: 30, def: 5, curve: 'log', fmt: fmtHz, unit: 'Hz',
+                   marks: [[0.05, '.05'], [0.2, '.2'], [1, '1'], [5, '5'], [30, '30']],
+                   help: 'Speed of the low-frequency oscillator, from one cycle every 20 seconds up to 30 cycles a second.' },
   'lfo.shape':   { type: 'step', label: 'Shape', options: LFO_SHAPES, def: 'tri', help: 'Waveform of the LFO.' },
-  'lfo.pitch':   { type: 'cont', label: '→ Pitch', min: 0, max: 12, def: 0, curve: 'pow', k: 2, scale: '0-10', fmt: fmtSemis, help: 'Vibrato depth: how far the LFO bends pitch.' },
-  'lfo.filter':  { type: 'cont', label: '→ Filter', min: 0, max: 4, def: 0, curve: 'lin', scale: '0-10', fmt: fmtOct, help: 'Wah depth: how far the LFO sweeps the cutoff.' },
-  'lfo.amp':     { type: 'cont', label: '→ Amp', min: 0, max: 1, def: 0, curve: 'lin', scale: '0-10', fmt: fmtPct, help: 'Tremolo depth: how much the LFO varies the volume.' },
-
-  'out.volume':  { type: 'cont', label: 'Volume', min: 0, max: 1, def: 0.7, curve: 'lin', scale: '0-10', fmt: fmtPct, help: 'Master output level.' },
+  'lfo.pitch':   { type: 'cont', label: '→ Pitch', min: 0, max: 12, def: 0, curve: 'pow', k: 2, fmt: fmtSemis, unit: 'semi',
+                   marks: [[0, '0'], [0.5, '.5'], [2, '2'], [6, '6'], [12, '12']],
+                   help: 'Vibrato depth: how far the LFO bends pitch.' },
+  'lfo.filter':  { type: 'cont', label: '→ Filter', min: 0, max: 4, def: 0, curve: 'lin', fmt: fmtOct, unit: 'oct',
+                   marks: [0, 1, 2, 3, 4].map((o) => [o, String(o)]),
+                   help: 'Wah depth: how far the LFO sweeps the cutoff.' },
+  'lfo.amp':     { type: 'cont', label: '→ Amp', min: 0, max: 1, def: 0, curve: 'lin', fmt: fmtPct, help: 'Tremolo depth: how much the LFO varies the volume.' },
 };
 
-// Panel layout: sections left to right. Each section is a grid of rows; null = empty cell.
+// Panel layout: columns left to right; each column stacks one or more sections.
+// Each section is a grid of rows; null = empty cell.
 // Section ids are what the game uses to lock (grey out) parts of the synth.
+// place: 'keybed' puts a section in the performance area left of the keys.
 export const LAYOUT = [
-  { id: 'ctrl', title: 'Controllers', rows: [['ctrl.tune'], ['ctrl.glide']] },
-  { id: 'osc1', title: 'Oscillator 1', rows: [['osc1.range'], ['osc1.wave']] },
-  { id: 'osc2', title: 'Oscillator 2', rows: [['osc2.range', 'osc2.semi'], ['osc2.wave', 'osc2.fine']] },
-  { id: 'mix', title: 'Mixer', rows: [['mix.osc1', 'mix.osc2'], ['mix.noise', null]] },
-  { id: 'filt', title: 'Filter', rows: [['filt.cutoff', 'filt.res'], ['filt.env', 'filt.key']] },
-  { id: 'fenv', title: 'Filter Envelope', rows: [['fenv.a', 'fenv.d'], ['fenv.s', 'fenv.r']] },
-  { id: 'aenv', title: 'Loudness Envelope', rows: [['aenv.a', 'aenv.d'], ['aenv.s', 'aenv.r']] },
-  { id: 'lfo', title: 'Modulation', rows: [['lfo.rate', 'lfo.shape', null], ['lfo.pitch', 'lfo.filter', 'lfo.amp']] },
-  { id: 'out', title: 'Output', rows: [['out.volume'], ['power']] },
+  [
+    { id: 'osc1', title: 'Oscillator 1', rows: [['osc1.range', 'osc1.wave', null, null]] },
+    { id: 'osc2', title: 'Oscillator 2', rows: [['osc2.range', 'osc2.wave', 'osc2.semi', 'osc2.fine']] },
+  ],
+  [
+    { id: 'mix', title: 'Mixer', rows: [['mix.osc1', 'mix.osc2', 'mix.noise']] },
+    { id: 'filt', title: 'Low Pass Filter', rows: [['filt.cutoff', 'filt.res', 'filt.env']] },
+  ],
+  [
+    { id: 'fenv', title: 'Filter Envelope', rows: [['fenv.a', 'fenv.d', 'fenv.s', 'fenv.r']] },
+    { id: 'aenv', title: 'Loudness Envelope', rows: [['aenv.a', 'aenv.d', 'aenv.s', 'aenv.r']] },
+  ],
+  [{ id: 'lfo', title: 'LFO', rows: [['lfo.rate', 'lfo.shape', null], ['lfo.pitch', 'lfo.filter', 'lfo.amp']] }],
 ];
+export const KEYBED_SECTIONS = [{ id: 'glide', title: 'Glide', rows: [['ctrl.glide']] }];
+export const ALL_SECTIONS = [...LAYOUT.flat(), ...KEYBED_SECTIONS];
 
 // ---- value <-> knob position (0..1) -------------------------------------------
 export function toNorm(id, v) {
@@ -145,24 +160,24 @@ export const PRESETS = {
   'Init': {},
   'Fat Bass': {
     'osc1.range': -1, 'osc2.range': -1, 'osc2.wave': 'saw', 'osc2.fine': 9, 'mix.osc1': 0.8, 'mix.osc2': 0.7,
-    'filt.cutoff': 260, 'filt.res': 0.35, 'filt.env': 0.45, 'filt.key': 0.5,
+    'filt.cutoff': 260, 'filt.res': 0.35, 'filt.env': 0.45,
     'fenv.a': 0.002, 'fenv.d': 0.28, 'fenv.s': 0.1, 'fenv.r': 0.2,
     'aenv.a': 0.002, 'aenv.d': 0.5, 'aenv.s': 0.85, 'aenv.r': 0.08,
   },
   'Gliding Lead': {
     'osc1.wave': 'saw', 'osc2.wave': 'square', 'osc2.fine': -6, 'mix.osc1': 0.75, 'mix.osc2': 0.55, 'ctrl.glide': 0.09,
-    'filt.cutoff': 1400, 'filt.res': 0.4, 'filt.env': 0.3, 'filt.key': 0.7,
+    'filt.cutoff': 1400, 'filt.res': 0.4, 'filt.env': 0.3,
     'fenv.a': 0.02, 'fenv.d': 0.6, 'fenv.s': 0.4, 'aenv.r': 0.25,
     'lfo.rate': 5.5, 'lfo.pitch': 0.18,
   },
   'Pluck': {
-    'osc1.wave': 'square', 'mix.osc1': 0.9, 'filt.cutoff': 180, 'filt.res': 0.25, 'filt.env': 0.65, 'filt.key': 0.8,
+    'osc1.wave': 'square', 'mix.osc1': 0.9, 'filt.cutoff': 180, 'filt.res': 0.25, 'filt.env': 0.65,
     'fenv.a': 0.001, 'fenv.d': 0.18, 'fenv.s': 0, 'fenv.r': 0.18,
     'aenv.a': 0.001, 'aenv.d': 0.55, 'aenv.s': 0, 'aenv.r': 0.4,
   },
   'Brass': {
     'osc1.wave': 'saw', 'osc2.wave': 'saw', 'osc2.fine': 5, 'mix.osc1': 0.8, 'mix.osc2': 0.6,
-    'filt.cutoff': 380, 'filt.res': 0.12, 'filt.env': 0.5, 'filt.key': 0.6,
+    'filt.cutoff': 380, 'filt.res': 0.12, 'filt.env': 0.5,
     'fenv.a': 0.09, 'fenv.d': 0.7, 'fenv.s': 0.45, 'fenv.r': 0.3,
     'aenv.a': 0.04, 'aenv.d': 0.4, 'aenv.s': 0.9, 'aenv.r': 0.25,
   },
@@ -173,11 +188,11 @@ export const PRESETS = {
   },
   'Wobble': {
     'osc1.range': -1, 'osc1.wave': 'saw', 'osc2.range': -1, 'osc2.wave': 'square', 'mix.osc2': 0.6, 'osc2.fine': 4,
-    'filt.cutoff': 200, 'filt.res': 0.55, 'filt.key': 0.4, 'lfo.rate': 3, 'lfo.shape': 'tri', 'lfo.filter': 3.2,
+    'filt.cutoff': 200, 'filt.res': 0.55, 'lfo.rate': 3, 'lfo.shape': 'tri', 'lfo.filter': 3.2,
   },
-  'Self-Osc Whistle': {
-    'mix.osc1': 0, 'filt.cutoff': 880, 'filt.res': 1, 'filt.key': 1, 'aenv.a': 0.15, 'aenv.r': 0.6,
-    'lfo.rate': 5, 'lfo.filter': 0.08,
+  'Resonant Sweep': {
+    'osc1.wave': 'saw', 'filt.cutoff': 120, 'filt.res': 0.85, 'filt.env': 0.6,
+    'fenv.a': 0.6, 'fenv.d': 1.6, 'fenv.s': 0.15, 'fenv.r': 0.8, 'aenv.r': 0.8,
   },
   'Wind': {
     'mix.osc1': 0, 'mix.noise': 0.9, 'filt.cutoff': 600, 'filt.res': 0.75, 'lfo.rate': 0.15, 'lfo.filter': 2.2,

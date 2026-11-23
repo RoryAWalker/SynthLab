@@ -4,6 +4,7 @@
 // Modulators: filter envelope, loudness envelope, LFO, glide.
 
 const TWO_PI = Math.PI * 2;
+const OUTPUT_GAIN = 0.45; // fixed master level (no volume knob on the panel)
 const PULSE_WIDTH = { square: 0.5, pulse: 0.25, narrow: 0.1 };
 
 // PolyBLEP: smooths the jump in saw/square waves to cut aliasing.
@@ -109,7 +110,7 @@ class VAProcessor extends AudioWorkletProcessor {
     const L = out[0];
     if (!L) return true;
     const p = this.p;
-    if (p['out.volume'] === undefined) return true; // no patch yet
+    if (p['osc1.wave'] === undefined) return true; // no patch yet
     const sr = sampleRate;
     const n = L.length;
 
@@ -120,14 +121,13 @@ class VAProcessor extends AudioWorkletProcessor {
     const lfoInc = p['lfo.rate'] / sr;
     const lfoShape = p['lfo.shape'];
     const w1 = p['osc1.wave'], w2 = p['osc2.wave'];
-    const off1 = p['osc1.range'] * 12 + p['ctrl.tune'] / 100;
-    const off2 = p['osc2.range'] * 12 + p['osc2.semi'] + p['osc2.fine'] / 100 + p['ctrl.tune'] / 100;
+    const off1 = p['osc1.range'] * 12;
+    const off2 = p['osc2.range'] * 12 + p['osc2.semi'] + p['osc2.fine'] / 100;
 
     const tgt = {
       m1: p['mix.osc1'], m2: p['mix.osc2'], mn: p['mix.noise'],
-      cut: Math.log2(p['filt.cutoff']), res: p['filt.res'], env: p['filt.env'], key: p['filt.key'],
+      cut: Math.log2(p['filt.cutoff']), res: p['filt.res'], env: p['filt.env'],
       lp: p['lfo.pitch'], lf: p['lfo.filter'], la: p['lfo.amp'],
-      vol: p['out.volume'] * p['out.volume'],
     };
     if (!this.sm) this.sm = { ...tgt };
     const sm = this.sm;
@@ -172,7 +172,7 @@ class VAProcessor extends AudioWorkletProcessor {
       const ae = this.aenv.next();
 
       // filter cutoff in octaves
-      let fc = Math.pow(2, sm.cut + sm.env * 7 * fe + sm.lf * lfo + sm.key * (this.note - 60) / 12);
+      let fc = Math.pow(2, sm.cut + sm.env * 7 * fe + sm.lf * lfo);
       if (fc > nyq) fc = nyq; else if (fc < 8) fc = 8;
 
       // 4-pole ladder low-pass, zero-delay-feedback (TPT) form with input saturation
@@ -193,7 +193,7 @@ class VAProcessor extends AudioWorkletProcessor {
 
       // VCA
       const trem = 1 - sm.la * (0.5 + 0.5 * lfo);
-      L[i] = Math.tanh(filtered * ae * trem * sm.vol * 0.9);
+      L[i] = Math.tanh(filtered * ae * trem * OUTPUT_GAIN);
     }
 
     for (let c = 1; c < out.length; c++) out[c].set(L);

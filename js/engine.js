@@ -9,8 +9,14 @@ export class Engine {
     this.pending = [];
   }
 
-  async start(patch) {
-    if (this.ctx) { await this.ctx.resume(); return; }
+  start(patch) {
+    if (this.ctx) return this.ctx.resume();
+    // guard against two key presses racing to create two contexts
+    if (!this.starting) this.starting = this._create(patch);
+    return this.starting;
+  }
+
+  async _create(patch) {
     this.ctx = new AudioContext({ latencyHint: 'interactive' });
     await this.ctx.audioWorklet.addModule('js/worklet/va-processor.js');
     this.node = new AudioWorkletNode(this.ctx, 'va-processor', { numberOfInputs: 0, outputChannelCount: [2] });
@@ -40,7 +46,7 @@ export class Engine {
 
   post(msg) {
     if (this.ready) this.node.port.postMessage(msg);
-    else if (msg.type !== 'param') this.pending.push(msg);
+    else this.pending.push(msg);
   }
 
   setPatch(patch) { this.post({ type: 'patch', patch }); }

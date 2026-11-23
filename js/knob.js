@@ -1,9 +1,9 @@
 import { PARAMS, toNorm, fromNorm, formatValue, WAVE_ICONS } from './params.js';
 
 const SVGNS = 'http://www.w3.org/2000/svg';
-const DIAL = 84;           // size of the scale area around the knob
+const DIAL = 116;          // size of the scale area around the knob
 const C = DIAL / 2;        // centre
-const R_TICK_IN = 25, R_TICK_OUT = 29, R_LABEL = 35.5;
+const R_TICK_IN = 35, R_TICK_OUT = 40, R_LABEL = 48.5;
 
 function svg(tag, attrs, parent) {
   const el = document.createElementNS(SVGNS, tag);
@@ -78,31 +78,43 @@ export class Knob {
         if (o.minor) return;
         const [lx, ly] = polar(R_LABEL, a);
         const g = svg('g', { class: 'opt', 'data-v': String(o.v) }, s);
-        svg('circle', { cx: lx, cy: ly, r: 7, class: 'hit' }, g);
+        svg('circle', { cx: lx, cy: ly, r: 9, class: 'hit' }, g);
         if (o.icon) {
-          svg('path', { d: WAVE_ICONS[o.icon], class: 'wave-icon', transform: `translate(${lx - 6.5},${ly - 4.5}) scale(1.08,0.75)` }, g);
+          svg('path', { d: WAVE_ICONS[o.icon], class: 'wave-icon', transform: `translate(${lx - 8},${ly - 5.5}) scale(1.33,0.92)` }, g);
         } else {
-          const t = svg('text', { x: lx, y: ly + 3, class: 'num' }, g);
+          const t = svg('text', { x: lx, y: ly + 3.5, class: 'num' + (n > 10 ? ' dense' : '') }, g);
           t.textContent = o.label;
         }
         g.addEventListener('click', (e) => { e.stopPropagation(); this.commit(o.v); });
       });
     } else {
-      const bi = spec.scale === 'bi';
-      for (let i = 0; i <= 10; i++) {
-        const a = this.angleFor(i / 10);
-        const [x1, y1] = polar(R_TICK_IN, a), [x2, y2] = polar(R_TICK_OUT, a);
-        svg('line', { x1, y1, x2, y2, class: 'tick' }, s);
-        const [lx, ly] = polar(R_LABEL, a);
-        const t = svg('text', { x: lx, y: ly + 3, class: 'num' }, s);
-        t.textContent = bi ? String(Math.abs(i - 5)) : String(i);
-        if (bi && i === 5) t.setAttribute('class', 'num zero');
+      const tick = (n, major) => {
+        const a = this.angleFor(n);
+        const [x1, y1] = polar(major ? R_TICK_IN : R_TICK_IN + 1.5, a), [x2, y2] = polar(R_TICK_OUT, a);
+        svg('line', { x1, y1, x2, y2, class: 'tick' + (major ? '' : ' minor') }, s);
+      };
+      const label = (n, text) => {
+        const [lx, ly] = polar(R_LABEL, this.angleFor(n));
+        svg('text', { x: lx, y: ly + 3.5, class: 'num' }, s).textContent = text;
+      };
+      if (spec.marks) {
+        // minor ticks: 1-2-5 steps on log knobs, tenths otherwise
+        if (spec.curve === 'log') {
+          for (let d = Math.floor(Math.log10(spec.min)); d <= Math.ceil(Math.log10(spec.max)); d++) {
+            [1, 2, 5].forEach((m) => {
+              const v = m * Math.pow(10, d);
+              if (v >= spec.min * 0.999 && v <= spec.max * 1.001) tick(toNorm(this.id, v), false);
+            });
+          }
+        } else {
+          for (let i = 0; i <= 10; i++) tick(i / 10, false);
+        }
+        spec.marks.forEach(([v, text]) => { const n = toNorm(this.id, v); tick(n, true); label(n, text); });
+      } else {
+        for (let i = 0; i <= 10; i++) { tick(i / 10, true); label(i / 10, String(i)); }
       }
-      if (bi) {
-        const [mx, my] = polar(R_LABEL + 0.5, this.angleFor(0) - 14);
-        const [px, py] = polar(R_LABEL + 0.5, this.angleFor(1) + 14);
-        svg('text', { x: mx, y: my + 3, class: 'num sign' }, s).textContent = '−';
-        svg('text', { x: px, y: py + 3, class: 'num sign' }, s).textContent = '+';
+      if (spec.unit) {
+        svg('text', { x: C, y: C + R_LABEL - 4, class: 'unit' }, s).textContent = spec.unit;
       }
     }
     return s;

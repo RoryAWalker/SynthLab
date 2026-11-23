@@ -14,7 +14,7 @@
         <select id="preset"></select>
       </label>
       <button id="btn-init" class="btn">Init</button>
-      <label class="ctl check"><input type="checkbox" id="show-values"> Show values</label>
+      <label class="ctl check"><input type="checkbox" id="show-values" checked> Show values</label>
       <div class="dropdown">
         <button class="btn" id="btn-lock">Lock sections ▾</button>
         <div class="dropdown-menu" id="lock-menu"></div>
@@ -54,18 +54,26 @@
             </div>
           </div>
           <div class="keybed">
-            <div class="wheels">
-              <div class="oct-block">
-                <div class="oct-title">OCTAVE</div>
-                <div class="oct-buttons">
-                  <button class="oct-btn" id="oct-down" title="Octave down (Z)">−</button>
-                  <div class="oct-readout" id="oct-readout">C3</div>
-                  <button class="oct-btn" id="oct-up" title="Octave up (X)">+</button>
+            <div class="perf">
+              <div class="perf-sections" id="perf-sections"></div>
+              <div class="perf-controls">
+                <div class="oct-block">
+                  <div class="oct-title">Octave</div>
+                  <div class="oct-buttons">
+                    <button class="oct-btn" id="oct-down" title="Octave down (Z)">−</button>
+                    <div class="oct-readout" id="oct-readout">C3</div>
+                    <button class="oct-btn" id="oct-up" title="Octave up (X)">+</button>
+                  </div>
+                </div>
+                <div class="oct-block">
+                  <div class="oct-title">Keyboard Range</div>
+                  <div class="range-buttons" id="range-buttons"></div>
+                  <div class="range-caption">octaves</div>
                 </div>
                 <div class="oct-hint">Play with A–K · Z/X octave</div>
               </div>
             </div>
-            <div class="keys" id="keys"></div>
+            <div class="keys-well"><div class="keys" id="keys"></div></div>
           </div>
         </div>
         <div class="cheek right"></div>

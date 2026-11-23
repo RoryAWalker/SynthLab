@@ -4,15 +4,17 @@ const KEY_MAP = {
   KeyA: 0, KeyW: 1, KeyS: 2, KeyE: 3, KeyD: 4, KeyF: 5, KeyT: 6, KeyG: 7, KeyY: 8,
   KeyH: 9, KeyU: 10, KeyJ: 11, KeyK: 12, KeyO: 13, KeyL: 14, KeyP: 15, Semicolon: 16,
 };
+const MAX_WHITE_PX = 80;
 const BLACK = new Set([1, 3, 6, 8, 10]);
 const NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
 export const noteName = (n) => NAMES[n % 12] + (Math.floor(n / 12) - 1);
 
 export class Keyboard {
-  constructor(container, { low = 36, high = 72, onNoteOn, onNoteOff, onOctave }) {
-    this.low = low; this.high = high;
+  constructor(container, { octaves = 2, onNoteOn, onNoteOff, onOctave }) {
+    this.container = container;
     this.onNoteOn = onNoteOn; this.onNoteOff = onNoteOff; this.onOctave = onOctave;
-    this.base = 48;            // computer keyboard: A = C3
+    this.base = 48;            // lowest key, and computer key A: C3
+    this.octaves = Math.min(4, Math.max(1, octaves || 2));
     this.keys = new Map();
     this.held = new Map();     // source -> note
     this.build(container);
@@ -20,9 +22,24 @@ export class Keyboard {
     this.bindKeys();
   }
 
+  get low() { return this.base; }
+  get high() { return this.base + this.octaves * 12; }
+
+  setOctaves(o) {
+    this.octaves = Math.min(4, Math.max(1, o));
+    if (this.high > 108) this.base = 108 - this.octaves * 12;
+    this.releaseAll();
+    this.build(this.container);
+    this.onOctave && this.onOctave(Math.floor(this.base / 12) - 1);
+  }
+
   build(container) {
+    container.querySelectorAll('.key').forEach((k) => k.remove());
+    this.keys.clear();
     const whites = [];
     for (let n = this.low; n <= this.high; n++) if (!BLACK.has(n % 12)) whites.push(n);
+    // keys keep a realistic width: a short keyboard is centred rather than stretched
+    container.style.maxWidth = whites.length * MAX_WHITE_PX + 'px';
     const ww = 100 / whites.length;
     let wi = 0;
     for (let n = this.low; n <= this.high; n++) {
@@ -56,10 +73,10 @@ export class Keyboard {
 
   shiftOctave(d) {
     const nb = this.base + d * 12;
-    if (nb < 12 || nb > 96) return;
+    if (nb < 12 || nb + this.octaves * 12 > 108) return;
     this.releaseAll();
     this.base = nb;
-    this.markComputerRange();
+    this.build(this.container);
     this.onOctave && this.onOctave(Math.floor(this.base / 12) - 1);
   }
 
