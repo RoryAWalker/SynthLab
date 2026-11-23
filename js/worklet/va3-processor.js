@@ -1,17 +1,23 @@
 // MiniNFoog voice (internal id nf3): three-oscillator monosynth in the classic 1970s layout.
 // Signal path:
-//   OSC1 + OSC2 + OSC3 + NOISE + EXTERNAL (feedback) -> MIXER -> 4-pole ladder LOW-PASS -> VCA -> out
+//   OSC1 + OSC2 + OSC3 + NOISE + FEEDBACK -> MIXER -> 4-pole ladder LOW-PASS -> VCA -> out
 // Modulation: Osc 3 and/or noise (Modulation Mix), scaled by the mod wheel, sent to the
 // oscillators' pitch (Osc. Modulation) and/or the filter cutoff (Filter Modulation).
-// Keyboard: lowest note wins; contours only restart when no other key is held.
+// Keyboard: legato. The newest note always takes the pitch; the contours only restart
+// when a note is played with no other key held.
+// Like analogue oscillators, the three oscillators run all the time from random starting
+// points and drift very slightly, so their phase relationship is never quite the same twice.
 
 const TWO_PI = Math.PI * 2;
 const PULSE_WIDTH = { square: 0.5, wide: 0.3, narrow: 0.12 };
 const BEND_RANGE = 2;       // semitones at full pitch wheel
 const MOD_PITCH = 12;       // semitones of pitch modulation at full mod wheel
 const MOD_FILTER = 4;       // octaves of filter modulation at full mod wheel
-const FEEDBACK_GAIN = 3;    // the External Input feedback loop at full External level and Feedback
+const FEEDBACK_GAIN = 3;    // the output fed back into the mixer, at full Feedback
 const SHORT_RELEASE = 0.012; // release when the Decay switch is off
+const OUTPUT_GAIN = 0.45;   // fixed master level
+const DRIFT_CENTS = 2.5;    // largest slow pitch wander of each oscillator
+const DRIFT_SECONDS = 1.6;  // roughly how often each oscillator picks a new drift target
 
 function polyBlep(t, dt) {
   if (t < dt) { t /= dt; return t + t - t * t - 1; }
@@ -72,7 +78,10 @@ class VA3Processor extends AudioWorkletProcessor {
     this.p = {};
     this.notes = [];
     this.note = 60; this.target = 60; this.hasPlayed = false;
-    this.ph1 = 0; this.ph2 = 0; this.ph3 = Math.random(); this.phA = 0;
+    // free-running oscillators: random starting points, never reset by notes
+    this.ph1 = Math.random(); this.ph2 = Math.random(); this.ph3 = Math.random();
+    this.drift = [0, 0, 0].map(() => ({ v: (Math.random() * 2 - 1) * DRIFT_CENTS, t: (Math.random() * 2 - 1) * DRIFT_CENTS }));
+    this.drive = 0;     // how hard the mixer drives the filter (for the overload light)
     this.fenv = new Contour();
     this.aenv = new Contour();
     this.s = [0, 0, 0, 0];
@@ -89,16 +98,18 @@ class VA3Processor extends AudioWorkletProcessor {
       case 'param': this.p[m.id] = m.value; break;
       case 'noteOn': {
         const fresh = !this.notes.length;
-        if (!this.notes.includes(m.note)) this.notes.push(m.note);
-        this.target = Math.min(...this.notes); // lowest note wins
+        const i = this.notes.indexOf(m.note);
+        if (i >= 0) this.notes.splice(i, 1);
+        this.notes.push(m.note);
+        this.target = m.note; // legato: the newest note takes the pitch
         if (!this.hasPlayed) { this.note = this.target; this.hasPlayed = true; }
-        if (fresh) { this.fenv.gateOn(); this.aenv.gateOn(); } // single trigger: legato never restarts
+        if (fresh) { this.fenv.gateOn(); this.aenv.gateOn(); } // contours restart only from silence
         break;
       }
       case 'noteOff': {
         const i = this.notes.indexOf(m.note);
         if (i >= 0) this.notes.splice(i, 1);
-        if (this.notes.length) this.target = Math.min(...this.notes);
+        if (this.notes.length) this.target = this.notes[this.notes.length - 1]; // back to the last key still held
         else { this.fenv.gateOff(); this.aenv.gateOff(); }
         break;
       }
@@ -131,17 +142,21 @@ class VA3Processor extends AudioWorkletProcessor {
     const oscMod = on(p['osc.mod']), filtMod = on(p['filt.mod']);
     const track = (on(p['filt.kb1']) ? 1 / 3 : 0) + (on(p['filt.kb2']) ? 2 / 3 : 0);
     const pinkNoise = p['mix.noisetype'] === 'pink';
-    const outOn = on(p['out.on']), a440 = on(p['out.a440']);
+    // analogue drift: each oscillator wanders slowly towards a new random offset now and then
+    const blockSecs = n / sr;
+    this.drift.forEach((d) => {
+      if (Math.random() < blockSecs / DRIFT_SECONDS) d.t = (Math.random() * 2 - 1) * DRIFT_CENTS;
+      d.v += (d.t - d.v) * 0.004;
+    });
+    const dr1 = this.drift[0].v / 100, dr2 = this.drift[1].v / 100, dr3 = this.drift[2].v / 100;
     const tgt = {
-      m1: on(p['mix.osc1on']) ? p['mix.osc1'] : 0,
-      m2: on(p['mix.osc2on']) ? p['mix.osc2'] : 0,
-      m3: on(p['mix.osc3on']) ? p['mix.osc3'] : 0,
-      mn: on(p['mix.noiseon']) ? p['mix.noise'] : 0,
-      fb: on(p['mix.exton']) ? p['mix.ext'] * p['out.feedback'] * FEEDBACK_GAIN : 0,
+      m1: p['mix.osc1'], m2: p['mix.osc2'], m3: p['mix.osc3'], mn: p['mix.noise'],
+      fb: p['mix.feedback'] * FEEDBACK_GAIN,
       cut: Math.log2(p['filt.cutoff']), res: p['filt.res'], env: p['filt.env'],
       mm: p['ctrl.modmix'], wheel: p['perf.mod'] * p['perf.mod'], bend: p['perf.bend'],
-      tune: p['ctrl.tune'] / 100, vol: p['out.volume'] * p['out.volume'],
+      tune: p['ctrl.tune'] / 100,
     };
+    let peak = 0;
     if (!this.sm) this.sm = { ...tgt };
     const sm = this.sm;
     const k = 0.0015;
@@ -155,7 +170,7 @@ class VA3Processor extends AudioWorkletProcessor {
       // Oscillator 3 first: it is also the modulation source.
       const bend = sm.bend * BEND_RANGE;
       const base3 = osc3Keyed ? this.note + bend : 60; // off the keyboard: a fixed pitch
-      const f3 = hz(base3 + sm.tune + r3);
+      const f3 = hz(base3 + sm.tune + r3 + dr3);
       const dt3 = Math.min(f3 / sr, 0.49);
       const o3 = oscSample(w3, this.ph3, dt3);
       this.ph3 += dt3; if (this.ph3 >= 1) this.ph3 -= 1;
@@ -172,16 +187,17 @@ class VA3Processor extends AudioWorkletProcessor {
       const pm = oscMod ? mod * MOD_PITCH : 0;
 
       const base = this.note + sm.tune + bend + pm;
-      const f1 = hz(base + r1), f2 = hz(base + r2);
+      const f1 = hz(base + r1 + dr1), f2 = hz(base + r2 + dr2);
       const dt1 = Math.min(f1 / sr, 0.49), dt2 = Math.min(f2 / sr, 0.49);
       const o1 = oscSample(w1, this.ph1, dt1);
       const o2 = oscSample(w2, this.ph2, dt2);
       this.ph1 += dt1; if (this.ph1 >= 1) this.ph1 -= 1;
       this.ph2 += dt2; if (this.ph2 >= 1) this.ph2 -= 1;
 
-      // mixer, including the External Input fed from our own output (feedback loop)
-      const ext = Math.tanh(this.lastOut * sm.fb);
-      const x = o1 * sm.m1 + o2 * sm.m2 + o3 * sm.m3 + noise * sm.mn + ext;
+      // mixer, including the output fed back in (Feedback)
+      const fbk0 = Math.tanh(this.lastOut * sm.fb);
+      const x = o1 * sm.m1 + o2 * sm.m2 + o3 * sm.m3 + noise * sm.mn + fbk0;
+      const ax = x < 0 ? -x : x; if (ax > peak) peak = ax;
       if (M1) { M1[i] = o1 * sm.m1 * 0.45; M2[i] = o2 * sm.m2 * 0.45; }
 
       const fe = this.fenv.next();
@@ -207,13 +223,13 @@ class VA3Processor extends AudioWorkletProcessor {
       const vca = u * (1 + fbk * 0.45) * ae;
       this.lastOut = vca;
 
-      let y = outOn ? Math.tanh(vca * 0.9 * sm.vol) : 0;
-      if (a440) { y += Math.sin(TWO_PI * this.phA) * 0.2; this.phA += 440 / sr; if (this.phA >= 1) this.phA -= 1; }
-      L[i] = y;
+      L[i] = Math.tanh(vca * OUTPUT_GAIN);
       if (i === n - 1) { this.lastFc = fc; this.lastMod = mod; }
     }
 
     for (let c = 1; c < out.length; c++) out[c].set(L);
+    // only count drive while a note sounds (the mixer runs silently otherwise)
+    this.drive = Math.max(this.aenv.stage !== 0 ? peak : 0, this.drive * 0.85);
 
     // live state for the visuals (same shape as the NF-1 engine reports)
     const dtB = n / sr;
@@ -226,7 +242,7 @@ class VA3Processor extends AudioWorkletProcessor {
       const b = kk >= 0 ? this.ph2 : this.ph2 * Math.pow(2, -kk);
       this.port.postMessage({
         type: 'state', gate: this.notes.length > 0, note: this.note, target: this.target, fc: this.lastFc,
-        a: env(this.aenv), f: env(this.fenv), lfo: this.lastMod, lfoT: 0, beat: (((b - a) % 1) + 1) % 1,
+        a: env(this.aenv), f: env(this.fenv), lfo: this.lastMod, lfoT: 0, beat: (((b - a) % 1) + 1) % 1, drive: this.drive,
       });
     }
     return true;

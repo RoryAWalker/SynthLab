@@ -607,7 +607,7 @@ export class Overlay {
     ctx.restore();
     if (played) { const s = pts[pts.length - 1]; if (hist[hist.length - 1].g) dot(ctx, xOf(s.t), yOf(s.n)); }
 
-    const modeText = p['ctrl.mode'] === undefined ? 'lowest note wins' : legato ? 'Legato: only overlapping notes slide' : 'Mono: every note slides';
+    const modeText = p['ctrl.mode'] === undefined ? 'legato: contours do not restart' : legato ? 'Legato: only overlapping notes slide' : 'Mono: every note slides';
     label(ctx, `GLIDE   ·   ${glideOff ? 'switch off' : G > 0.0005 ? formatValue('ctrl.glide', G) : 'off'}   ·   ${modeText}`, box.x, 16, AMBER, 'left', 10.5, 800);
     label(ctx, played ? 'pitch over the last 3 seconds  ·  dashed = notes played' : 'example: play notes to see your own slides  ·  dashed = notes played', w - PAD.r, h - 8, AMBER_DIM, 'right', 9.5, 600);
   }

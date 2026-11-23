@@ -61,17 +61,12 @@ export const PARAMS = {
   'osc2.wave':   { type: 'step', label: 'Waveform', options: WAVES_12, def: 'saw' },
   'osc3.wave':   { type: 'step', label: 'Waveform', options: WAVES_3, def: 'tri' },
 
-  // mixer
+  // mixer (a level of 0 is off)
   'mix.osc1':    level('Osc. 1', 0.8),
   'mix.osc2':    level('Osc. 2', 0),
   'mix.osc3':    level('Osc. 3', 0),
-  'mix.ext':     level('External', 0),
+  'mix.feedback': level('Feedback', 0),
   'mix.noise':   level('Noise', 0),
-  'mix.osc1on':  sw('', 'on'),
-  'mix.osc2on':  sw('', 'on'),
-  'mix.osc3on':  sw('', 'on'),
-  'mix.exton':   sw('', 'off'),
-  'mix.noiseon': sw('', 'off'),
   'mix.noisetype': { type: 'step', ui: 'toggle', titled: true, label: 'Noise', options: [{ v: 'white', label: 'White' }, { v: 'pink', label: 'Pink' }], def: 'white' },
 
   // modifiers: filter
@@ -89,12 +84,6 @@ export const PARAMS = {
   'aenv.d':      time('Decay Time', 0.3),
   'aenv.s':      level('Sustain Level', 1),
 
-  // output
-  'out.volume':  level('Volume', 0.7),
-  'out.on':      sw('Main Output', 'on'),
-  'out.a440':    sw('A-440', 'off'),
-  'out.feedback': level('Feedback', 0),
-
   // left of the keyboard
   'perf.glideon': sw('Glide', 'off'),
   'perf.decay':   sw('Decay', 'off'),
@@ -103,7 +92,7 @@ export const PARAMS = {
   'perf.mod':    { type: 'wheel', label: 'Mod', min: 0, max: 1, def: 0, fmt: fmtPct },
 };
 
-// Panel: Controllers | Oscillator Bank | Mixer | Modifiers | Output.
+// Panel: Controllers | Oscillator Bank | Mixer | Modifiers.
 // rowTitles label each row (Oscillator 1 / 2 / 3; Filter / Filter Contour / Loudness Contour).
 export const LAYOUT = [
   [{ id: 'ctrl', title: 'Controllers', rowTitles: [' ', ' ', ' '], rows: [['ctrl.tune'], ['ctrl.glide'], ['ctrl.modmix']] }],
@@ -112,14 +101,15 @@ export const LAYOUT = [
     rows: [['osc.mod', 'osc1.range', null, 'osc1.wave'], [null, 'osc2.range', 'osc2.freq', 'osc2.wave'], ['osc3.ctrl', 'osc3.range', 'osc3.freq', 'osc3.wave']],
   }],
   [{
+    // staggered like the classic mixer: Feedback sits between Osc 1 and 2, Noise between Osc 2 and 3
     id: 'mix', title: 'Mixer', rowTitles: [' ', ' ', ' '],
-    rows: [['mix.osc1', 'mix.osc1on', 'mix.ext', 'mix.exton'], ['mix.osc2', 'mix.osc2on', 'mix.noise', 'mix.noiseon'], ['mix.osc3', 'mix.osc3on', 'mix.noisetype', null]],
+    rows: [['mix.osc1', 'mix.feedback'], ['mix.osc2', 'mix.noise'], ['mix.osc3', 'mix.noisetype']],
+    offsets: { 'mix.feedback': '50%', 'mix.noise': '50%', 'mix.noisetype': '58px' },
   }],
   [{
     id: 'mods', title: 'Modifiers', rowTitles: ['Filter', 'Filter Contour', 'Loudness Contour'],
     rows: [['filt.mod', 'filt.cutoff', 'filt.res', 'filt.env'], ['filt.kb1', 'fenv.a', 'fenv.d', 'fenv.s'], ['filt.kb2', 'aenv.a', 'aenv.d', 'aenv.s']],
   }],
-  [{ id: 'out', title: 'Output', rowTitles: [' ', ' ', ' '], rows: [['out.volume'], ['out.on'], ['out.a440'], ['out.feedback']] }],
 ];
 export const KEYBED_SECTIONS = [{ id: 'perf', title: 'Controllers', rows: [['perf.glideon', 'perf.decay'], ['perf.bend', 'perf.mod']] }];
 
@@ -155,12 +145,12 @@ export const PRESETS = {
     'fenv.a': 0.001, 'fenv.d': 0.2, 'fenv.s': 0, 'aenv.a': 0.001, 'aenv.d': 0.5, 'aenv.s': 0, 'perf.decay': 'on',
   },
   'Wind': {
-    'mix.osc1': 0, 'mix.noiseon': 'on', 'mix.noise': 0.9, 'mix.noisetype': 'pink',
+    'mix.osc1': 0, 'mix.noise': 0.9, 'mix.noisetype': 'pink',
     'osc3.range': -7, 'osc3.ctrl': 'off', 'osc3.freq': -7, 'mix.osc3': 0, 'filt.mod': 'on', 'perf.mod': 0.7,
     'filt.cutoff': 700, 'filt.res': 0.8, 'aenv.a': 1.2, 'aenv.d': 2.5, 'perf.decay': 'on',
   },
   'Feedback Growl': {
-    'osc1.range': -1, 'mix.osc1': 0.8, 'mix.exton': 'on', 'mix.ext': 0.8, 'out.feedback': 0.7,
+    'osc1.range': -1, 'mix.osc1': 0.8, 'mix.feedback': 0.6,
     'filt.cutoff': 900, 'filt.res': 0.3, 'filt.env': 0.3, 'fenv.d': 0.6, 'fenv.s': 0.4,
   },
 };
@@ -169,13 +159,14 @@ export const NF3 = {
   id: 'nf3',
   name: NAME,
   brandSub: 'THREE-OSCILLATOR MONOPHONIC SYNTHESIZER',
-  skin: 'slate',
+  skin: 'vintage',
   module: 'js/worklet/va3-processor.js',
   processor: 'va3-processor',
   lessons: false,
+  keyboard: [41, 84], // fixed 44 keys, F to C (3½ octaves); no octave shift
   card: {
     tagline: 'Three oscillators, 1970s style',
-    text: 'A classic three-oscillator layout: Oscillator 3 doubles as a modulation source, plus noise, a feedback loop, a ladder filter with keyboard tracking, and pitch and mod wheels.',
+    text: 'A classic three-oscillator layout: Oscillator 3 doubles as a modulation source, plus noise, a feedback loop with an overload light, a ladder filter with keyboard tracking, and pitch and mod wheels.',
   },
   PARAMS, LAYOUT, KEYBED_SECTIONS, PRESETS,
 };

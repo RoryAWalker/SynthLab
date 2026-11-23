@@ -649,37 +649,75 @@ body.auditioning #lb-hear, body.auditioning #lb-reset, body.auditioning .lb-step
 .wheel-value { margin-top: 0; }
 
 /* ==========================================================================
-   MiniNFoog (nf3) skin: slate panel, cream legends, brushed aluminium ends,
-   black knobs. Same layout as the classic three-oscillator design, our own look.
+   MiniNFoog (nf3) skin: vintage. Walnut case (end cheeks, a rail above the panel
+   and along the front of the keys), black panel with white legends, classic black
+   knobs with silver caps, coloured rocker switches. No names or logos copied.
    ========================================================================== */
-body[data-skin="slate"] {
-  --panel: #1f2428;
-  --panel-hi: #2a3036;
-  --ink: #efe4cb;
-  --ink-dim: #b8ae98;
-  --rule: rgba(239, 228, 203, 0.5);
+body[data-skin="vintage"] {
+  --wood-1: #5e321a;
+  --wood-2: #3c1e0e;
+  --wood-3: #82492a;
   --accent: #ffb547;
+  --led: #ff3b2f;
+  --panel: #151515;
+  --panel-hi: #202020;
+  --ink: #f2f0ea;
+  --ink-dim: #b9b6ad;
+  --rule: rgba(242, 240, 234, 0.6);
 }
-body[data-skin="slate"] .cheek {
-  background:
-    repeating-linear-gradient(0deg, rgba(255,255,255,0.05) 0 1px, transparent 1px 3px),
-    linear-gradient(90deg, #6f757b, #c9cdd1 35%, #9ea3a8 65%, #6a7075);
+body[data-skin="vintage"] .cheek { width: 54px; }
+body[data-skin="vintage"] .synth-body { position: relative; }
+/* wooden rail above the panel and along the front of the keys */
+body[data-skin="vintage"] .panel { border-top: none; }
+body[data-skin="vintage"] .synth-body::before,
+body[data-skin="vintage"] .synth-body::after {
+  content: ""; display: block; height: 18px;
+  background-color: var(--wood-1);
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='40'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.012 0.9' numOctaves='3' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 0.18 0 0 0 0 0.08 0 0 0 0 0.02 0 0 0 0.75 0'/%3E%3C/filter%3E%3Crect width='600' height='40' filter='url(%23g)'/%3E%3C/svg%3E"),
+    linear-gradient(var(--wood-3), var(--wood-1) 55%, var(--wood-2));
+  box-shadow: inset 0 1px 0 rgba(255,220,180,0.18), inset 0 -2px 3px rgba(0,0,0,0.45);
 }
-body[data-skin="slate"] .panel {
-  background:
-    repeating-linear-gradient(90deg, rgba(255,255,255,0.012) 0 1px, transparent 1px 3px),
-    linear-gradient(180deg, var(--panel-hi), var(--panel) 30%, #191d21);
+body[data-skin="vintage"] .synth-body::before { order: -1; }
+body[data-skin="vintage"] .synth-body::after { height: 22px; order: 99; }
+body[data-skin="vintage"] .section-title { color: var(--ink); letter-spacing: 0.24em; }
+body[data-skin="vintage"] .keybed { background: linear-gradient(#0e0e0e, #191919); }
+body[data-skin="vintage"] .perf { gap: 2px; }
+body[data-skin="vintage"] .perf .knob-label { visibility: visible; height: 15px; }
+body[data-skin="vintage"] .oct-block { display: none; } /* fixed keyboard: no octave or range controls */
+/* longer classic control names wrap onto two lines */
+body[data-skin="vintage"] .knob-label {
+  white-space: normal; text-align: center; line-height: 1.1; height: 24px; width: calc(var(--cell-w) - 6px);
+  display: flex; align-items: flex-end; justify-content: center; font-size: 10.5px;
 }
-body[data-skin="slate"] .knob-cap {
-  background: radial-gradient(circle at 50% 40%, #2c2c2c, #0d0d0d 75%);
-  box-shadow: inset 0 0 0 1px #000, inset 0 1px 1px rgba(255,255,255,0.12), 0 1px 2px rgba(0,0,0,0.7);
+body[data-skin="vintage"] .perf .knob-label { height: 24px; }
+/* rocker switches: a coloured paddle that tips left (off) or right (on) */
+body[data-skin="vintage"] .toggle { width: 34px; height: 18px; border-radius: 3px; background: #050505; box-shadow: 0 0 0 1px #2c2c2c, inset 0 0 3px #000; }
+body[data-skin="vintage"] .toggle-lever {
+  top: 2px; left: 2px; width: 30px; height: 14px; border-radius: 2px;
+  background: linear-gradient(90deg, var(--rk-dark) 0 50%, var(--rk) 50% 100%);
+  box-shadow: inset -5px 0 6px rgba(0,0,0,0.35);
+  transition: background 0.1s, box-shadow 0.1s;
 }
-body[data-skin="slate"] .knob-pointer { background: #f4ecd8; }
-body[data-skin="slate"] .stepped .knob-cap { background: linear-gradient(90deg, #0d0d0d, #3b3b3b 45%, #1a1a1a 60%, #080808); }
-body[data-skin="slate"] .section-title { color: var(--ink); }
-body[data-skin="slate"] .keybed { background: linear-gradient(#141619, #1d2024); }
-body[data-skin="slate"] .perf { gap: 2px; }
-body[data-skin="slate"] .perf .knob-label { visibility: visible; height: 15px; }
+body[data-skin="vintage"] .toggle.right .toggle-lever {
+  left: 2px; background: linear-gradient(90deg, var(--rk) 0 50%, var(--rk-dark) 50% 100%);
+  box-shadow: inset 5px 0 6px rgba(0,0,0,0.35);
+}
+body[data-skin="vintage"] .toggle-cell { --rk: #4b86c8; --rk-dark: #2e5a8c; }                         /* blue */
+body[data-skin="vintage"] .toggle-cell[data-param^="filt.kb"] { --rk: #ea8a3c; --rk-dark: #a85b1c; }   /* orange */
+body[data-skin="vintage"] .toggle-cell[data-param^="perf."] { --rk: #eeeae0; --rk-dark: #a9a59a; }     /* white */
+
+/* overload light by the Feedback pot */
+.overload-led { position: absolute; top: 46px; right: -4px; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.overload-lamp {
+  --glow: 0; --hue: 52;
+  width: 12px; height: 12px; border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%,
+    hsl(var(--hue) 100% calc(30% + var(--glow) * 55%)),
+    hsl(var(--hue) 100% calc(12% + var(--glow) * 38%)) 70%);
+  box-shadow: 0 0 0 1px #000, 0 0 calc(var(--glow) * 14px) calc(var(--glow) * 4px) hsl(var(--hue) 100% 50% / calc(var(--glow) * 0.85));
+}
+.knob-cell.offset { z-index: 1; }
 
 /* ==========================================================================
    Start menu
@@ -715,8 +753,9 @@ body[data-skin="slate"] .perf .knob-label { visibility: visible; height: 15px; }
   background: radial-gradient(circle at 40% 35%, #e3e6e9, #8e9398 70%); box-shadow: 0 2px 3px rgba(0,0,0,0.6), 0 0 0 3px #0b0b0b; }
 .sm-preview-nf1 { background: linear-gradient(90deg, #5b3219 0 22px, #1a1b1d 22px calc(100% - 22px), #5b3219 calc(100% - 22px)); }
 .sm-preview-nf3 { grid-template-columns: repeat(9, 16px); gap: 12px 12px;
-  background: linear-gradient(90deg, #9ea3a8 0 18px, #22272b 18px calc(100% - 18px), #9ea3a8 calc(100% - 18px)); }
-.sm-preview-nf3 i { width: 16px; height: 16px; background: radial-gradient(circle at 45% 40%, #3a3a3a, #0b0b0b 75%); box-shadow: 0 2px 3px rgba(0,0,0,0.6), 0 0 0 2px #000, inset 0 -6px 0 -4px #f4ecd8; }
+  background: linear-gradient(#7a4524 0 10px, transparent 10px),
+    linear-gradient(90deg, #5b3219 0 24px, #151515 24px calc(100% - 24px), #5b3219 calc(100% - 24px)); }
+.sm-preview-nf3 i { width: 16px; height: 16px; }
 .sm-tag { font-size: 11px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent); }
 .sm-name { font-size: 28px; font-weight: 800; color: #fff; margin-top: 2px; letter-spacing: 0.02em; }
 .sm-text { font-size: 14.5px; line-height: 1.55; color: #c3c6cc; margin-top: 8px; min-height: 66px; }

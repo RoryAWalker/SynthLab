@@ -48,6 +48,8 @@ function buildSection(sec) {
           : spec.type === 'wheel' ? new Wheel(id, patch[id], onKnob)
           : new Knob(id, patch[id], onKnob);
         knobs[id] = k;
+        // staggered layouts: nudge a control down (e.g. the classic mixer's in-between pots)
+        if (sec.offsets && sec.offsets[id]) { k.el.style.transform = `translateY(${sec.offsets[id]})`; k.el.classList.add('offset'); }
         grid.appendChild(k.el);
       } else {
         const blank = document.createElement('div');
@@ -179,6 +181,7 @@ const savePref = (k, v) => { try { localStorage.setItem(k, v); } catch { /* stor
 
 const keyboard = new Keyboard(document.getElementById('keys'), {
   octaves: Number(loadPref('nf1.octaves', 2)),
+  fixed: SYNTH.keyboard, // MiniNFoog: a fixed 44-key keyboard
   onNoteOn: (n) => {
     if (lesson && lesson.busy) return; // listening to a lesson target
     ensureAudio(); engine.noteOn(n); // noteOn is queued until audio is up
@@ -187,6 +190,7 @@ const keyboard = new Keyboard(document.getElementById('keys'), {
   onNoteOff: (n) => engine.noteOff(n),
   onOctave: (o) => (document.getElementById('oct-readout').textContent = 'C' + o),
 });
+if (SYNTH.keyboard) document.querySelector('.oct-hint').textContent = 'Play with A–K on your computer keyboard';
 document.getElementById('oct-down').addEventListener('click', () => keyboard.shiftOctave(-1));
 document.getElementById('oct-up').addEventListener('click', () => keyboard.shiftOctave(1));
 
@@ -265,12 +269,36 @@ document.querySelectorAll('#mode-switch button').forEach((b) => b.addEventListen
 document.getElementById('mode-switch').hidden = !SYNTH.lessons; // lessons are written for the NF-1
 lesson.setMode('free'); // always open in Free play; Lessons is one click away
 
+// ---- overload light by the Feedback pot (MiniNFoog) ----
+// Glows yellow, then red, as the mixer drives the filter harder.
+if (knobs['mix.feedback']) {
+  const led = document.createElement('div');
+  led.className = 'overload-led';
+  led.dataset.help = 'overload';
+  led.innerHTML = '<span class="overload-lamp"></span><span class="beat-label">Overload</span>';
+  knobs['mix.feedback'].el.appendChild(led);
+  const lamp = led.querySelector('.overload-lamp');
+  let shown = 0;
+  (function loop() {
+    requestAnimationFrame(loop);
+    const l = engine.live;
+    const drive = l && engine.running ? l.drive || 0 : 0;
+    const level = Math.min(1, Math.max(0, (drive - 0.8) / 1.0)); // 0 below 0.8, full red by 1.8
+    shown = Math.max(level, shown * 0.93); // light quickly, fade slowly
+    lamp.style.setProperty('--glow', shown.toFixed(3));
+    lamp.style.setProperty('--hue', String(Math.round(52 - 52 * shown))); // yellow -> red
+  })();
+}
+
 // ---- start menu: choose a synth ----
 const startMenu = new StartMenu();
 document.getElementById('btn-synths').addEventListener('click', () => startMenu.open());
 
 fit();
 window.addEventListener('resize', fit);
+// fit again once fonts and late layout have settled, so the whole synth stays on screen
+setTimeout(fit, 250);
+if (document.fonts) document.fonts.ready.then(fit);
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) { keyboard.releaseAll(); engine.suspend(); }
 });

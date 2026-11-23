@@ -10,8 +10,10 @@ const NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A�
 export const noteName = (n) => NAMES[n % 12] + (Math.floor(n / 12) - 1);
 
 export class Keyboard {
-  constructor(container, { octaves = 2, onNoteOn, onNoteOff, onOctave }) {
+  // fixed: [low, high] for a keyboard of fixed size with no octave shift (MiniNFoog)
+  constructor(container, { octaves = 2, fixed = null, onNoteOn, onNoteOff, onOctave }) {
     this.container = container;
+    this.fixed = fixed;
     this.onNoteOn = onNoteOn; this.onNoteOff = onNoteOff; this.onOctave = onOctave;
     this.base = 48;            // lowest key, and computer key A: C3
     this.octaves = Math.min(4, Math.max(2, octaves || 2));
@@ -22,10 +24,11 @@ export class Keyboard {
     this.bindKeys();
   }
 
-  get low() { return this.base; }
-  get high() { return this.base + this.octaves * 12; }
+  get low() { return this.fixed ? this.fixed[0] : this.base; }
+  get high() { return this.fixed ? this.fixed[1] : this.base + this.octaves * 12; }
 
   setOctaves(o) {
+    if (this.fixed) return;
     this.octaves = Math.min(4, Math.max(2, o));
     if (this.high > 108) this.base = 108 - this.octaves * 12;
     this.releaseAll();
@@ -79,6 +82,7 @@ export class Keyboard {
   }
 
   shiftOctave(d) {
+    if (this.fixed) return;
     const nb = this.base + d * 12;
     if (nb < 12 || nb + this.octaves * 12 > 108) return;
     this.releaseAll();
