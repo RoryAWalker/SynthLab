@@ -15,7 +15,9 @@
 //                   ctx.note (the lesson's key), ctx.newNote() (a new random key)
 //   check(s)        goal: true when done. s = { patch, note (last played), held, f0 }
 //   progress(s)     goal (optional): 0..1 for the Hotter/Colder bar
-//   question        { options: [{ text, correct, feedback }], explain }
+//   question        { prompt?, options: [{ text, correct, feedback }], explain, hint? }
+//   revealWhen(s)   question (optional): the question appears only once this is true
+//                   (the student must try it first); before that, hint/progress work like a goal
 //   hint            text shown by the Hint button (goal/question; match uses the bar)
 //
 // Matching is by sound (see soundMatches): each oscillator's sounding pitch (key + Range)
@@ -237,19 +239,24 @@ export const LESSONS = [
       },
       {
         type: 'question', title: 'Filter a sine wave',
-        text: 'Oscillator 1 is now a sine wave. Hold a note and try to make it darker by turning the Cutoff down. What happens?',
+        text: 'Oscillator 1 is now a sine wave. Hold a note and try to make it darker by turning the Cutoff down, a long way. Listen to the tone colour as you go.',
         unlocked: FILTER_UNLOCKED, showKey: true,
         make: (c) => ({ start: { 'osc1.wave': 'sine' }, note: c.note }),
+        // the question appears only once the student has tried it: Cutoff down at least 3 octaves, with a note played
+        revealWhen: (s) => s.note != null && s.patch['filt.cutoff'] <= 2500,
+        progress: (s) => Math.min(1, Math.log2(20000 / s.patch['filt.cutoff']) / 3),
+        hint: 'Hold a note and keep turning the Cutoff down, past 2.5 kHz, while you listen to the tone.',
         question: {
+          prompt: 'Turning the Cutoff down did not change the timbre (tone colour) of the sine wave. Why?',
           options: [
-            { text: 'It gets darker and duller, like the sawtooth did', feedback: 'Look at the spectrum: a sine wave has only one peak. Is there anything above it for the filter to remove?' },
-            { text: 'The tone does not change; it only gets quieter once the cutoff goes below the note', correct: true },
-            { text: 'It gets brighter', feedback: 'A low-pass filter can only take things away, never add them.' },
-            { text: 'It starts to whistle', feedback: 'Whistling comes from Resonance, which is at 0. Try again and listen to the tone.' },
+            { text: 'Because a sine wave has no harmonics for the filter to remove', correct: true },
+            { text: 'Because the Cutoff was not turned down far enough', feedback: 'You turned it down a long way: a sawtooth would have changed completely. Look at how many peaks a sine wave has on the spectrum.' },
+            { text: 'Because Resonance is at 0', feedback: 'Resonance adds a peak at the cutoff, but the filter removes harmonics with or without it.' },
+            { text: 'Because the filter only works on loud sounds', feedback: 'A filter works the same at any volume. Look at the spectrum: what is there to remove?' },
           ],
-          explain: 'A filter can only remove harmonics, and a sine wave has none: just the fundamental. So filtering a sine wave cannot change its tone; lower the cutoff far enough and it simply turns the note down.',
+          explain: 'A low-pass filter changes the tone by removing harmonics above the cutoff. A sine wave is only the fundamental, with no harmonics at all, so there is nothing to remove: the timbre stays the same, and once the cutoff goes below the note it simply gets quieter.',
+          hint: 'Look at the spectrum: a sawtooth shows a long row of peaks, a sine wave shows just one.',
         },
-        hint: 'Watch the spectrum while you sweep the Cutoff: how many peaks does a sine wave have?',
       },
       {
         type: 'goal', title: 'Only the fundamental',

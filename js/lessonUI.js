@@ -145,6 +145,7 @@ export class LessonController {
     this.notesPlayed = 0;
     this.listens = 0;
     this.wrongAnswers = 0;
+    this.revealed = false;
     const ch = this.challenge;
     this.target = this.makeTarget(ch);
     this.lockFor(ch.unlocked);
@@ -159,7 +160,7 @@ export class LessonController {
     $('lb-task-text').textContent = ch.text;
     this.clearQuestion();
     this.hideHint();
-    if (this.type === 'question') this.renderQuestion(ch.question);
+    if (this.type === 'question' && !ch.revealWhen) this.revealQuestion();
     this.renderSteps();
     if (this.type === 'match') this.audition();
     else this.setStatus('Your turn', 'turn');
@@ -276,6 +277,8 @@ export class LessonController {
       if (soundMatches(this.d.getPatch(), this.lastNote, this.target.patch, this.target.note, ch.compare)) this.success('Matched!');
     } else if (this.type === 'goal') {
       if (ch.check(this.state())) this.success('Done!');
+    } else if (this.type === 'question' && !this.revealed && ch.revealWhen && ch.revealWhen(this.state())) {
+      this.revealQuestion(); // they have tried it: now ask
     }
   }
 
@@ -317,6 +320,21 @@ export class LessonController {
   closeModal() { $('lesson-modal').hidden = true; }
 
   // ---- questions --------------------------------------------------------------------------------
+  revealQuestion() {
+    this.revealed = true;
+    const q = this.challenge.question;
+    if (q.prompt) {
+      const p = document.createElement('div');
+      p.className = 'lb-prompt';
+      p.textContent = q.prompt;
+      $('lb-question').appendChild(p);
+    }
+    this.renderQuestion(q);
+    this.setStatus('Question', 'turn');
+    // a hint offered before the question now refers to the question instead
+    if (this.hintShown) this.showHint();
+  }
+
   renderQuestion(q) {
     const wrap = $('lb-question');
     wrap.hidden = false;
@@ -370,8 +388,9 @@ export class LessonController {
     const ch = this.challenge;
     const box = $('lb-hintbox');
     box.hidden = false;
-    $('lb-hint-text').textContent = ch.hint || 'Turn one control at a time and watch the bar: it fills up as you get closer to the target sound.';
-    const hasBar = this.type === 'match' || (this.type === 'goal' && ch.progress);
+    const asking = this.type === 'question' && this.revealed;
+    $('lb-hint-text').textContent = (asking && ch.question.hint) || ch.hint || 'Turn one control at a time and watch the bar: it fills up as you get closer to the target sound.';
+    const hasBar = this.type === 'match' || (ch.progress && (this.type === 'goal' || (this.type === 'question' && !this.revealed)));
     $('lb-heat').hidden = !hasBar;
     this.updateHintBar();
   }
@@ -387,7 +406,7 @@ export class LessonController {
     let v = 0;
     if (this.type === 'match') {
       v = closeness(this.d.getPatch(), this.lastNote, this.target.patch, this.target.note, this.challenge.compare);
-    } else if (this.challenge.progress) {
+    } else if (this.challenge.progress && !(this.type === 'question' && this.revealed)) {
       const s = this.state();
       v = s.note == null ? 0 : this.challenge.progress(s);
     }
