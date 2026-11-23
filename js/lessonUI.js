@@ -1,6 +1,6 @@
 // Lesson mode: the lesson bar, playing targets, checking matches, progress and celebrations.
 
-import { LESSONS, patchMatches } from './lessons.js';
+import { LESSONS, patchMatches, soundMatches } from './lessons.js';
 import { defaultPatch, ALL_SECTIONS } from './params.js';
 import { Fireworks, Smiley, finale } from './fireworks.js';
 
@@ -209,8 +209,8 @@ export class LessonController {
 
   check() {
     if (this.busy || this.solved || this.index < 0) return;
-    if (this.lastNote !== this.target.note) return;
-    if (!patchMatches(this.d.getPatch(), this.target.patch, this.challenge.compare)) return;
+    if (this.lastNote == null) return;
+    if (!soundMatches(this.d.getPatch(), this.lastNote, this.target.patch, this.target.note, this.challenge.compare)) return;
     this.success();
   }
 

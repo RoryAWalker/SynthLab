@@ -10,8 +10,9 @@
 //                   ctx.pick(list), ctx.pickDistinct(list, n), ctx.newNote() (a random key
 //                   in the lowest octave shown on the keyboard, different from the last one)
 //
-// Matching: step controls must be equal; Detune within DETUNE_TOLERANCE cents
-// (either sign, since +7 and -7 beat at the same speed and sound alike).
+// Matching is by sound (see soundMatches): each oscillator's sounding pitch (key + Range)
+// and waveform must match; Detune within DETUNE_TOLERANCE cents (either sign, since +7
+// and -7 beat at the same speed and sound alike).
 
 export const DETUNE_TOLERANCE = 3;
 
@@ -110,7 +111,19 @@ export const LESSONS = [
   },
 ];
 
-// Does the student's patch match the target on these params?
+// Does the student's sound match the target? Compared by what is heard, not by knob
+// positions: the pitch each oscillator sounds is the key played plus its Range in octaves,
+// so F#3 with Range +1 matches F#4 with Range 0 (they sound identical).
+export function soundMatches(player, playerNote, target, targetNote, compare) {
+  return compare.every((id) => {
+    const m = /^osc([12])\.range$/.exec(id);
+    if (m) return playerNote + 12 * player[id] === targetNote + 12 * target[id];
+    if (id === 'osc2.fine') return Math.abs(Math.abs(player[id]) - Math.abs(target[id])) <= DETUNE_TOLERANCE;
+    return player[id] === target[id];
+  }) && (compare.some((id) => id.endsWith('.range')) || playerNote === targetNote);
+}
+
+// Knob-for-knob comparison (used to make sure a new target differs from the start).
 export function patchMatches(player, target, compare) {
   return compare.every((id) => {
     if (id === 'osc2.fine') return Math.abs(Math.abs(player[id]) - Math.abs(target[id])) <= DETUNE_TOLERANCE;
