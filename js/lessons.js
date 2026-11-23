@@ -346,10 +346,22 @@ function controlMatches(id, player, playerNote, target, targetNote) {
   return player[id] === target[id];
 }
 
+// Only what can be heard counts: if the target has an oscillator turned down to 0 in the
+// Mixer, that oscillator's waveform, octave and detune are ignored (its level still counts).
+function audible(target, compare) {
+  const silent = (n) => target[`mix.osc${n}`] !== undefined && target[`mix.osc${n}`] < 0.01;
+  return compare.filter((id) => {
+    if (silent(1) && /^osc1\.(wave|range)$/.test(id)) return false;
+    if (silent(2) && /^osc2\.(wave|range|fine)$/.test(id)) return false;
+    return true;
+  });
+}
+
 // Does the student's sound match the target? Compared by what is heard, not by knob
 // positions: the pitch each oscillator sounds is the key played plus its Range in octaves,
 // so F#3 with Range +1 matches F#4 with Range 0 (they sound identical).
-export function soundMatches(player, playerNote, target, targetNote, compare) {
+export function soundMatches(player, playerNote, target, targetNote, compareAll) {
+  const compare = audible(target, compareAll);
   return compare.every((id) => controlMatches(id, player, playerNote, target, targetNote))
     && (compare.some((id) => id.endsWith('.range')) || playerNote === targetNote);
 }
@@ -361,8 +373,9 @@ export function patchMatches(player, target, compare) {
 
 // How close is the student? 0 (cold) .. 1 (hot), for the Hotter/Colder hint bar.
 // Stepped controls count as right or wrong; smooth ones count by how far off they are.
-export function closeness(player, playerNote, target, targetNote, compare) {
+export function closeness(player, playerNote, target, targetNote, compareAll) {
   if (playerNote == null) return 0;
+  const compare = audible(target, compareAll);
   const scores = compare.map((id) => {
     if (controlMatches(id, player, playerNote, target, targetNote)) return 1;
     if (id === 'osc2.fine') return Math.max(0, 1 - Math.abs(Math.abs(player[id]) - Math.abs(target[id])) / 25);
