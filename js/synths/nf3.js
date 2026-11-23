@@ -104,7 +104,7 @@ export const LAYOUT = [
     // staggered like the classic mixer: Feedback sits between Osc 1 and 2, Noise between Osc 2 and 3
     id: 'mix', title: 'Mixer', rowTitles: [' ', ' ', ' '],
     rows: [['mix.osc1', 'mix.feedback'], ['mix.osc2', 'mix.noise'], ['mix.osc3', 'mix.noisetype']],
-    offsets: { 'mix.feedback': '50%', 'mix.noise': '50%', 'mix.noisetype': '58px' },
+    offsets: { 'mix.feedback': '50%', 'mix.noise': '50%', 'mix.noisetype': '30px' },
   }],
   [{
     id: 'mods', title: 'Modifiers', rowTitles: ['Filter', 'Filter Contour', 'Loudness Contour'],
@@ -164,6 +164,7 @@ export const NF3 = {
   processor: 'va3-processor',
   lessons: false,
   keyboard: [41, 84], // fixed 44 keys, F to C (3½ octaves); no octave shift
+  narrowSwitches: true, // vertical rockers in narrow columns, as on the original
   card: {
     tagline: 'Three oscillators, 1970s style',
     text: 'A classic three-oscillator layout: Oscillator 3 doubles as a modulation source, plus noise, a feedback loop with an overload light, a ladder filter with keyboard tracking, and pitch and mod wheels.',

@@ -30,7 +30,12 @@ function buildSection(sec) {
   el.innerHTML = `<div class="section-title" data-help="section:${sec.id}"><span>${sec.title}</span></div><div class="section-grid"></div><div class="lock-veil"><span>LOCKED</span></div>`;
   const grid = el.querySelector('.section-grid');
   const cols = Math.max(...sec.rows.map((r) => r.length));
-  grid.style.gridTemplateColumns = `repeat(${cols}, var(--cell-w))`;
+  // Columns holding only switches or wheels can be narrow (MiniNFoog), freeing panel space.
+  const narrowCol = (c) => {
+    const ids = sec.rows.map((r) => r[c]).filter(Boolean);
+    return SYNTH.narrowSwitches && ids.length && ids.every((id) => PARAMS[id].ui === 'toggle' || PARAMS[id].type === 'wheel');
+  };
+  grid.style.gridTemplateColumns = Array.from({ length: cols }, (_, c) => (narrowCol(c) ? 'var(--narrow-w)' : 'var(--cell-w)')).join(' ');
   sec.rows.forEach((row, ri) => {
     // optional row header (e.g. "Oscillator 2"), spanning the whole section
     if (sec.rowTitles && sec.rowTitles[ri] !== undefined) {
