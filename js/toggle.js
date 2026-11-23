@@ -10,7 +10,8 @@ export class Toggle {
     const [a, b] = this.spec.options;
 
     this.el = document.createElement('div');
-    this.el.className = 'toggle-cell' + (this.spec.titled ? ' titled' : '');
+    const onOff = this.spec.options.length === 2 && this.spec.options[1].v === 'on';
+    this.el.className = 'toggle-cell' + (this.spec.titled ? ' titled' : '') + (this.spec.vertical ? ' vertical' : '') + (onOff ? ' onoff' : '');
     this.el.dataset.param = id;
     this.el.dataset.help = id;
     this.el.innerHTML = `

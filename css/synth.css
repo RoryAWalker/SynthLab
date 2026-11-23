@@ -691,34 +691,59 @@ body[data-skin="vintage"] .knob-label {
   display: flex; align-items: flex-end; justify-content: center; font-size: 10.5px;
 }
 body[data-skin="vintage"] .perf .knob-label { height: 24px; }
-/* rocker switches: vertical paddles in narrow columns, ON at the top, OFF at the bottom.
-   The lighter half of the paddle shows the position it is in. */
+/* rocker switches. Horizontal by default (on to the right), vertical where the classic
+   panel has them upright (Osc. 3 Control, White/Pink). The lighter half of the paddle shows
+   the position it is in; on/off switches only print ON, beside the "on" end. */
 body[data-skin="vintage"] { --narrow-w: 72px; }
 body[data-skin="vintage"] .toggle-cell, body[data-skin="vintage"] .wheel-cell { width: auto; }
 body[data-skin="vintage"] .toggle-cell.titled { padding-top: 6px; }
-body[data-skin="vintage"] .toggle-title { font-size: 9.5px; max-width: 70px; }
-body[data-skin="vintage"] .toggle-row { flex-direction: column-reverse; gap: 3px; }
-body[data-skin="vintage"] .toggle-label { font-size: 9px; padding: 0; }
-body[data-skin="vintage"] .toggle { width: 20px; height: 34px; border-radius: 3px; background: #050505; box-shadow: 0 0 0 1px #2c2c2c, inset 0 0 3px #000; }
+body[data-skin="vintage"] .toggle-title { font-size: 9.5px; max-width: 96px; }
+body[data-skin="vintage"] .toggle-row { gap: 5px; }
+body[data-skin="vintage"] .toggle-label { font-size: 9.5px; padding: 0; }
+body[data-skin="vintage"] .toggle-label.on { color: var(--ink); }
+body[data-skin="vintage"] .onoff .toggle-label[data-v="off"] { display: none; }
+body[data-skin="vintage"] .onoff .toggle-row { padding-left: 18px; } /* keep the paddle centred with ON beside it */
+body[data-skin="vintage"] .toggle { width: 40px; height: 20px; border-radius: 3px; background: #050505; box-shadow: 0 0 0 1px #2c2c2c, inset 0 0 3px #000; }
 body[data-skin="vintage"] .toggle-lever {
-  top: 2px; left: 2px; width: 16px; height: 30px; border-radius: 2px;
-  background: linear-gradient(180deg, var(--rk-dark) 0 50%, var(--rk) 50% 100%); /* off: lighter at the bottom */
-  box-shadow: inset 0 5px 6px rgba(0,0,0,0.4);
+  top: 2px; left: 2px; width: 36px; height: 16px; border-radius: 2px;
+  background: linear-gradient(90deg, var(--rk) 0 50%, var(--rk-dark) 50% 100%); /* off: lighter on the left */
+  box-shadow: inset -5px 0 6px rgba(0,0,0,0.35);
   transition: background 0.1s, box-shadow 0.1s;
 }
 body[data-skin="vintage"] .toggle.right .toggle-lever {
-  left: 2px; background: linear-gradient(180deg, var(--rk) 0 50%, var(--rk-dark) 50% 100%); /* on: lighter at the top */
-  box-shadow: inset 0 -5px 6px rgba(0,0,0,0.4);
+  left: 2px; background: linear-gradient(90deg, var(--rk-dark) 0 50%, var(--rk) 50% 100%); /* on: lighter on the right */
+  box-shadow: inset 5px 0 6px rgba(0,0,0,0.35);
 }
-body[data-skin="vintage"] .toggle-cell { --rk: #5b97d8; --rk-dark: #24497a; }                         /* blue */
-body[data-skin="vintage"] .toggle-cell[data-param^="filt.kb"] { --rk: #f59a4a; --rk-dark: #94501a; }   /* orange */
-body[data-skin="vintage"] .toggle-cell[data-param^="perf."] { --rk: #f4f1e8; --rk-dark: #8f8b80; }     /* white */
+/* vertical rockers */
+body[data-skin="vintage"] .vertical .toggle-row { flex-direction: column; gap: 3px; padding-left: 0; }
+body[data-skin="vintage"] .vertical.onoff .toggle-row { flex-direction: column-reverse; } /* ON at the top */
+body[data-skin="vintage"] .vertical .toggle { width: 20px; height: 40px; }
+body[data-skin="vintage"] .vertical .toggle-lever {
+  width: 16px; height: 36px;
+  background: linear-gradient(180deg, var(--rk) 0 50%, var(--rk-dark) 50% 100%); /* first option: lighter at the top */
+  box-shadow: inset 0 -5px 6px rgba(0,0,0,0.35);
+}
+body[data-skin="vintage"] .vertical .toggle.right .toggle-lever {
+  background: linear-gradient(180deg, var(--rk-dark) 0 50%, var(--rk) 50% 100%); /* second option: lighter at the bottom */
+  box-shadow: inset 0 5px 6px rgba(0,0,0,0.35);
+}
+/* on/off verticals show ON at the top, so ON lights the top half */
+body[data-skin="vintage"] .vertical.onoff .toggle-lever { background: linear-gradient(180deg, var(--rk-dark) 0 50%, var(--rk) 50% 100%); box-shadow: inset 0 5px 6px rgba(0,0,0,0.35); }
+body[data-skin="vintage"] .vertical.onoff .toggle.right .toggle-lever { background: linear-gradient(180deg, var(--rk) 0 50%, var(--rk-dark) 50% 100%); box-shadow: inset 0 -5px 6px rgba(0,0,0,0.35); }
+/* colours, after the classic panel */
+body[data-skin="vintage"] .toggle-cell { --rk: #f59a4a; --rk-dark: #a2541a; }                          /* orange */
+body[data-skin="vintage"] .toggle-cell[data-param="mix.noisetype"] { --rk: #5fb0ee; --rk-dark: #2a5f91; } /* blue */
+body[data-skin="vintage"] .toggle-cell[data-param^="perf."] { --rk: #f4f1e8; --rk-dark: #9a968b; }      /* white */
+body[data-skin="vintage"] .perf .wheel-slot { height: 92px; }
+body[data-skin="vintage"] .perf .toggle-cell.titled { padding-top: 2px; }
+body[data-skin="vintage"] .perf .toggle-row { padding-left: 14px; }
+
 /* the keyboard-side controls are compact so the keys get most of the width */
 body[data-skin="vintage"] .perf-controls { display: none; }
 body[data-skin="vintage"] .perf { padding: 8px 10px; }
 
 /* overload light by the Feedback pot */
-.overload-led { position: absolute; top: 46px; right: -4px; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.overload-led { position: absolute; top: 40px; right: -26px; display: flex; flex-direction: column; align-items: center; gap: 3px; }
 .overload-lamp {
   --glow: 0; --hue: 52;
   width: 12px; height: 12px; border-radius: 50%;
