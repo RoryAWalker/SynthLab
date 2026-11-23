@@ -229,7 +229,7 @@ body.zoomed .zoom-ctl .zoom-level { color: var(--accent); }
   color: var(--ink); white-space: nowrap; height: 15px;
 }
 .dial { position: relative; width: 116px; height: 116px; margin-top: -4px; }
-.scale { position: absolute; inset: 0; overflow: visible; }
+.scale { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; } /* scale shares the pot's centre at any dial size */
 .scale .tick { stroke: var(--ink); stroke-width: 1; opacity: 0.85; }
 .scale .tick.minor { opacity: 0.45; }
 .scale .num { fill: #cfcfcf; font: 600 9.5px var(--font); text-anchor: middle; }
