@@ -65,6 +65,13 @@ export class Keyboard {
       this.keys.set(n, k);
     }
     this.markComputerRange();
+    this.markTarget(this.targetNote);
+  }
+
+  // Lessons: highlight the key the student should play (null clears it).
+  markTarget(note) {
+    this.targetNote = note;
+    this.keys.forEach((k, n) => k.classList.toggle('target-key', n === note));
   }
 
   markComputerRange() {

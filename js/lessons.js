@@ -6,9 +6,10 @@
 //   unlocked        section ids the student may use (everything else is greyed out)
 //   start           patch values the student starts from (on top of Init)
 //   compare         params that must match the target
+//   showKey         mark the target key on the keyboard (so the challenge is about the synth)
 //   make(ctx)       returns { patch, note }: the target. ctx helps with random choices:
-//                   ctx.pick(list), ctx.pickDistinct(list, n), ctx.newNote() (a random key
-//                   in the lowest octave shown on the keyboard, different from the last one)
+//                   ctx.pick(list), ctx.pickDistinct(list, n), ctx.note (the lesson's key),
+//                   ctx.newNote() (a new random key in the lowest octave shown on the keyboard)
 //
 // Matching is by sound (see soundMatches): each oscillator's sounding pitch (key + Range)
 // and waveform must match; Detune within DETUNE_TOLERANCE cents (either sign, since +7
@@ -40,71 +41,71 @@ export const LESSONS = [
       },
       {
         title: 'Up or down an octave',
-        text: 'Find the key, then notice the oscillator has moved up or down. Use Range to match it. Each octave doubles or halves the number of waves on the scope.',
-        unlocked: ['osc1'], start: {}, compare: OSC1,
-        make: (c) => ({ patch: { 'osc1.range': c.pick(RANGES) }, note: c.newNote() }),
+        text: 'From now on, play the key marked with an amber dot. The oscillator has moved up or down: use Range to match it. Each octave doubles or halves the number of waves on the scope.',
+        unlocked: ['osc1'], start: {}, compare: OSC1, showKey: true,
+        make: (c) => ({ patch: { 'osc1.range': c.pick(RANGES) }, note: c.note }),
       },
       {
         title: 'Find the waveform',
-        text: 'Find the key, then listen to the tone colour. Turn Waveform until the shape on the scope and the harmonics on the spectrum match.',
-        unlocked: ['osc1'], start: {}, compare: OSC1,
-        make: (c) => ({ patch: { 'osc1.wave': c.pick(NOT_SAW) }, note: c.newNote() }),
+        text: 'Listen to the tone colour. Turn Waveform until the shape on the scope and the harmonics on the spectrum match.',
+        unlocked: ['osc1'], start: {}, compare: OSC1, showKey: true,
+        make: (c) => ({ patch: { 'osc1.wave': c.pick(NOT_SAW) }, note: c.note }),
       },
       {
         title: 'Waveform and range',
-        text: 'The key, the octave and the waveform have all changed. Find the key first, then the octave, then the tone colour.',
-        unlocked: ['osc1'], start: {}, compare: OSC1,
-        make: (c) => ({ patch: { 'osc1.wave': c.pick(NOT_SAW), 'osc1.range': c.pick(RANGES) }, note: c.newNote() }),
+        text: 'The octave and the waveform have both changed. Listen for the octave first, then the tone colour.',
+        unlocked: ['osc1'], start: {}, compare: OSC1, showKey: true,
+        make: (c) => ({ patch: { 'osc1.wave': c.pick(NOT_SAW), 'osc1.range': c.pick(RANGES) }, note: c.note }),
       },
       {
         title: 'All three again',
-        text: 'One more on a single oscillator: find the key, the range and the waveform.',
-        unlocked: ['osc1'], start: {}, compare: OSC1,
-        make: (c) => ({ patch: { 'osc1.wave': c.pick(NOT_SAW), 'osc1.range': c.pick(RANGES) }, note: c.newNote() }),
+        text: 'One more on a single oscillator: match the range and the waveform.',
+        unlocked: ['osc1'], start: {}, compare: OSC1, showKey: true,
+        make: (c) => ({ patch: { 'osc1.wave': c.pick(NOT_SAW), 'osc1.range': c.pick(RANGES) }, note: c.note }),
       },
       {
         title: 'Two oscillators',
         text: 'Oscillator 2 is now switched on, at the same level as Oscillator 1. Both are playing the same waveform: find it, and set both oscillators to it.',
-        unlocked: ['osc1', 'osc2'], start: EQUAL_MIX, compare: BOTH,
-        make: (c) => { const w = c.pick(NOT_SAW); return { patch: { ...EQUAL_MIX, 'osc1.wave': w, 'osc2.wave': w }, note: c.newNote() }; },
+        unlocked: ['osc1', 'osc2'], start: EQUAL_MIX, compare: BOTH, showKey: true,
+        make: (c) => { const w = c.pick(NOT_SAW); return { patch: { ...EQUAL_MIX, 'osc1.wave': w, 'osc2.wave': w }, note: c.note }; },
       },
       {
         title: 'An octave apart',
         text: 'Both oscillators share a waveform, but one of them has moved octave. Work out which one, and how far.',
-        unlocked: ['osc1', 'osc2'], start: EQUAL_MIX, compare: BOTH,
+        unlocked: ['osc1', 'osc2'], start: EQUAL_MIX, compare: BOTH, showKey: true,
         make: (c) => {
           const w = c.pick(WAVES);
           const osc = c.pick([1, 2]);
-          return { patch: { ...EQUAL_MIX, 'osc1.wave': w, 'osc2.wave': w, [`osc${osc}.range`]: c.pick(RANGES) }, note: c.newNote() };
+          return { patch: { ...EQUAL_MIX, 'osc1.wave': w, 'osc2.wave': w, [`osc${osc}.range`]: c.pick(RANGES) }, note: c.note };
         },
       },
       {
         title: 'Two shapes',
         text: 'Each oscillator is playing a different waveform. Their harmonics add together on the spectrum. Find both shapes.',
-        unlocked: ['osc1', 'osc2'], start: EQUAL_MIX, compare: BOTH,
+        unlocked: ['osc1', 'osc2'], start: EQUAL_MIX, compare: BOTH, showKey: true,
         make: (c) => {
           const [w1, w2] = c.pickDistinct(WAVES, 2);
-          return { patch: { ...EQUAL_MIX, 'osc1.wave': w1, 'osc2.wave': w2 }, note: c.newNote() };
+          return { patch: { ...EQUAL_MIX, 'osc1.wave': w1, 'osc2.wave': w2 }, note: c.note };
         },
       },
       {
         title: 'Shapes and octaves',
         text: 'Different waveforms and different ranges on each oscillator.',
-        unlocked: ['osc1', 'osc2'], start: EQUAL_MIX, compare: BOTH,
+        unlocked: ['osc1', 'osc2'], start: EQUAL_MIX, compare: BOTH, showKey: true,
         make: (c) => {
           const [w1, w2] = c.pickDistinct(WAVES, 2);
           const [r1, r2] = c.pickDistinct([-2, -1, 0, 1, 2], 2);
-          return { patch: { ...EQUAL_MIX, 'osc1.wave': w1, 'osc2.wave': w2, 'osc1.range': r1, 'osc2.range': r2 }, note: c.newNote() };
+          return { patch: { ...EQUAL_MIX, 'osc1.wave': w1, 'osc2.wave': w2, 'osc1.range': r1, 'osc2.range': r2 }, note: c.note };
         },
       },
       {
         title: 'Detune',
         text: 'The two oscillators are slightly out of tune with each other, so the sound pulses (beats). Match the waveforms and ranges, then use Detune and the Beat light to match the speed of the pulsing.',
-        unlocked: ['osc1', 'osc2'], start: EQUAL_MIX, compare: BOTH,
+        unlocked: ['osc1', 'osc2'], start: EQUAL_MIX, compare: BOTH, showKey: true,
         make: (c) => {
           const r = c.pick([-1, 0, 0, 1]);
           const cents = (c.pick([1, -1])) * (4 + Math.floor(Math.random() * 18)); // 4 to 21 cents
-          return { patch: { ...EQUAL_MIX, 'osc1.wave': c.pick(WAVES), 'osc2.wave': c.pick(WAVES), 'osc1.range': r, 'osc2.range': r, 'osc2.fine': cents }, note: c.newNote() };
+          return { patch: { ...EQUAL_MIX, 'osc1.wave': c.pick(WAVES), 'osc2.wave': c.pick(WAVES), 'osc1.range': r, 'osc2.range': r, 'osc2.fine': cents }, note: c.note };
         },
       },
     ],

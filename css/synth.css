@@ -572,3 +572,13 @@ body.auditioning #lb-hear, body.auditioning #lb-reset, body.auditioning .lb-step
 .lm-actions .lb-btn { min-width: 260px; padding: 11px 16px; font-size: 14px; }
 .lm-actions .lb-btn.soon { opacity: 0.6; cursor: default; background: #2c2e34; color: #c9ccd1; border-color: #41444c; }
 .finale-canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 70; pointer-events: none; }
+
+/* lessons: the key to play */
+.key.target-key::before {
+  content: ""; position: absolute; left: 50%; bottom: 28px; width: 20px; height: 20px; margin-left: -10px;
+  border-radius: 50%; background: radial-gradient(circle at 40% 35%, #ffe2a8, #ffb547 55%, #c77a12);
+  box-shadow: 0 0 10px 2px rgba(255, 181, 71, 0.75); pointer-events: none;
+  animation: key-pulse 1.4s ease-in-out infinite;
+}
+.key.black.target-key::before { bottom: 14px; width: 15px; height: 15px; margin-left: -7.5px; }
+@keyframes key-pulse { 50% { box-shadow: 0 0 4px 1px rgba(255, 181, 71, 0.45); } }

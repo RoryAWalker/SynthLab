@@ -11,6 +11,12 @@ const $ = (id) => document.getElementById(id);
 function loadProgress() {
   try { return JSON.parse(localStorage.getItem('nf1.progress')) || {}; } catch { return {}; }
 }
+function loadNote() {
+  try { const n = Number(localStorage.getItem('nf1.lessonNote')); return n > 0 ? n : null; } catch { return null; }
+}
+function saveNote(n) {
+  try { localStorage.setItem('nf1.lessonNote', String(n)); } catch { /* storage unavailable */ }
+}
 function saveProgress(p) {
   try { localStorage.setItem('nf1.progress', JSON.stringify(p)); } catch { /* storage unavailable */ }
 }
@@ -24,7 +30,7 @@ export class LessonController {
     this.busy = false;        // target is playing: student input is ignored
     this.solved = false;
     this.lastNote = null;
-    this.note = null;         // the lesson's current note, shared between challenges
+    this.note = loadNote();   // the lesson's key: found in challenge 1, reused (and marked) after
     this.progress = loadProgress();
     this.mode = 'free';
 
@@ -64,6 +70,7 @@ export class LessonController {
       this.runId = (this.runId || 0) + 1; // abandon a target that is still playing
       document.body.classList.remove('auditioning');
       this.d.scope.clearTarget();
+      this.d.keyboard.markTarget(null);
       ALL_SECTIONS.forEach((s) => this.d.lockSection(s.id, false));
       if (this.freePatch) this.d.setPatch(this.freePatch);
     }
@@ -73,6 +80,7 @@ export class LessonController {
   // ---- intro / navigation ---------------------------------------------------------------------
   showIntro() {
     this.index = -1;
+    this.d.keyboard.markTarget(null);
     this.d.scope.clearTarget();
     this.lockFor(['osc1']);
     this.d.setPatch({});
@@ -118,6 +126,7 @@ export class LessonController {
     this.startPatch = { ...defaultPatch(), ...ch.start };
     this.target = this.makeTarget(ch);
     this.lockFor(ch.unlocked);
+    this.d.keyboard.markTarget(ch.showKey ? this.target.note : null);
     this.d.setPatch(ch.start);
     this.d.scope.clearTarget();
 
@@ -145,7 +154,9 @@ export class LessonController {
         return n;
       },
     };
-    if (ctx.note == null) ctx.newNote();
+    // the lesson's key must be on the visible keyboard (the octave may have changed)
+    const kb = this.d.keyboard;
+    if (ctx.note == null || ctx.note < kb.low || ctx.note > kb.high) ctx.newNote();
     let t;
     for (let tries = 0; tries < 30; tries++) {
       t = ch.make(ctx);
@@ -154,6 +165,7 @@ export class LessonController {
       if (this.index === 0 || !patchMatches(this.startPatch, t.patch, ch.compare)) break;
     }
     this.note = t.note;
+    saveNote(t.note);
     return t;
   }
 
