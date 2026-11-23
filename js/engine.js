@@ -20,7 +20,7 @@ export class Engine {
   async _create(patch) {
     this.ctx = new AudioContext({ latencyHint: 'interactive' });
     await this.ctx.audioWorklet.addModule('js/worklet/va-processor.js');
-    this.node = new AudioWorkletNode(this.ctx, 'va-processor', { numberOfInputs: 0, outputChannelCount: [2] });
+    this.node = new AudioWorkletNode(this.ctx, 'va-processor', { numberOfInputs: 0, numberOfOutputs: 2, outputChannelCount: [2, 2] });
 
     this.scope = this.ctx.createAnalyser();
     this.scope.fftSize = 16384;
@@ -30,6 +30,14 @@ export class Engine {
     this.spectrum.smoothingTimeConstant = 0.7;
     this.spectrum.minDecibels = -100;
     this.spectrum.maxDecibels = 0;
+
+    // Output 1 carries Osc 1 and Osc 2 (after the mixer) on separate channels, for the
+    // oscilloscope's mixer view. Analysers are read without being heard.
+    const split = this.ctx.createChannelSplitter(2);
+    this.node.connect(split, 1);
+    this.osc1Scope = this.ctx.createAnalyser();
+    this.osc2Scope = this.ctx.createAnalyser();
+    [this.osc1Scope, this.osc2Scope].forEach((a, i) => { a.fftSize = this.scope.fftSize; a.smoothingTimeConstant = 0; split.connect(a, i); });
 
     this.node.connect(this.scope);
     this.node.connect(this.spectrum);

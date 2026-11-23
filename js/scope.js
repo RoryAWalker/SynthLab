@@ -5,6 +5,13 @@ const GRID = 'rgba(120, 255, 170, 0.13)';
 const GRID_AXIS = 'rgba(120, 255, 170, 0.26)';
 export const TIMEBASES = [0.5, 1, 2, 5, 10, 20]; // ms per division
 
+function label(ctx, text, x, y, color, align = 'left', size = 10, weight = 600) {
+  ctx.font = `${weight} ${size}px "Helvetica Neue", Arial, sans-serif`;
+  ctx.fillStyle = color;
+  ctx.textAlign = align;
+  ctx.fillText(text, x, y);
+}
+
 function setupCanvas(canvas) {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   const r = canvas.getBoundingClientRect();
@@ -61,6 +68,7 @@ export class Scope {
 
   frame() {
     requestAnimationFrame(() => this.frame());
+    if (this.overlay) this.overlay.sample();
     if (this.frozen) return;
     this.drawScope();
     this.drawSpectrum();
@@ -71,7 +79,11 @@ export class Scope {
     ctx.clearRect(0, 0, w, h);
     drawGraticule(ctx, w, h, 10, 8);
     const an = this.engine.scope;
-    if (!an || !this.engine.running) return;
+    const mixAlpha = this.overlay && this.overlay.group === 'mix' ? this.overlay.alpha() : 0;
+    if (!an || !this.engine.running) {
+      if (mixAlpha) label(ctx, 'Play a note to see each oscillator', w / 2, h / 2 - 12, 'rgba(255,181,71,' + mixAlpha + ')', 'center', 12);
+      return;
+    }
 
     if (!this.buf || this.buf.length !== an.fftSize) this.buf = new Float32Array(an.fftSize);
     const buf = this.buf;
@@ -97,7 +109,44 @@ export class Scope {
     const start = trig >= 0 ? trig : buf.length - win - 1;
     this.triggered = trig >= 0;
 
-    const vScale = (h / 2) * 0.82; // ±1.0 fills just inside 4 divisions
+    // Vertical scale: ±0.5 fills the 4 divisions either side of centre. The engine's
+    // output peaks around 0.45, so loud sounds fill the screen; louder still runs off
+    // the edge, as on a real oscilloscope.
+    const vScale = (h / 2) * 0.92 / 0.5;
+    const step = Math.max(1, Math.floor(win / (w * 2)));
+    const trace = (data, color, width, dash) => {
+      ctx.save();
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      if (dash) ctx.setLineDash(dash);
+      ctx.beginPath();
+      for (let i = 0; i <= win; i += step) {
+        const x = (i / win) * w;
+        const y = h / 2 - data(start + i) * vScale;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      ctx.restore();
+    };
+
+    // Mixer view: each oscillator (after its mixer level) and their sum, behind the output.
+    if (mixAlpha && this.engine.osc1Scope) {
+      if (!this.b1 || this.b1.length !== buf.length) { this.b1 = new Float32Array(buf.length); this.b2 = new Float32Array(buf.length); }
+      this.engine.osc1Scope.getFloatTimeDomainData(this.b1);
+      this.engine.osc2Scope.getFloatTimeDomainData(this.b2);
+      const b1 = this.b1, b2 = this.b2;
+      ctx.save();
+      ctx.globalAlpha = mixAlpha;
+      trace((i) => b1[i], 'rgba(255, 181, 71, 0.95)', 1.6);
+      trace((i) => b2[i], 'rgba(120, 205, 255, 0.95)', 1.6);
+      trace((i) => b1[i] + b2[i], 'rgba(255, 255, 255, 0.8)', 1.4, [5, 4]);
+      const items = [['OSC 1', '#ffb547'], ['OSC 2', '#78cdff'], ['SUM INTO FILTER - -', '#ffffff'], ['OUTPUT', PHOSPHOR]];
+      let x = 10;
+      items.forEach(([t, c]) => { label(ctx, t, x, 16, c, 'left', 10, 800); ctx.font = '800 10px "Helvetica Neue", Arial, sans-serif'; x += ctx.measureText(t).width + 16; });
+      ctx.restore();
+    }
+
     ctx.save();
     ctx.lineJoin = 'round';
     ctx.strokeStyle = PHOSPHOR;
@@ -105,7 +154,6 @@ export class Scope {
     ctx.shadowBlur = 8;
     ctx.lineWidth = 1.8;
     ctx.beginPath();
-    const step = Math.max(1, Math.floor(win / (w * 2)));
     for (let i = 0; i <= win; i += step) {
       const x = (i / win) * w;
       const y = h / 2 - buf[start + i] * vScale;
@@ -155,7 +203,7 @@ export class Scope {
 
     const an = this.engine.spectrum;
     if (an && this.engine.running) this.drawSpectrumTrace(ctx, w, h, an, fMin, fMax);
-    if (this.overlay) this.overlay.draw(ctx, w, h);
+    if (this.overlay) this.overlay.draw(ctx, w, h, this.fbuf && an ? { fbuf: this.fbuf, binHz: this.engine.ctx.sampleRate / an.fftSize } : null);
   }
 
   drawSpectrumTrace(ctx, w, h, an, fMin, fMax) {

@@ -4,6 +4,10 @@
 //   envelopes  -> the envelope shape, adjusted stage highlighted, live playhead dot
 //   cutoff/res -> the filter's frequency response, moving with the live cutoff
 //   LFO        -> the LFO wave over time with its delay fade-in, live dot
+//   waveform   -> the harmonics that shape should contain, over the real spectrum
+//   range      -> each oscillator's fundamental, and where every octave step puts it
+//   glide      -> pitch over time, showing the slide between notes
+//   mixer      -> (drawn on the oscilloscope by scope.js) each oscillator and their sum
 
 import { PARAMS, formatValue } from './params.js';
 
@@ -14,8 +18,40 @@ const HI = '#fff0cf';
 const FONT = '"Helvetica Neue", Arial, sans-serif';
 const PAD = { l: 44, r: 16, t: 26, b: 26 };
 const HOLD_MS = 2200; // how long a graph stays after the last knob movement
+const NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
+const noteName = (n) => NAMES[((Math.round(n) % 12) + 12) % 12] + (Math.floor(Math.round(n) / 12) - 1);
+const noteHz = (n) => 440 * Math.pow(2, (n - 69) / 12);
+const fmtHz = (f) => (f >= 1000 ? (f / 1000).toFixed(2) + ' kHz' : f.toFixed(f < 100 ? 1 : 0) + ' Hz');
 
-export function overlayGroup(id) {
+// Theoretical harmonic amplitudes (relative to the fundamental) for each waveform.
+const PULSE = { square: 0.5, pulse: 0.25, narrow: 0.1 };
+function harmonicAmp(wave, n) {
+  switch (wave) {
+    case 'sine': return n === 1 ? 1 : 0;
+    case 'saw': return 1 / n;
+    case 'tri': return n % 2 ? 1 / (n * n) : 0;
+    default: { // square and pulses: |sin(pi n d)| / n, normalised to the fundamental
+      const d = PULSE[wave];
+      const a = Math.abs(Math.sin(Math.PI * n * d)) / (n * Math.sin(Math.PI * d));
+      return a < 1e-6 ? 0 : a;
+    }
+  }
+}
+const WAVE_RECIPE = {
+  sine: 'the fundamental only: no harmonics',
+  tri: 'odd harmonics only (1, 3, 5…), fading fast (1/n²)',
+  saw: 'every harmonic, each one 1/n as loud',
+  square: 'odd harmonics only (1, 3, 5…), each 1/n as loud',
+  pulse: 'every harmonic except every 4th',
+  narrow: 'every harmonic except every 10th, fading slowly',
+};
+
+export function overlayGroup(key) {
+  const id = key.split('=')[0];
+  if (id === 'osc1.wave' || id === 'osc2.wave') return 'harm';
+  if (id === 'osc1.range' || id === 'osc2.range') return 'range';
+  if (id === 'ctrl.glide' || id === 'ctrl.mode') return 'glide';
+  if (id === 'mix.osc1' || id === 'mix.osc2') return 'mix';
   if (id.startsWith('aenv.')) return 'aenv';
   if (id.startsWith('fenv.') || id === 'filt.env') return 'fenv';
   if (id === 'filt.cutoff' || id === 'filt.res') return 'filter';
@@ -61,14 +97,31 @@ export class Overlay {
     this.param = null;
     this.until = 0;
     this.held = false;
+    this.option = null;   // option being previewed (hovering a waveform symbol)
+    this.lastNote = 57;   // most recent note played (A3 until something is played)
+    this.history = [];    // recent pitch samples for the glide graph
   }
 
+  // Called every animation frame: remember recent pitch for the glide graph.
+  sample() {
+    const l = this.engine.live;
+    if (!l) return;
+    this.lastNote = l.note;
+    const now = performance.now() / 1000;
+    this.history.push({ t: now, n: l.note, tg: l.target, g: l.gate });
+    while (this.history.length && this.history[0].t < now - 4) this.history.shift();
+  }
+
+  get scopeOnly() { return this.group === 'mix'; }
+
   // Show the graph for this control. hold: keep it until release() (hover help).
-  activate(id, hold = false) {
-    const g = overlayGroup(id);
+  activate(key, hold = false) {
+    const g = overlayGroup(key);
     if (!g) { if (!hold) this.clear(); return; }
+    const [id, opt] = key.split('=');
     this.group = g;
     this.param = id;
+    this.option = opt === undefined ? null : opt;
     this.until = performance.now() + HOLD_MS;
     if (hold) this.held = true;
   }
@@ -86,9 +139,9 @@ export class Overlay {
     return a;
   }
 
-  draw(ctx, w, h) {
+  draw(ctx, w, h, spectrum) {
     const a = this.alpha();
-    if (!a) return;
+    if (!a || this.scopeOnly) return;
     ctx.save();
     ctx.globalAlpha = a;
     // darken the spectrum a little so the graph reads clearly
@@ -98,6 +151,9 @@ export class Overlay {
     if (this.group === 'aenv' || this.group === 'fenv') this.drawEnvelope(ctx, w, h, box);
     else if (this.group === 'filter') this.drawFilter(ctx, w, h, box);
     else if (this.group === 'lfo') this.drawLfo(ctx, w, h, box);
+    else if (this.group === 'harm') this.drawHarmonics(ctx, w, h, spectrum);
+    else if (this.group === 'range') this.drawRange(ctx, w, h, box);
+    else if (this.group === 'glide') this.drawGlide(ctx, w, h, box);
     ctx.restore();
   }
 
@@ -361,5 +417,179 @@ export class Overlay {
       label(ctx, text, x, 16, hi ? HI : AMBER_DIM, 'right', hi ? 11 : 10, hi ? 800 : 600);
       x -= ctx.measureText(text).width + 16;
     }
+  }
+
+  // ---- shared: an oscillator's fundamental at a given range ----------------------------
+  oscHz(osc, range) {
+    const p = this.getPatch();
+    const r = range === undefined ? p[`osc${osc}.range`] : range;
+    const fine = osc === 2 ? p['osc2.fine'] / 100 : 0;
+    return noteHz(this.lastNote + r * 12 + fine);
+  }
+
+  // ---- waveform harmonics -------------------------------------------------------------------
+  drawHarmonics(ctx, w, h, spectrum) {
+    const p = this.getPatch();
+    const osc = this.param === 'osc2.wave' ? 2 : 1;
+    const wave = this.option || p[`osc${osc}.wave`];
+    const f0 = this.oscHz(osc);
+    const fMin = 20, fMax = 20000;
+    const xOf = (f) => (Math.log(f / fMin) / Math.log(fMax / fMin)) * w;
+    const yOf = (db) => (-Math.max(-100, Math.min(0, db)) / 100) * h;
+
+    // Line the fundamental up with the real spectrum when a note is sounding.
+    let ref = -12;
+    const live = this.engine.live;
+    if (spectrum && live && live.gate && live.a.s !== 0) {
+      const { fbuf, binHz } = spectrum;
+      let m = -Infinity;
+      for (let b = Math.floor((f0 * 0.94) / binHz); b <= Math.ceil((f0 * 1.06) / binHz) && b < fbuf.length; b++) m = Math.max(m, fbuf[b]);
+      if (m > -90) ref = m;
+    }
+
+    ctx.save();
+    ctx.lineWidth = 2;
+    let last = null;
+    for (let n = 1; n <= 80 && n * f0 < fMax; n++) {
+      const f = n * f0;
+      if (f < fMin) continue;
+      const x = xOf(f);
+      const a = harmonicAmp(wave, n);
+      if (a === 0) {
+        // a harmonic this shape does not contain
+        ctx.strokeStyle = AMBER_DIM;
+        ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.arc(x, h - 30, 3.5, 0, Math.PI * 2); ctx.stroke();
+        ctx.lineWidth = 2;
+      } else {
+        const y = yOf(ref + 20 * Math.log10(a));
+        ctx.strokeStyle = n === 1 ? HI : AMBER;
+        ctx.beginPath(); ctx.moveTo(x, h - 24); ctx.lineTo(x, y); ctx.stroke();
+        ctx.fillStyle = n === 1 ? HI : AMBER;
+        ctx.beginPath(); ctx.arc(x, y, 3.5, 0, Math.PI * 2); ctx.fill();
+        if (last) { // dashed line joining the tops shows the slope
+          ctx.save(); ctx.setLineDash([2, 3]); ctx.strokeStyle = AMBER_DIM; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(last[0], last[1]); ctx.lineTo(x, y); ctx.stroke(); ctx.restore();
+        }
+        last = [x, y];
+      }
+      if (n <= 8 && (n === 1 || xOf(f) - xOf((n - 1) * f0) > 14)) label(ctx, String(n), x, h - 12, n === 1 ? HI : AMBER_DIM, 'center', 9.5, 700);
+    }
+    ctx.restore();
+
+    const waveName = PARAMS['osc1.wave'].options.find((o) => o.v === wave).label.toUpperCase();
+    label(ctx, `OSC ${osc} · ${waveName} · EXPECTED HARMONICS`, PAD.l, 16, AMBER, 'left', 10.5, 800);
+    label(ctx, WAVE_RECIPE[wave], PAD.l, 30, HI, 'left', 10.5, 600);
+    let note = `fundamental ${fmtHz(f0)} (${noteName(this.lastNote + p[`osc${osc}.range`] * 12)})`;
+    if (p[`mix.osc${osc}`] < 0.01) note += ` · Osc ${osc} is turned down in the Mixer`;
+    label(ctx, note, w - PAD.r, 16, AMBER_DIM, 'right', 10, 600);
+    label(ctx, '○ = harmonic not present', w - PAD.r, 30, AMBER_DIM, 'right', 9.5, 600);
+  }
+
+  // ---- oscillator range -----------------------------------------------------------------------
+  drawRange(ctx, w, h, box) {
+    const p = this.getPatch();
+    const osc = this.param === 'osc2.range' ? 2 : 1;
+    const other = osc === 1 ? 2 : 1;
+    const cur = p[`osc${osc}.range`];
+    const fMin = 20, fMax = 20000;
+    const xOf = (f) => (Math.log(f / fMin) / Math.log(fMax / fMin)) * w;
+    const baseY = box.y + box.h * 0.62;
+
+    // the other oscillator, faint, for comparison (if it is audible)
+    if (p[`mix.osc${other}`] > 0.01) {
+      const fo = this.oscHz(other);
+      ctx.save(); ctx.strokeStyle = 'rgba(140, 220, 255, 0.55)'; ctx.setLineDash([2, 4]);
+      ctx.beginPath(); ctx.moveTo(xOf(fo), box.y + 20); ctx.lineTo(xOf(fo), box.y + box.h); ctx.stroke(); ctx.restore();
+      label(ctx, `Osc ${other}`, xOf(fo), box.y + box.h + 12, 'rgba(140, 220, 255, 0.8)', 'center', 9.5, 700);
+    }
+
+    // all five range positions
+    const positions = [-2, -1, 0, 1, 2].map((r) => ({ r, f: this.oscHz(osc, r) }));
+    positions.forEach(({ r, f }, i) => {
+      const x = xOf(f);
+      const on = r === cur;
+      ctx.save();
+      ctx.strokeStyle = on ? HI : AMBER_DIM;
+      ctx.lineWidth = on ? 3 : 1;
+      if (on) { ctx.shadowColor = 'rgba(255, 200, 110, 0.9)'; ctx.shadowBlur = 12; } else ctx.setLineDash([3, 4]);
+      ctx.beginPath(); ctx.moveTo(x, on ? box.y + 22 : baseY - 30); ctx.lineTo(x, box.y + box.h); ctx.stroke();
+      ctx.restore();
+      label(ctx, (r > 0 ? '+' : r < 0 ? '−' : '') + Math.abs(r), x, baseY - 36, on ? HI : AMBER_DIM, 'center', on ? 13 : 11, 800);
+      label(ctx, fmtHz(f), x, box.y + box.h - 4, on ? HI : AMBER_DIM, 'center', on ? 11 : 9.5, on ? 800 : 600);
+      if (i > 0) { // "×2" between neighbours
+        const xm = (x + xOf(positions[i - 1].f)) / 2;
+        label(ctx, '×2', xm, baseY, AMBER_DIM, 'center', 10, 700);
+      }
+    });
+
+    label(ctx, `OSC ${osc} RANGE   ·   each octave step doubles or halves the frequency`, PAD.l, 16, AMBER, 'left', 10.5, 800);
+    const fc = this.oscHz(osc);
+    label(ctx, `${noteName(this.lastNote + cur * 12)} = ${fmtHz(fc)}`, w - PAD.r, 16, HI, 'right', 11, 800);
+  }
+
+  // ---- glide ------------------------------------------------------------------------------------
+  drawGlide(ctx, w, h, box) {
+    const p = this.getPatch();
+    const G = p['ctrl.glide'];
+    const legato = p['ctrl.mode'] === 'legato';
+    const span = 3; // seconds across
+    const now = performance.now() / 1000;
+    const hist = this.history.filter((s) => s.t >= now - span);
+    const played = hist.some((s) => s.g);
+    let pts, tgt;
+    if (played) {
+      pts = hist.map((s) => ({ t: s.t - (now - span), n: s.n }));
+      tgt = hist.map((s) => ({ t: s.t - (now - span), n: s.tg, g: s.g }));
+    } else {
+      // nothing played recently: an example slide from C4 up to G4 and back
+      pts = []; tgt = [];
+      for (let i = 0; i <= 300; i++) {
+        const t = (i / 300) * span;
+        const target = t < 0.5 ? 60 : t < 1.8 ? 67 : 60;
+        const since = t < 0.5 ? t : t < 1.8 ? t - 0.5 : t - 1.8;
+        const from = t < 0.5 ? 60 : t < 1.8 ? 60 : 67;
+        const n = G > 0.0005 ? target + (from - target) * Math.exp((-4.6 * since) / G) : target;
+        pts.push({ t, n }); tgt.push({ t, n: target, g: true });
+      }
+    }
+    const all = pts.map((s) => s.n).concat(tgt.map((s) => s.n));
+    let lo = Math.floor(Math.min(...all)) - 2, hi = Math.ceil(Math.max(...all)) + 2;
+    if (hi - lo < 12) { const m = (hi + lo) / 2; lo = Math.floor(m - 6); hi = Math.ceil(m + 6); }
+    const xOf = (t) => box.x + (t / span) * box.w;
+    const yOf = (n) => box.y + ((hi - n) / (hi - lo)) * box.h;
+
+    // note grid: label naturals sparsely
+    const stepN = hi - lo > 24 ? 12 : hi - lo > 14 ? 5 : 2;
+    for (let n = Math.ceil(lo); n <= hi; n++) {
+      if ((n - Math.ceil(lo)) % stepN) continue;
+      ctx.strokeStyle = AMBER_FAINT;
+      ctx.beginPath(); ctx.moveTo(box.x, yOf(n) + 0.5); ctx.lineTo(box.x + box.w, yOf(n) + 0.5); ctx.stroke();
+      label(ctx, noteName(n), box.x - 6, yOf(n) + 3, AMBER_DIM, 'right', 9);
+    }
+
+    // target notes (dashed steps) and actual pitch (solid)
+    ctx.save();
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = AMBER_DIM;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    tgt.forEach((s, i) => { const x = xOf(s.t), y = yOf(s.n); if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); });
+    ctx.stroke();
+    ctx.restore();
+    ctx.save();
+    ctx.strokeStyle = HI;
+    ctx.lineWidth = 2.5;
+    ctx.shadowColor = 'rgba(255, 200, 110, 0.9)';
+    ctx.shadowBlur = 10;
+    if (!played) ctx.globalAlpha *= 0.75;
+    ctx.beginPath();
+    pts.forEach((s, i) => { const x = xOf(s.t), y = yOf(s.n); if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); });
+    ctx.stroke();
+    ctx.restore();
+    if (played) { const s = pts[pts.length - 1]; if (hist[hist.length - 1].g) dot(ctx, xOf(s.t), yOf(s.n)); }
+
+    label(ctx, `GLIDE   ·   ${G > 0.0005 ? formatValue('ctrl.glide', G) : 'off'}   ·   ${legato ? 'Legato: only overlapping notes slide' : 'Mono: every note slides'}`, box.x, 16, AMBER, 'left', 10.5, 800);
+    label(ctx, played ? 'pitch over the last 3 seconds  ·  dashed = notes played' : 'example: play notes to see your own slides  ·  dashed = notes played', w - PAD.r, h - 8, AMBER_DIM, 'right', 9.5, 600);
   }
 }

@@ -123,6 +123,9 @@ class VAProcessor extends AudioWorkletProcessor {
     const out = outputs[0];
     const L = out[0];
     if (!L) return true;
+    // second output: each oscillator after its mixer level (for the scope's mixer view)
+    const mixOut = outputs[1];
+    const M1 = mixOut && mixOut[0], M2 = mixOut && mixOut[1];
     const p = this.p;
     if (p['osc1.wave'] === undefined) return true; // no patch yet
     const sr = sampleRate;
@@ -182,6 +185,7 @@ class VAProcessor extends AudioWorkletProcessor {
 
       // mixer
       const x = o1 * sm.m1 + o2 * sm.m2;
+      if (M1) { M1[i] = o1 * sm.m1 * OUTPUT_GAIN; M2[i] = o2 * sm.m2 * OUTPUT_GAIN; }
 
       // envelopes
       const fe = this.fenv.next();
@@ -223,7 +227,7 @@ class VAProcessor extends AudioWorkletProcessor {
     if (++this.blocks % 4 === 0) {
       const env = (e) => ({ s: e.stage, v: e.v, tOn: e.tOn, tOff: e.tOff });
       this.port.postMessage({
-        type: 'state', gate: this.notes.length > 0, note: this.note, fc: this.lastFc,
+        type: 'state', gate: this.notes.length > 0, note: this.note, target: this.target, fc: this.lastFc,
         a: env(this.aenv), f: env(this.fenv), lfo: this.lastLfo, lfoT: this.lfoT,
       });
     }

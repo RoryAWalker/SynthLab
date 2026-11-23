@@ -208,7 +208,7 @@ setInterval(() => document.getElementById('trig-led').classList.toggle('on', !!s
 // ---- help panel ----
 help = new HelpPanel(document.getElementById('help-panel'), () => patch);
 // when hover help opens on a control, show its graph too
-help.onShow = (key) => overlay.activate(key.split('=')[0], true);
+help.onShow = (key) => overlay.activate(key, true); // key may be an option, e.g. osc1.wave=square
 help.onHide = () => overlay.release();
 function setHelp(open) {
   document.body.classList.toggle('help-open', open);
