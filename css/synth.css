@@ -77,8 +77,14 @@ select, .btn {
 .dropdown-menu label:hover { background: #2f3238; }
 
 /* ---- stage: fixed design size, scaled to fit ----------------------------- */
-#fit { display: flex; justify-content: center; padding-top: 20px; }
-#stage { width: max-content; transform-origin: top center; flex: none; }
+/* #fit is the viewport; #stage is positioned and scaled inside it by zoom.js */
+#fit { position: relative; overflow: hidden; margin-top: 20px; margin-bottom: 20px; }
+#stage { position: absolute; left: 0; top: 0; width: max-content; transform-origin: 0 0; }
+.zoom-ctl { display: inline-flex; align-items: center; border: 1px solid #3a3d44; border-radius: 6px; overflow: hidden; }
+.zoom-ctl button { font: 12px var(--font); color: #e6e7ea; background: #2a2c31; border: none; padding: 5px 9px; cursor: pointer; }
+.zoom-ctl button:hover { background: #33363c; }
+.zoom-ctl .zoom-level { min-width: 52px; border-left: 1px solid #3a3d44; border-right: 1px solid #3a3d44; font-variant-numeric: tabular-nums; }
+body.zoomed .zoom-ctl .zoom-level { color: var(--accent); }
 
 /* ==========================================================================
    Oscilloscope unit
@@ -268,7 +274,6 @@ select, .btn {
     0 0 0 1px #000,
     0 4px 5px rgba(0,0,0,0.75),
     0 1px 0 1px rgba(255,255,255,0.05);
-  will-change: transform;
 }
 /* white index line on the skirt */
 .knob-body::after {

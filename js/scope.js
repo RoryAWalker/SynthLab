@@ -12,8 +12,9 @@ function label(ctx, text, x, y, color, align = 'left', size = 10, weight = 600) 
   ctx.fillText(text, x, y);
 }
 
-function setupCanvas(canvas) {
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+function setupCanvas(canvas, pixelScale = 1) {
+  // pixelScale: how much the stage is magnified on screen, so zoomed displays stay sharp
+  const dpr = Math.min(window.devicePixelRatio || 1, 2) * Math.min(3, Math.max(1, pixelScale));
   const r = canvas.getBoundingClientRect();
   // getBoundingClientRect includes the CSS transform scale; use layout size instead
   const w = canvas.clientWidth, h = canvas.clientHeight;
@@ -62,8 +63,14 @@ export class Scope {
   }
 
   resize() {
-    this.a = setupCanvas(this.sc);
-    this.b = setupCanvas(this.spc);
+    this.a = setupCanvas(this.sc, this.pixelScale);
+    this.b = setupCanvas(this.spc, this.pixelScale);
+  }
+
+  setPixelScale(s) {
+    if (Math.abs((this.pixelScale || 1) - s) < 0.05) return;
+    this.pixelScale = s;
+    this.resize();
   }
 
   frame() {

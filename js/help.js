@@ -310,6 +310,13 @@ export const HELP = {
     title: 'Lock sections',
     body: ['Greys out parts of the panel so they cannot be changed. Locked sections keep their settings and still affect the sound. Useful for focusing on one section at a time.'],
   },
+  zoom: {
+    title: 'Zoom',
+    body: [
+      'Pinch on a trackpad to zoom in on any part of the synth, or use the + and − buttons. Click the percentage to fit the whole synth back in the window.',
+      'When zoomed in, scroll with two fingers or a mouse wheel to move around. Hold Shift with a mouse wheel to move sideways.',
+    ],
+  },
   help: {
     title: 'Help',
     body: ['Turns hover help on or off. When it is on, rest the mouse on any knob, switch or display for a second to see an explanation.', 'Grab a knob straight away to use it without help. Grab it once the help has appeared and the help stays open while you turn it.'],

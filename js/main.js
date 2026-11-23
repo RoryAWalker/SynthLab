@@ -6,6 +6,7 @@ import { Scope, TIMEBASES } from './scope.js';
 import { Keyboard, noteName } from './keyboard.js';
 import { HelpPanel } from './helpPanel.js';
 import { Overlay } from './visuals.js';
+import { ZoomPan } from './zoom.js';
 
 const engine = new Engine();
 let patch = defaultPatch();
@@ -153,15 +154,19 @@ function buildToolbar() {
 }
 
 // ---- fit the fixed-size instrument to the window --------------------------------------
+// Zoom and pan (pinch to zoom, scroll to move around when zoomed); see zoom.js.
+const zoomPan = new ZoomPan(document.getElementById('fit'), document.getElementById('stage'), {
+  onChange: (z) => (document.getElementById('zoom-level').textContent = Math.round(z * 100) + '%'),
+  onSettle: (s) => scope && scope.setPixelScale(s), // re-render the displays sharply at the new size
+});
+document.getElementById('zoom-in').addEventListener('click', () => zoomPan.zoomTo(zoomPan.zoom * 1.25));
+document.getElementById('zoom-out').addEventListener('click', () => zoomPan.zoomTo(zoomPan.zoom / 1.25));
+document.getElementById('zoom-level').addEventListener('click', () => zoomPan.reset());
+
 function fit() {
-  const stage = document.getElementById('stage');
-  const fitEl = document.getElementById('fit');
-  const designW = stage.offsetWidth;
-  const scale = Math.min(1, (window.innerWidth - 32) / designW);
   // help panel overlays below the top bar
   document.getElementById('help-panel').style.top = document.querySelector('.appbar').offsetHeight + 'px';
-  stage.style.transform = `scale(${scale})`;
-  fitEl.style.height = stage.offsetHeight * scale + 40 + 'px';
+  zoomPan.fit();
 }
 
 // ---- boot ------------------------------------------------------------------------------------
