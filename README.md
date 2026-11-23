@@ -43,6 +43,10 @@ Then open http://localhost:8660.
 
 Help text and lessons are kept in their own files so teachers can edit them without touching the rest of the code.
 
+## Licence
+
+SynthLab is released under the [MIT License](LICENSE): you're free to use, change and share it, as long as the copyright notice is kept.
+
 ---
 
 A NoFoe project.
