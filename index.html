@@ -10,15 +10,16 @@
   <header class="appbar">
     <div class="appbar-title"><b>SynthLab</b><span>Sound design workbench</span></div>
     <div class="appbar-controls">
-      <label class="ctl">Patch
+      <label class="ctl" data-help="presets">Patch
         <select id="preset"></select>
       </label>
-      <button id="btn-init" class="btn">Init</button>
-      <label class="ctl check"><input type="checkbox" id="show-values" checked> Show values</label>
-      <div class="dropdown">
+      <button id="btn-init" class="btn" data-help="init">Init</button>
+      <label class="ctl check" data-help="showvalues"><input type="checkbox" id="show-values" checked> Show values</label>
+      <div class="dropdown" data-help="lock">
         <button class="btn" id="btn-lock">Lock sections ▾</button>
         <div class="dropdown-menu" id="lock-menu"></div>
       </div>
+      <button class="btn btn-help" id="btn-help" data-help="help" aria-pressed="false"><span class="help-q">?</span> Help</button>
     </div>
   </header>
 
@@ -26,17 +27,17 @@
     <div id="stage">
       <!-- Test instrument: oscilloscope + spectrum -->
       <section class="scope-unit">
-        <div class="scope-screen-wrap">
+        <div class="scope-screen-wrap" data-help="scope">
           <div class="bezel"><canvas id="scope"></canvas><div class="screen-glass"></div></div>
           <div class="screen-caption"><span>OSCILLOSCOPE</span><span id="tb-readout">2 ms/div</span><span id="trig-led" class="led-small"></span><span class="trig-label">TRIG</span></div>
         </div>
         <div class="scope-controls">
-          <div class="scope-ctl-title">TIME / DIV</div>
-          <div class="tb-buttons" id="tb-buttons"></div>
-          <button class="hold-btn" id="hold-btn">HOLD</button>
+          <div class="tb-group" data-help="timebase"><div class="scope-ctl-title">TIME / DIV</div>
+          <div class="tb-buttons" id="tb-buttons"></div></div>
+          <button class="hold-btn" id="hold-btn" data-help="hold">HOLD</button>
           <div class="scope-brand">NF SCOPE-2<br><small>DUAL DISPLAY</small></div>
         </div>
-        <div class="scope-screen-wrap">
+        <div class="scope-screen-wrap" data-help="spectrum">
           <div class="bezel"><canvas id="spectrum"></canvas><div class="screen-glass"></div></div>
           <div class="screen-caption"><span>SPECTRUM</span><span>20 Hz – 20 kHz · log</span></div>
         </div>
@@ -57,7 +58,7 @@
             <div class="perf">
               <div class="perf-sections" id="perf-sections"></div>
               <div class="perf-controls">
-                <div class="oct-block">
+                <div class="oct-block" data-help="octave">
                   <div class="oct-title">Octave</div>
                   <div class="oct-buttons">
                     <button class="oct-btn" id="oct-down" title="Octave down (Z)">−</button>
@@ -65,7 +66,7 @@
                     <button class="oct-btn" id="oct-up" title="Octave up (X)">+</button>
                   </div>
                 </div>
-                <div class="oct-block">
+                <div class="oct-block" data-help="kbrange">
                   <div class="oct-title">Keyboard Range</div>
                   <div class="range-buttons" id="range-buttons"></div>
                   <div class="range-caption">octaves</div>
@@ -73,13 +74,18 @@
                 <div class="oct-hint">Play with A–K · Z/X octave</div>
               </div>
             </div>
-            <div class="keys-well"><div class="keys" id="keys"></div></div>
+            <div class="keys-well" data-help="keyboard"><div class="keys" id="keys"></div></div>
           </div>
         </div>
         <div class="cheek right"></div>
       </section>
     </div>
   </main>
+
+  <aside class="help-panel" id="help-panel" aria-label="Help">
+    <button class="help-close" id="help-close" aria-label="Close help">×</button>
+    <div class="help-content"></div>
+  </aside>
 
   <script type="module" src="js/main.js"></script>
 </body>

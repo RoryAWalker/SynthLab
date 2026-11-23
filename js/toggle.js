@@ -12,7 +12,7 @@ export class Toggle {
     this.el = document.createElement('div');
     this.el.className = 'toggle-cell';
     this.el.dataset.param = id;
-    this.el.title = this.spec.help || '';
+    this.el.dataset.help = id;
     this.el.innerHTML = `
       <button class="toggle-label" data-v="${a.v}">${a.label}</button>
       <button class="toggle" role="switch" aria-label="${this.spec.label}"><span class="toggle-lever"></span></button>

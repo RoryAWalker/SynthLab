@@ -4,18 +4,20 @@ import { Toggle } from './toggle.js';
 import { Engine } from './engine.js';
 import { Scope, TIMEBASES } from './scope.js';
 import { Keyboard, noteName } from './keyboard.js';
+import { HelpPanel } from './helpPanel.js';
 
 const engine = new Engine();
 let patch = defaultPatch();
 const knobs = {};
 const sections = {};
+let help = null; // HelpPanel, created at boot
 
 // ---- panel ---------------------------------------------------------------------------
 function buildSection(sec) {
   const el = document.createElement('div');
   el.className = 'section';
   el.dataset.section = sec.id;
-  el.innerHTML = `<div class="section-title"><span>${sec.title}</span></div><div class="section-grid"></div><div class="lock-veil"><span>LOCKED</span></div>`;
+  el.innerHTML = `<div class="section-title" data-help="section:${sec.id}"><span>${sec.title}</span></div><div class="section-grid"></div><div class="lock-veil"><span>LOCKED</span></div>`;
   const grid = el.querySelector('.section-grid');
   const cols = Math.max(...sec.rows.map((r) => r.length));
   grid.style.gridTemplateColumns = `repeat(${cols}, var(--cell-w))`;
@@ -75,6 +77,7 @@ function ensureAudio() {
 function onKnob(id, value) {
   patch[id] = value;
   engine.setParam(id, value);
+  if (help) help.refresh(id);
   if (presetSel.value !== '') presetSel.value = '';
 }
 
@@ -83,6 +86,7 @@ function setPatch(p) {
   patch = { ...defaultPatch(), ...p };
   for (const id in knobs) knobs[id].set(patch[id]);
   engine.setPatch(patch);
+  if (help) help.refresh();
 }
 
 function lockSection(id, locked = true) {
@@ -150,7 +154,8 @@ function fit() {
   const stage = document.getElementById('stage');
   const fitEl = document.getElementById('fit');
   const designW = stage.offsetWidth;
-  const scale = Math.min(1, (window.innerWidth - 32) / designW);
+  const helpW = document.body.classList.contains('help-open') ? document.getElementById('help-panel').offsetWidth : 0;
+  const scale = Math.min(1, (window.innerWidth - helpW - 32) / designW);
   stage.style.transform = `scale(${scale})`;
   fitEl.style.height = stage.offsetHeight * scale + 40 + 'px';
 }
@@ -189,6 +194,19 @@ for (let o = 2; o <= 4; o++) {
 
 const scope = new Scope(document.getElementById('scope'), document.getElementById('spectrum'), engine, () => patch['filt.cutoff']);
 setInterval(() => document.getElementById('trig-led').classList.toggle('on', !!scope.triggered && engine.running), 120);
+
+// ---- help panel ----
+help = new HelpPanel(document.getElementById('help-panel'), () => patch);
+function setHelp(open) {
+  document.body.classList.toggle('help-open', open);
+  document.getElementById('btn-help').setAttribute('aria-pressed', String(open));
+  savePref('nf1.help', open ? '1' : '0');
+  if (!open) help.show('intro');
+  fit();
+}
+document.getElementById('btn-help').addEventListener('click', () => setHelp(!document.body.classList.contains('help-open')));
+document.getElementById('help-close').addEventListener('click', () => setHelp(false));
+setHelp(loadPref('nf1.help', '1') === '1'); // on by default: this is a learning tool
 
 fit();
 window.addEventListener('resize', fit);

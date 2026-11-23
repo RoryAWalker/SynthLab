@@ -35,6 +35,7 @@ export class Knob {
     this.el = document.createElement('div');
     this.el.className = 'knob-cell' + (this.stepped ? ' stepped' : '');
     this.el.dataset.param = id;
+    this.el.dataset.help = id;
 
     const label = document.createElement('div');
     label.className = 'knob-label';
@@ -59,7 +60,6 @@ export class Knob {
     this.readout.className = 'knob-value';
     this.el.appendChild(this.readout);
 
-    this.el.title = this.spec.help || '';
     this.bind();
     this.set(value);
   }
@@ -77,7 +77,8 @@ export class Knob {
         svg('line', { x1, y1, x2, y2, class: 'tick' + (o.minor ? ' minor' : '') }, s);
         if (o.minor) return;
         const [lx, ly] = polar(R_LABEL, a);
-        const g = svg('g', { class: 'opt', 'data-v': String(o.v) }, s);
+        // shapes have their own help entry; plain labels (octaves) fall back to the knob's help
+        const g = svg('g', { class: 'opt', 'data-v': String(o.v), 'data-help': o.icon ? `${this.id}=${o.v}` : this.id }, s);
         svg('circle', { cx: lx, cy: ly, r: 9, class: 'hit' }, g);
         if (o.icon) {
           svg('path', { d: WAVE_ICONS[o.icon], class: 'wave-icon', transform: `translate(${lx - 8},${ly - 5.5}) scale(1.33,0.92)` }, g);
