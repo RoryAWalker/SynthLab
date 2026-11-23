@@ -7,6 +7,7 @@ export class Engine {
     this.node = null;
     this.ready = false;
     this.pending = [];
+    this.live = null; // latest envelope/LFO/cutoff state reported by the worklet
   }
 
   start(patch) {
@@ -34,6 +35,7 @@ export class Engine {
     this.node.connect(this.spectrum);
     this.node.connect(this.ctx.destination);
 
+    this.node.port.onmessage = (ev) => { if (ev.data.type === 'state') this.live = ev.data; };
     this.node.port.postMessage({ type: 'patch', patch });
     this.ready = true;
     this.pending.forEach((m) => this.node.port.postMessage(m));

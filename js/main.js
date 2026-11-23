@@ -5,12 +5,14 @@ import { Engine } from './engine.js';
 import { Scope, TIMEBASES } from './scope.js';
 import { Keyboard, noteName } from './keyboard.js';
 import { HelpPanel } from './helpPanel.js';
+import { Overlay } from './visuals.js';
 
 const engine = new Engine();
 let patch = defaultPatch();
 const knobs = {};
 const sections = {};
 let help = null; // HelpPanel, created at boot
+const overlay = new Overlay(() => patch, engine); // teaching graphs on the spectrum display
 
 // ---- panel ---------------------------------------------------------------------------
 function buildSection(sec) {
@@ -78,6 +80,7 @@ function onKnob(id, value) {
   patch[id] = value;
   engine.setParam(id, value);
   if (help) help.refresh(id);
+  overlay.activate(id);
   if (presetSel.value !== '') presetSel.value = '';
 }
 
@@ -193,11 +196,20 @@ for (let o = 2; o <= 4; o++) {
   rangeBtns.appendChild(b);
 }
 
-const scope = new Scope(document.getElementById('scope'), document.getElementById('spectrum'), engine, () => patch['filt.cutoff']);
+// The cutoff marker follows the live (envelope/LFO-modulated) cutoff while a note sounds.
+const liveCutoff = () => {
+  const l = engine.live;
+  return l && l.gate && l.a.s !== 0 ? l.fc : patch['filt.cutoff'];
+};
+const scope = new Scope(document.getElementById('scope'), document.getElementById('spectrum'), engine, liveCutoff);
+scope.overlay = overlay;
 setInterval(() => document.getElementById('trig-led').classList.toggle('on', !!scope.triggered && engine.running), 120);
 
 // ---- help panel ----
 help = new HelpPanel(document.getElementById('help-panel'), () => patch);
+// when hover help opens on a control, show its graph too
+help.onShow = (key) => overlay.activate(key.split('=')[0], true);
+help.onHide = () => overlay.release();
 function setHelp(open) {
   document.body.classList.toggle('help-open', open);
   document.getElementById('btn-help').setAttribute('aria-pressed', String(open));

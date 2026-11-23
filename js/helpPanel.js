@@ -80,9 +80,11 @@ export class HelpPanel {
     const r = t.getBoundingClientRect();
     this.el.classList.toggle('left', r.left + r.width / 2 > window.innerWidth / 2);
     this.el.classList.add('visible');
+    if (this.onShow) this.onShow(t.dataset.help);
   }
 
   hide() {
+    if (this.shownFor && this.onHide) this.onHide();
     this.shownFor = null;
     this.el.classList.remove('visible');
   }

@@ -1,0 +1,365 @@
+// Teaching overlays drawn on top of the spectrum display, in amber so they read
+// clearly against the green spectrum. One shows at a time, chosen by the control
+// being adjusted (or whose hover help is open):
+//   envelopes  -> the envelope shape, adjusted stage highlighted, live playhead dot
+//   cutoff/res -> the filter's frequency response, moving with the live cutoff
+//   LFO        -> the LFO wave over time with its delay fade-in, live dot
+
+import { PARAMS, formatValue } from './params.js';
+
+const AMBER = '#ffb547';
+const AMBER_DIM = 'rgba(255, 181, 71, 0.55)';
+const AMBER_FAINT = 'rgba(255, 181, 71, 0.18)';
+const HI = '#fff0cf';
+const FONT = '"Helvetica Neue", Arial, sans-serif';
+const PAD = { l: 44, r: 16, t: 26, b: 26 };
+const HOLD_MS = 2200; // how long a graph stays after the last knob movement
+
+export function overlayGroup(id) {
+  if (id.startsWith('aenv.')) return 'aenv';
+  if (id.startsWith('fenv.') || id === 'filt.env') return 'fenv';
+  if (id === 'filt.cutoff' || id === 'filt.res') return 'filter';
+  if (id.startsWith('lfo.')) return 'lfo';
+  return null;
+}
+
+// Envelope curves: the same maths as the audio engine (va-processor.js).
+const attackAt = (t, A) => Math.min(1, 1.3 * (1 - Math.exp((-1.466 * t) / A)));
+const decayAt = (t, D, S) => S + (1 - S) * Math.exp((-4.6 * t) / D);
+const releaseAt = (t, R, v0) => v0 * Math.exp((-4.6 * t) / R);
+
+function lfoShapeAt(shape, phase, cycle) {
+  switch (shape) {
+    case 'saw': return 2 * phase - 1;
+    case 'square': return phase < 0.5 ? 1 : -1;
+    case 'sh': { const x = Math.sin(cycle * 12.9898 + 4.1414) * 43758.5453; return (x - Math.floor(x)) * 2 - 1; }
+    default: return 1 - 4 * Math.abs(phase - 0.5);
+  }
+}
+
+function label(ctx, text, x, y, color, align = 'left', size = 10, weight = 600) {
+  ctx.font = `${weight} ${size}px ${FONT}`;
+  ctx.fillStyle = color;
+  ctx.textAlign = align;
+  ctx.fillText(text, x, y);
+}
+
+function dot(ctx, x, y) {
+  ctx.save();
+  ctx.fillStyle = '#fff';
+  ctx.shadowColor = 'rgba(255, 220, 150, 1)';
+  ctx.shadowBlur = 12;
+  ctx.beginPath(); ctx.arc(x, y, 4.5, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+export class Overlay {
+  constructor(getPatch, engine) {
+    this.getPatch = getPatch;
+    this.engine = engine;
+    this.group = null;
+    this.param = null;
+    this.until = 0;
+    this.held = false;
+  }
+
+  // Show the graph for this control. hold: keep it until release() (hover help).
+  activate(id, hold = false) {
+    const g = overlayGroup(id);
+    if (!g) { if (!hold) this.clear(); return; }
+    this.group = g;
+    this.param = id;
+    this.until = performance.now() + HOLD_MS;
+    if (hold) this.held = true;
+  }
+
+  release() { this.held = false; this.until = Math.min(this.until, performance.now() + 500); }
+  clear() { this.group = null; this.held = false; }
+
+  alpha() {
+    if (!this.group) return 0;
+    const now = performance.now();
+    // stay up while the knob is held down or its help is open
+    if (this.held || document.body.classList.contains('knob-dragging')) this.until = Math.max(this.until, now + 800);
+    const a = Math.min(1, (this.until - now) / 400);
+    if (a <= 0) { this.group = null; return 0; }
+    return a;
+  }
+
+  draw(ctx, w, h) {
+    const a = this.alpha();
+    if (!a) return;
+    ctx.save();
+    ctx.globalAlpha = a;
+    // darken the spectrum a little so the graph reads clearly
+    ctx.fillStyle = 'rgba(3, 10, 6, 0.45)';
+    ctx.fillRect(0, 0, w, h);
+    const box = { x: PAD.l, y: PAD.t, w: w - PAD.l - PAD.r, h: h - PAD.t - PAD.b };
+    if (this.group === 'aenv' || this.group === 'fenv') this.drawEnvelope(ctx, w, h, box);
+    else if (this.group === 'filter') this.drawFilter(ctx, w, h, box);
+    else if (this.group === 'lfo') this.drawLfo(ctx, w, h, box);
+    ctx.restore();
+  }
+
+  // ---- envelopes ---------------------------------------------------------------------
+  drawEnvelope(ctx, w, h, box) {
+    const p = this.getPatch();
+    const loud = this.group === 'aenv';
+    const pre = loud ? 'aenv.' : 'fenv.';
+    const A = p[pre + 'a'], D = p[pre + 'd'], R = p[pre + 'r'];
+    const S = loud ? p['aenv.s'] : 0;
+    const amt = loud ? 1 : p['filt.env'];
+    const stage = this.param === 'filt.env' ? 'amt' : this.param.split('.')[1];
+
+    // Horizontal layout: real (linear) time, but every stage keeps a visible minimum width.
+    // The loudness envelope gets a fixed-width sustain plateau; the filter envelope has none,
+    // and shows Release as a dashed branch from half-way through the decay.
+    const minW = 16;
+    let segs;
+    if (loud) {
+      const holdW = box.w * 0.2;
+      const avail = box.w - holdW;
+      const T = A + D + R;
+      let wa = Math.max(minW, (A / T) * avail), wd = Math.max(minW, (D / T) * avail), wr = Math.max(minW, (R / T) * avail);
+      const k = avail / (wa + wd + wr); wa *= k; wd *= k; wr *= k;
+      segs = { a: [box.x, wa], d: [box.x + wa, wd], s: [box.x + wa + wd, holdW], r: [box.x + wa + wd + holdW, wr] };
+    } else {
+      const T = Math.max(A + D, A + D / 2 + R);
+      const px = (t) => (t / T) * box.w;
+      const wa = Math.max(minW, px(A)), wd = Math.max(minW, px(D));
+      const k = Math.min(1, box.w / (wa + wd));
+      segs = { a: [box.x, wa * k], d: [box.x + wa * k, wd * k], r: [box.x + wa * k + (wd * k) / 2, Math.max(minW, px(R))] };
+    }
+
+    // Vertical: loudness 0..1 (bottom..top). Filter envelope is bipolar around the Cutoff setting.
+    const yOf = loud
+      ? (v) => box.y + (1 - v) * box.h
+      : (v) => box.y + box.h / 2 - v * amt * (box.h / 2);
+
+    // axes
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = AMBER_FAINT;
+    if (loud) {
+      ctx.beginPath(); ctx.moveTo(box.x, yOf(0) + 0.5); ctx.lineTo(box.x + box.w, yOf(0) + 0.5); ctx.stroke();
+      label(ctx, '100%', box.x - 6, yOf(1) + 4, AMBER_DIM, 'right', 9);
+      label(ctx, '0', box.x - 6, yOf(0) + 3, AMBER_DIM, 'right', 9);
+      if (S > 0.02 && S < 0.98) label(ctx, Math.round(S * 100) + '%', box.x - 6, yOf(S) + 3, stage === 's' ? HI : AMBER_DIM, 'right', 9);
+    } else {
+      const y0 = box.y + box.h / 2;
+      ctx.setLineDash([3, 4]);
+      ctx.beginPath(); ctx.moveTo(box.x, y0 + 0.5); ctx.lineTo(box.x + box.w, y0 + 0.5); ctx.stroke();
+      ctx.setLineDash([]);
+      label(ctx, 'cutoff', box.x - 6, y0 + 3, AMBER_DIM, 'right', 9);
+      label(ctx, '+7 oct', box.x - 6, box.y + 4, AMBER_DIM, 'right', 9);
+      label(ctx, '−7 oct', box.x - 6, box.y + box.h, AMBER_DIM, 'right', 9);
+    }
+
+    // curve, one stage at a time so the adjusted stage can be highlighted
+    const strokeStage = (name, fn, x0, wpx, dur, dashed) => {
+      const hi = stage === name || stage === 'amt';
+      ctx.save();
+      ctx.strokeStyle = hi ? HI : AMBER;
+      ctx.lineWidth = hi ? 3 : 2;
+      if (hi) { ctx.shadowColor = 'rgba(255, 200, 110, 0.9)'; ctx.shadowBlur = 10; }
+      if (dashed) ctx.setLineDash([5, 4]);
+      ctx.beginPath();
+      const steps = Math.max(8, Math.round(wpx / 2));
+      for (let i = 0; i <= steps; i++) {
+        const f = i / steps;
+        const x = x0 + f * wpx, y = yOf(fn(f * dur));
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      ctx.restore();
+    };
+    const [ax, aw] = segs.a, [dx, dw] = segs.d, [rx, rw] = segs.r;
+    strokeStage('a', (t) => attackAt(t, A), ax, aw, A);
+    strokeStage('d', (t) => decayAt(t, D, S), dx, dw, D);
+    if (loud) {
+      const [sx, sw] = segs.s;
+      strokeStage('s', () => S, sx, sw, 1);
+      strokeStage('r', (t) => releaseAt(t, R, S), rx, rw, R);
+    } else {
+      const vMid = decayAt(D / 2, D, 0);
+      strokeStage('r', (t) => releaseAt(t, R, vMid), rx, rw, R, true);
+    }
+
+    // stage labels along the bottom
+    const names = loud ? ['a', 'd', 's', 'r'] : ['a', 'd', 'r'];
+    const letters = { a: 'A', d: 'D', s: 'S', r: 'R' };
+    names.forEach((n) => {
+      const [x0, wpx] = segs[n];
+      const val = n === 's' ? Math.round(S * 100) + '%' : formatValue(pre + n, p[pre + n]);
+      const hi = stage === n;
+      const text = (n === 'r' && !loud ? 'R (if let go early) ' : letters[n] + ' ') + val;
+      label(ctx, text, x0 + wpx / 2, h - 8, hi ? HI : AMBER_DIM, 'center', hi ? 11 : 10, hi ? 800 : 600);
+    });
+
+    // title
+    let title = loud ? 'LOUDNESS ENVELOPE' : 'FILTER ENVELOPE';
+    if (!loud) title += `   ·   Env Amount ${formatValue('filt.env', amt)}`;
+    label(ctx, title, box.x, 16, AMBER, 'left', 10.5, 800);
+
+    // live playhead
+    const live = this.engine.live;
+    const env = live && (loud ? live.a : live.f);
+    if (env && env.s !== 0) {
+      let x;
+      const t = env.tOn;
+      if (env.s === 3 && loud) x = rx + Math.min(1, env.tOff / R) * rw;
+      else if (t <= A) x = ax + (t / A) * aw;
+      else if (t <= A + D) x = dx + ((t - A) / D) * dw;
+      else x = loud ? segs.s[0] + Math.min(1, (t - A - D) / 2) * segs.s[1] : dx + dw;
+      if (env.s === 3 && !loud) x = Math.min(box.x + box.w, x);
+      dot(ctx, x, yOf(env.v));
+    }
+  }
+
+  // ---- filter response -------------------------------------------------------------------
+  drawFilter(ctx, w, h, box) {
+    const p = this.getPatch();
+    const live = this.engine.live;
+    const playing = live && live.gate && live.a.s !== 0;
+    const fc = playing ? live.fc : p['filt.cutoff'];
+    const k = p['filt.res'] * 4.15;
+    const fMin = 20, fMax = 20000;
+    const xOf = (f) => (Math.log(f / fMin) / Math.log(fMax / fMin)) * w;
+    const DB_TOP = 24, DB_BOT = -60;
+    const yOf = (db) => box.y + ((DB_TOP - Math.max(DB_BOT, Math.min(DB_TOP, db))) / (DB_TOP - DB_BOT)) * box.h;
+
+    // |H| of a 4-pole ladder with feedback k (analogue prototype), with the engine's make-up gain
+    const dbAt = (f) => {
+      const x = f / fc;
+      const p2r = 1 - x * x, p2i = 2 * x;            // (1 + jx)^2
+      const p4r = p2r * p2r - p2i * p2i + k, p4i = 2 * p2r * p2i; // (1 + jx)^4 + k
+      return 20 * Math.log10((1 + 0.45 * k) / Math.hypot(p4r, p4i));
+    };
+
+    // 0 dB reference
+    ctx.strokeStyle = AMBER_FAINT;
+    ctx.setLineDash([3, 4]);
+    ctx.beginPath(); ctx.moveTo(0, yOf(0) + 0.5); ctx.lineTo(w, yOf(0) + 0.5); ctx.stroke();
+    ctx.setLineDash([]);
+    label(ctx, '0 dB', w - PAD.r, yOf(0) - 4, AMBER_DIM, 'right', 9);
+    label(ctx, '−24 dB', w - PAD.r, yOf(-24) - 4, AMBER_DIM, 'right', 9);
+
+    // curve + fill
+    ctx.beginPath();
+    for (let x = 0; x <= w; x += 2) {
+      const f = fMin * Math.pow(fMax / fMin, x / w);
+      const y = yOf(dbAt(f));
+      if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.save();
+    ctx.lineTo(w, box.y + box.h); ctx.lineTo(0, box.y + box.h); ctx.closePath();
+    ctx.fillStyle = 'rgba(255, 181, 71, 0.12)';
+    ctx.fill();
+    ctx.restore();
+    ctx.beginPath();
+    for (let x = 0; x <= w; x += 2) {
+      const f = fMin * Math.pow(fMax / fMin, x / w);
+      const y = yOf(dbAt(f));
+      if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = HI;
+    ctx.lineWidth = 2.5;
+    ctx.shadowColor = 'rgba(255, 200, 110, 0.9)';
+    ctx.shadowBlur = 10;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // cutoff point and resonance peak
+    const cx = xOf(Math.min(fMax, Math.max(fMin, fc)));
+    const peakDb = dbAt(fc);
+    dot(ctx, cx, yOf(peakDb));
+    const cutText = formatValue('filt.cutoff', Math.min(fMax, fc)) + (playing ? ' (live)' : '');
+    const rightSide = cx < w - 120;
+    label(ctx, cutText, cx + (rightSide ? 10 : -10), yOf(peakDb) - 10, HI, rightSide ? 'left' : 'right', 11, 800);
+    if (p['filt.res'] > 0.05) {
+      const peakText = peakDb >= DB_TOP ? `peak > +${DB_TOP} dB (self-oscillating)` : `peak ${peakDb >= 0 ? '+' : ''}${peakDb.toFixed(1)} dB`;
+      label(ctx, peakText, cx + (rightSide ? 10 : -10), yOf(peakDb) + 6, AMBER, rightSide ? 'left' : 'right', 10, 600);
+    }
+    // slope annotation, one octave above the cutoff
+    const fSlope = fc * 3;
+    if (fSlope < fMax * 0.7) label(ctx, '−24 dB / octave', xOf(fSlope) + 6, yOf(dbAt(fSlope)) + 14, AMBER_DIM, 'left', 9.5);
+
+    label(ctx, 'LOW PASS FILTER RESPONSE', PAD.l, 16, AMBER, 'left', 10.5, 800);
+    label(ctx, 'passes', Math.max(PAD.l, cx / 2), yOf(0) - 8, AMBER_DIM, 'center', 9.5);
+  }
+
+  // ---- LFO ---------------------------------------------------------------------------------
+  drawLfo(ctx, w, h, box) {
+    const p = this.getPatch();
+    const rate = p['lfo.rate'], shape = p['lfo.shape'], delay = p['lfo.delay'];
+    const live = this.engine.live;
+    const span = Math.min(10, Math.max(1.5, delay + 1.5, 3 / rate)); // seconds across the graph
+    const t0 = live && live.gate && live.lfoT > span * 0.85 ? live.lfoT - span * 0.85 : 0; // scroll once past the edge
+    const xOf = (t) => box.x + ((t - t0) / span) * box.w;
+    const mid = box.y + box.h / 2;
+    const amp = box.h / 2 * 0.9;
+    const fadeAt = (t) => (delay > 0.001 ? Math.min(1, t / delay) : 1);
+
+    // centre line and time ticks
+    ctx.strokeStyle = AMBER_FAINT;
+    ctx.beginPath(); ctx.moveTo(box.x, mid + 0.5); ctx.lineTo(box.x + box.w, mid + 0.5); ctx.stroke();
+    const step = span > 6 ? 2 : span > 2.5 ? 1 : span > 1 ? 0.5 : 0.25;
+    for (let t = Math.ceil(t0 / step) * step; t <= t0 + span + 1e-6; t += step) {
+      const x = xOf(t);
+      ctx.beginPath(); ctx.moveTo(x + 0.5, box.y + box.h); ctx.lineTo(x + 0.5, box.y + box.h + 4); ctx.stroke();
+      label(ctx, (Math.round(t * 100) / 100) + ' s', x, h - 8, AMBER_DIM, 'center', 9);
+    }
+
+    // delay: fade-in envelope and marker
+    if (delay > 0.001) {
+      ctx.save();
+      ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = this.param === 'lfo.delay' ? HI : AMBER_DIM;
+      ctx.lineWidth = this.param === 'lfo.delay' ? 2 : 1;
+      [1, -1].forEach((sgn) => {
+        ctx.beginPath();
+        ctx.moveTo(xOf(Math.max(t0, 0)), mid - sgn * amp * fadeAt(Math.max(t0, 0)));
+        if (delay > t0) ctx.lineTo(xOf(delay), mid - sgn * amp);
+        ctx.lineTo(xOf(t0 + span), mid - sgn * amp);
+        ctx.stroke();
+      });
+      ctx.restore();
+      if (delay > t0) label(ctx, 'delay ' + formatValue('lfo.delay', delay), xOf(delay) + 5, box.y + 10, this.param === 'lfo.delay' ? HI : AMBER_DIM, 'left', 10, 700);
+    }
+
+    // the wave
+    const hiWave = ['lfo.rate', 'lfo.shape'].includes(this.param);
+    ctx.save();
+    ctx.strokeStyle = hiWave ? HI : AMBER;
+    ctx.lineWidth = hiWave ? 2.5 : 2;
+    ctx.shadowColor = 'rgba(255, 200, 110, 0.8)';
+    ctx.shadowBlur = hiWave ? 10 : 4;
+    ctx.beginPath();
+    const n = Math.round(box.w * 1.5);
+    for (let i = 0; i <= n; i++) {
+      const t = t0 + (i / n) * span;
+      const cyc = t * rate;
+      const v = lfoShapeAt(shape, cyc - Math.floor(cyc), Math.floor(cyc)) * fadeAt(t);
+      const x = xOf(t), y = mid - v * amp;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    ctx.restore();
+
+    // live dot
+    if (live && live.gate) dot(ctx, xOf(live.lfoT), mid - live.lfo * amp);
+
+    // title and destinations
+    const shapeName = PARAMS['lfo.shape'].options.find((o) => o.v === shape).label;
+    label(ctx, `LFO   ·   ${formatValue('lfo.rate', rate)}   ·   ${shapeName}`, box.x, 16, AMBER, 'left', 10.5, 800);
+    const dests = [['lfo.pitch', 'Pitch ±'], ['lfo.filter', 'Filter ±'], ['lfo.amp', 'Amp ']];
+    let x = w - PAD.r;
+    for (let i = dests.length - 1; i >= 0; i--) {
+      const [id, pre] = dests[i];
+      const hi = this.param === id;
+      const text = pre + formatValue(id, p[id]);
+      ctx.font = `${hi ? 800 : 600} ${hi ? 11 : 10}px ${FONT}`;
+      label(ctx, text, x, 16, hi ? HI : AMBER_DIM, 'right', hi ? 11 : 10, hi ? 800 : 600);
+      x -= ctx.measureText(text).width + 16;
+    }
+  }
+}

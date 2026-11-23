@@ -121,6 +121,7 @@ export class Scope {
     const fMin = 20, fMax = 20000;
     const xFor = (f) => (Math.log(f / fMin) / Math.log(fMax / fMin)) * w;
 
+    const overlayOn = !!(this.overlay && this.overlay.group);
     // graticule: decades and dB lines
     ctx.lineWidth = 1;
     ctx.font = '9px "Helvetica Neue", Arial, sans-serif';
@@ -136,7 +137,7 @@ export class Scope {
       const y = Math.round((-db / 100) * h) + 0.5;
       ctx.strokeStyle = GRID;
       ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
-      ctx.fillText(db + ' dB', 3, y - 3);
+      if (!overlayOn) ctx.fillText(db + ' dB', 3, y - 3); // overlay graphs have their own labels
     }
 
     // cutoff marker
@@ -153,7 +154,11 @@ export class Scope {
     }
 
     const an = this.engine.spectrum;
-    if (!an || !this.engine.running) return;
+    if (an && this.engine.running) this.drawSpectrumTrace(ctx, w, h, an, fMin, fMax);
+    if (this.overlay) this.overlay.draw(ctx, w, h);
+  }
+
+  drawSpectrumTrace(ctx, w, h, an, fMin, fMax) {
     if (!this.fbuf || this.fbuf.length !== an.frequencyBinCount) this.fbuf = new Float32Array(an.frequencyBinCount);
     const fb = this.fbuf;
     an.getFloatFrequencyData(fb);

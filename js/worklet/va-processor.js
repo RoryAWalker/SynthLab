@@ -34,7 +34,8 @@ function oscSample(wave, ph, dt) {
 
 // Analog-style envelope: exponential segments, like a capacitor charging.
 class Envelope {
-  constructor() { this.v = 0; this.stage = 0; } // 0 idle, 1 attack, 2 decay/sustain, 3 release
+  // 0 idle, 1 attack, 2 decay/sustain, 3 release. tOn/tOff: seconds since gate on/off (for the UI).
+  constructor() { this.v = 0; this.stage = 0; this.tOn = 0; this.tOff = 0; }
   setTimes(a, d, s, r, sr) {
     // attack aims past 1.0 (overshoot target) so it reaches the top in ~a seconds
     this.aCoef = 1 - Math.exp(-1.466 / (a * sr));
@@ -42,8 +43,8 @@ class Envelope {
     this.rCoef = 1 - Math.exp(-4.6 / (r * sr));
     this.s = s;
   }
-  gateOn() { this.stage = 1; }
-  gateOff() { if (this.stage !== 0) this.stage = 3; }
+  gateOn() { this.stage = 1; this.tOn = 0; }
+  gateOff() { if (this.stage !== 0) { this.stage = 3; this.tOff = 0; } }
   next() {
     switch (this.stage) {
       case 1:
@@ -70,7 +71,9 @@ class VAProcessor extends AudioWorkletProcessor {
     this.hasPlayed = false;
     this.ph1 = 0; this.ph2 = 0;
     this.lfoPh = 0; this.shVal = 0;
-    this.lfoFade = 1;      // 0..1 LFO depth multiplier, ramps up after a fresh note (LFO delay)
+    this.lfoFade = 1;
+    this.lfoT = 0;         // seconds since the LFO was last restarted (for the UI)
+    this.lastFc = 20000; this.lastLfo = 0; this.blocks = 0;      // 0..1 LFO depth multiplier, ramps up after a fresh note (LFO delay)
     this.fenv = new Envelope();
     this.aenv = new Envelope();
     this.s = [0, 0, 0, 0];  // ladder filter state
@@ -97,6 +100,8 @@ class VAProcessor extends AudioWorkletProcessor {
           this.fenv.gateOn();
           this.aenv.gateOn();
           this.lfoFade = 0;
+          this.lfoPh = 0; this.lfoT = 0; // key sync: the LFO starts from the top of its cycle
+          this.shVal = Math.random() * 2 - 1;
         }
         break;
       }
@@ -201,6 +206,7 @@ class VAProcessor extends AudioWorkletProcessor {
         u = y;
       }
       const filtered = u * (1 + fb * 0.45); // partial passband make-up gain
+      if (i === n - 1) { this.lastFc = fc; this.lastLfo = lfo * lfoDepth; }
 
       // VCA
       const trem = 1 - sm.la * lfoDepth * (0.5 + 0.5 * lfo);
@@ -208,6 +214,19 @@ class VAProcessor extends AudioWorkletProcessor {
     }
 
     for (let c = 1; c < out.length; c++) out[c].set(L);
+
+    // Report live state to the UI (~90 times a second) for the real-time visuals.
+    const dtB = n / sr;
+    this.fenv.tOn += dtB; this.fenv.tOff += dtB;
+    this.aenv.tOn += dtB; this.aenv.tOff += dtB;
+    this.lfoT += dtB;
+    if (++this.blocks % 4 === 0) {
+      const env = (e) => ({ s: e.stage, v: e.v, tOn: e.tOn, tOff: e.tOff });
+      this.port.postMessage({
+        type: 'state', gate: this.notes.length > 0, note: this.note, fc: this.lastFc,
+        a: env(this.aenv), f: env(this.fenv), lfo: this.lastLfo, lfoT: this.lfoT,
+      });
+    }
     return true;
   }
 }
