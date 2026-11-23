@@ -1,5 +1,6 @@
 import { PARAMS, LAYOUT, KEYBED_SECTIONS, ALL_SECTIONS, PRESETS, defaultPatch } from './params.js';
 import { Knob } from './knob.js';
+import { Toggle } from './toggle.js';
 import { Engine } from './engine.js';
 import { Scope, TIMEBASES } from './scope.js';
 import { Keyboard, noteName } from './keyboard.js';
@@ -22,7 +23,7 @@ function buildSection(sec) {
     for (let c = 0; c < cols; c++) {
       const id = row[c];
       if (id) {
-        const k = new Knob(id, patch[id], onKnob);
+        const k = PARAMS[id].ui === 'toggle' ? new Toggle(id, patch[id], onKnob) : new Knob(id, patch[id], onKnob);
         knobs[id] = k;
         grid.appendChild(k.el);
       } else {
@@ -171,9 +172,9 @@ const keyboard = new Keyboard(document.getElementById('keys'), {
 document.getElementById('oct-down').addEventListener('click', () => keyboard.shiftOctave(-1));
 document.getElementById('oct-up').addEventListener('click', () => keyboard.shiftOctave(1));
 
-// Keyboard Range switch: 1-4 octaves
+// Keyboard Range switch: 2-4 octaves
 const rangeBtns = document.getElementById('range-buttons');
-for (let o = 1; o <= 4; o++) {
+for (let o = 2; o <= 4; o++) {
   const b = document.createElement('button');
   b.className = 'range-btn' + (o === keyboard.octaves ? ' on' : '');
   b.textContent = o;

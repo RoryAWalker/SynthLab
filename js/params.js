@@ -47,6 +47,10 @@ export const PARAMS = {
                    marks: [[0, '0'], [0.03, '.03'], [0.25, '.25'], [1, '1'], [3, '3']],
                    help: 'Portamento: time to slide from one note to the next.' },
 
+  'ctrl.mode':   { type: 'step', ui: 'toggle', label: 'Mode', def: 'mono',
+                   options: [{ v: 'mono', label: 'Mono' }, { v: 'legato', label: 'Legato' }],
+                   help: 'Mono: every note restarts the envelopes and glides. Legato: notes played while another is held slide without restarting the envelopes; separate notes do not glide.' },
+
   'osc1.range':  { type: 'step', label: 'Range', options: RANGES, def: 0,
                    unit: 'oct', help: 'Octave shift. 0 is concert pitch; each step is one octave up or down.' },
   'osc1.wave':   { type: 'step', label: 'Waveform', options: WAVES, def: 'saw',
@@ -114,9 +118,12 @@ export const LAYOUT = [
     { id: 'fenv', title: 'Filter Envelope', rows: [['filt.env', 'fenv.a', 'fenv.d', 'fenv.r']] },
     { id: 'aenv', title: 'Loudness Envelope', rows: [['aenv.a', 'aenv.d', 'aenv.s', 'aenv.r']] },
   ],
-  [{ id: 'lfo', title: 'LFO', rows: [['lfo.rate', 'lfo.shape', 'lfo.delay'], ['lfo.pitch', 'lfo.filter', 'lfo.amp']], alignRows: ROW_ALIGN }],
+  [
+    { id: 'lfo', title: 'LFO', rows: [['lfo.rate', 'lfo.shape', 'lfo.delay']] },
+    { id: 'lfomod', title: 'LFO Modulation', rows: [['lfo.pitch', 'lfo.filter', 'lfo.amp']] },
+  ],
 ];
-export const KEYBED_SECTIONS = [{ id: 'glide', title: 'Glide', rows: [['ctrl.glide']] }];
+export const KEYBED_SECTIONS = [{ id: 'glide', title: 'Glide', rows: [['ctrl.glide'], ['ctrl.mode']] }];
 export const ALL_SECTIONS = [...LAYOUT.flat(), ...KEYBED_SECTIONS];
 
 // ---- value <-> knob position (0..1) -------------------------------------------
@@ -163,7 +170,7 @@ export const PRESETS = {
     'aenv.a': 0.002, 'aenv.d': 0.5, 'aenv.s': 0.85, 'aenv.r': 0.08,
   },
   'Gliding Lead': {
-    'osc1.wave': 'saw', 'osc2.wave': 'square', 'osc2.fine': -6, 'mix.osc1': 0.75, 'mix.osc2': 0.55, 'ctrl.glide': 0.09,
+    'osc1.wave': 'saw', 'osc2.wave': 'square', 'osc2.fine': -6, 'mix.osc1': 0.75, 'mix.osc2': 0.55, 'ctrl.glide': 0.09, 'ctrl.mode': 'legato',
     'filt.cutoff': 2200, 'filt.res': 0.4, 'filt.env': 0.25,
     'fenv.a': 0.02, 'fenv.d': 0.8, 'aenv.r': 0.25,
     'lfo.rate': 5.5, 'lfo.pitch': 0.25, 'lfo.delay': 0.6,

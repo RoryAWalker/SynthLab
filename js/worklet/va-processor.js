@@ -86,12 +86,18 @@ class VAProcessor extends AudioWorkletProcessor {
       case 'noteOn': {
         const i = this.notes.indexOf(m.note);
         if (i >= 0) this.notes.splice(i, 1);
-        if (!this.notes.length) this.lfoFade = 0; // fresh note (not legato): restart LFO delay
+        const fresh = !this.notes.length;          // no other key held
+        const legato = this.p['ctrl.mode'] === 'legato';
         this.notes.push(m.note);
         this.target = m.note;
-        if (!this.hasPlayed) { this.note = m.note; this.hasPlayed = true; }
-        this.fenv.gateOn();
-        this.aenv.gateOn();
+        // Legato: a separate (non-overlapping) note jumps straight to pitch; only overlapping notes glide.
+        if (!this.hasPlayed || (legato && fresh)) { this.note = m.note; this.hasPlayed = true; }
+        // Mono: every note restarts the envelopes and LFO delay. Legato: only separate notes do.
+        if (!legato || fresh) {
+          this.fenv.gateOn();
+          this.aenv.gateOn();
+          this.lfoFade = 0;
+        }
         break;
       }
       case 'noteOff': {

@@ -14,7 +14,7 @@ export class Keyboard {
     this.container = container;
     this.onNoteOn = onNoteOn; this.onNoteOff = onNoteOff; this.onOctave = onOctave;
     this.base = 48;            // lowest key, and computer key A: C3
-    this.octaves = Math.min(4, Math.max(1, octaves || 2));
+    this.octaves = Math.min(4, Math.max(2, octaves || 2));
     this.keys = new Map();
     this.held = new Map();     // source -> note
     this.build(container);
@@ -26,7 +26,7 @@ export class Keyboard {
   get high() { return this.base + this.octaves * 12; }
 
   setOctaves(o) {
-    this.octaves = Math.min(4, Math.max(1, o));
+    this.octaves = Math.min(4, Math.max(2, o));
     if (this.high > 108) this.base = 108 - this.octaves * 12;
     this.releaseAll();
     this.build(this.container);
