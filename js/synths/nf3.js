@@ -92,28 +92,33 @@ export const PARAMS = {
   'perf.mod':    { type: 'wheel', label: 'Mod', min: 0, max: 1, def: 0, fmt: fmtPct },
 };
 
-// Panel: Controllers | Oscillator Bank | Mixer | Modifiers.
+// Panel: Controllers | Oscillator Bank | Mixer | Modifiers, with switches on the lines between.
 // rowTitles label each row (Oscillator 1 / 2 / 3; Filter / Filter Contour / Loudness Contour).
 export const LAYOUT = [
-  // Controllers: Tune with Oscillator Modulation beside it; Glide and Modulation Mix below
-  [{ id: 'ctrl', title: 'Controllers', rowTitles: [' ', ' '], rows: [['ctrl.tune', 'osc.mod'], ['ctrl.glide', 'ctrl.modmix']] }],
+  // Controllers: Tune, Glide and Modulation Mix in one column
+  [{ id: 'ctrl', title: 'Controllers', rowTitles: [' ', ' ', ' '], rows: [['ctrl.tune'], ['ctrl.glide'], ['ctrl.modmix']] }],
+  // on the line between Controllers and the Oscillator Bank
+  [{ id: 'oscmod', title: '', bridge: true, rowTitles: [' ', ' ', ' '], rows: [['osc.mod'], [null], [null]] }],
   [{
     id: 'oscs', title: 'Oscillator Bank', rowTitles: ['Oscillator 1', 'Oscillator 2', 'Oscillator 3'],
     rows: [[null, 'osc1.range', null, 'osc1.wave'], [null, 'osc2.range', 'osc2.freq', 'osc2.wave'], ['osc3.ctrl', 'osc3.range', 'osc3.freq', 'osc3.wave']],
   }],
   [{
-    // staggered like the classic mixer: Feedback sits between Osc 1 and 2, Noise between Osc 2 and 3
+    // staggered like the classic mixer: Feedback sits between Osc 1 and 2, Noise between Osc 2 and 3,
+    // with the White/Pink switch under the Noise pot
     id: 'mix', title: 'Mixer', rowTitles: [' ', ' ', ' '],
-    rows: [['mix.osc1', 'mix.feedback', null], ['mix.osc2', 'mix.noise', 'mix.noisetype'], ['mix.osc3', null, null]],
-    offsets: { 'mix.feedback': '50%', 'mix.noise': '50%', 'mix.noisetype': '112px' }, // White/Pink beside the Noise pot
+    rows: [['mix.osc1', 'mix.feedback'], ['mix.osc2', 'mix.noise'], ['mix.osc3', 'mix.noisetype']],
+    offsets: { 'mix.feedback': '50%', 'mix.noise': '50%', 'mix.noisetype': '36px' },
   }],
+  // on the line between the Mixer and the Modifiers
+  [{ id: 'filtsw', title: '', bridge: true, rowTitles: [' ', ' ', ' '], rows: [['filt.mod'], ['filt.kb1'], ['filt.kb2']] }],
   [{
     id: 'mods', title: 'Modifiers', rowTitles: ['Filter', 'Filter Contour', 'Loudness Contour'],
-    rows: [['filt.mod', 'filt.cutoff', 'filt.res', 'filt.env'], ['filt.kb1', 'fenv.a', 'fenv.d', 'fenv.s'], ['filt.kb2', 'aenv.a', 'aenv.d', 'aenv.s']],
+    rows: [['filt.cutoff', 'filt.res', 'filt.env'], ['fenv.a', 'fenv.d', 'fenv.s'], ['aenv.a', 'aenv.d', 'aenv.s']],
   }],
 ];
-// Left of the keys: Glide and Decay stacked above the mod wheel; pitch and mod wheels below
-export const KEYBED_SECTIONS = [{ id: 'perf', title: 'Controllers', rows: [[null, 'perf.glideon'], [null, 'perf.decay'], ['perf.bend', 'perf.mod']] }];
+// Left of the keys: Glide and Decay side by side, long pitch and mod wheels below
+export const KEYBED_SECTIONS = [{ id: 'perf', title: 'Controllers', rows: [['perf.glideon', 'perf.decay'], ['perf.bend', 'perf.mod']] }];
 
 // Factory patches: only the values that differ from Init.
 export const PRESETS = {

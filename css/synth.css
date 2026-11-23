@@ -734,7 +734,6 @@ body[data-skin="vintage"] .vertical.onoff .toggle.right .toggle-lever { backgrou
 body[data-skin="vintage"] .toggle-cell { --rk: #f59a4a; --rk-dark: #a2541a; }                          /* orange */
 body[data-skin="vintage"] .toggle-cell[data-param="mix.noisetype"] { --rk: #5fb0ee; --rk-dark: #2a5f91; } /* blue */
 body[data-skin="vintage"] .toggle-cell[data-param^="perf."] { --rk: #f4f1e8; --rk-dark: #9a968b; }      /* white */
-body[data-skin="vintage"] .perf .wheel-slot { height: 92px; }
 body[data-skin="vintage"] .perf .toggle-cell.titled { padding-top: 2px; }
 body[data-skin="vintage"] .perf .toggle-row { padding-left: 14px; }
 
@@ -806,3 +805,47 @@ body[data-skin="slate"] .knob-label {
   display: flex; align-items: flex-end; justify-content: center; font-size: 10.5px;
 }
 body[data-skin="slate"] .perf .knob-label { height: 24px; }
+
+/* ---- switch columns that sit on the line between two sections ---- */
+.panel-column.bridge { position: relative; }
+.panel-column.bridge::before {
+  content: ""; position: absolute; left: 50%; top: 4px; bottom: 0; width: 1px;
+  background: linear-gradient(transparent, rgba(255,255,255,0.14) 12%, rgba(255,255,255,0.14) 88%, transparent);
+}
+.panel-column.bridge .section { padding: 0; }
+.panel-column.bridge .section-title { border-bottom-color: transparent; }
+.panel-column.bridge .section-title span::after { content: "\00a0"; } /* keep the title's height so rows line up */
+.panel-column.bridge .toggle-cell { position: relative; z-index: 1; background: var(--panel); border-radius: 6px; padding-bottom: 6px; }
+
+/* ==========================================================================
+   MiniNFoog: bigger pots and lettering, using the space the layout frees
+   ========================================================================== */
+body[data-skin="vintage"] { --cell-w: 132px; --narrow-w: 92px; }
+body[data-skin="vintage"] .dial { width: 132px; height: 132px; }
+body[data-skin="vintage"] .knob { width: 68px; height: 68px; margin: -34px 0 0 -34px; }
+body[data-skin="vintage"] .knob-cap { inset: 12px; }
+body[data-skin="vintage"] .stepped .knob-body { inset: 7px; }
+body[data-skin="vintage"] .stepped .knob-cap { inset: -5px 19px; }
+body[data-skin="vintage"] .knob-pointer { height: 17px; }
+body[data-skin="vintage"] .knob-label { font-size: 12.5px; height: 27px; width: calc(var(--cell-w) - 8px); }
+body[data-skin="vintage"] .knob-value { font-size: 14px; height: 20px; }
+body[data-skin="vintage"] .section-title { font-size: 15px; }
+body[data-skin="vintage"] .row-title { font-size: 11.5px; height: 16px; }
+body[data-skin="vintage"] .toggle-title { font-size: 11px; max-width: 110px; }
+body[data-skin="vintage"] .toggle-label { font-size: 11px; }
+body[data-skin="vintage"] .toggle { width: 46px; height: 23px; }
+body[data-skin="vintage"] .toggle-lever { width: 42px; height: 19px; }
+body[data-skin="vintage"] .vertical .toggle { width: 23px; height: 46px; }
+body[data-skin="vintage"] .vertical .toggle-lever { width: 19px; height: 42px; }
+body[data-skin="vintage"] .brand-model { font-size: 22px; }
+/* keyboard side: Glide and Decay side by side, long wheels */
+body[data-skin="vintage"] .keybed { height: 262px; }
+body[data-skin="vintage"] .perf .wheel-slot { height: 150px; width: 38px; }
+/* win back height so the larger pots show larger on screen */
+body[data-skin="vintage"] .bezel { height: 190px; }
+body[data-skin="vintage"] .scope-unit { margin-bottom: 14px; padding-top: 12px; }
+body[data-skin="vintage"] .panel { padding-top: 10px; }
+body[data-skin="vintage"] .panel-column.stacked, body[data-skin="vintage"] .panel-column { gap: 6px; }
+body[data-skin="vintage"] .perf .wheel-label { font-size: 12px; }
+body[data-skin="vintage"] .perf .toggle-row { padding-left: 16px; }
+body[data-skin="vintage"] .perf .section-title { font-size: 13px; }

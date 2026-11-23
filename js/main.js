@@ -69,12 +69,16 @@ function buildSection(sec) {
 
 function buildPanel() {
   const root = document.getElementById('sections');
+  // A 'bridge' column sits on the dividing line between two sections (switches that
+  // belong to both), so it replaces the divider rather than adding two more.
+  const isBridge = (column) => column.every((sec) => sec.bridge);
   LAYOUT.forEach((column, ci) => {
     const col = document.createElement('div');
-    col.className = 'panel-column' + (column.length > 1 ? ' stacked' : '');
+    col.className = 'panel-column' + (column.length > 1 ? ' stacked' : '') + (isBridge(column) ? ' bridge' : '');
     column.forEach((sec) => col.appendChild(buildSection(sec)));
     root.appendChild(col);
-    if (ci < LAYOUT.length - 1) {
+    const next = LAYOUT[ci + 1];
+    if (next && !isBridge(column) && !isBridge(next)) {
       const div = document.createElement('div');
       div.className = 'section-divider';
       root.appendChild(div);
