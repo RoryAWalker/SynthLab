@@ -92,6 +92,13 @@ function buildPanel() {
 // stacked sections (Oscillator 1 / 2), so related knobs sit level across the panel.
 // Runs before the stage is scaled, so measurements are in design pixels.
 function alignRows() {
+  // switch columns on a section line take the row heights of the section they serve,
+  // so each switch sits level with its row (e.g. Osc. 3 Control beside Oscillator 3)
+  LAYOUT.flat().forEach((sec) => {
+    if (!sec.matchRows) return;
+    const src = sections[sec.matchRows].querySelector('.section-grid');
+    sections[sec.id].querySelector('.section-grid').style.gridTemplateRows = getComputedStyle(src).gridTemplateRows;
+  });
   LAYOUT.flat().forEach((sec) => {
     if (!sec.alignRows) return;
     const grid = sections[sec.id].querySelector('.section-grid');

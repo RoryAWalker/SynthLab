@@ -97,11 +97,11 @@ export const PARAMS = {
 export const LAYOUT = [
   // Controllers: Tune, Glide and Modulation Mix in one column
   [{ id: 'ctrl', title: 'Controllers', rowTitles: [' ', ' ', ' '], rows: [['ctrl.tune'], ['ctrl.glide'], ['ctrl.modmix']] }],
-  // on the line between Controllers and the Oscillator Bank
-  [{ id: 'oscmod', title: '', bridge: true, rowTitles: [' ', ' ', ' '], rows: [['osc.mod'], [null], [null]] }],
+  // on the line between Controllers and the Oscillator Bank: Oscillator Modulation and Osc. 3 Control
+  [{ id: 'oscmod', title: '', bridge: true, matchRows: 'oscs', rowTitles: [' ', ' ', ' '], rows: [['osc.mod'], [null], ['osc3.ctrl']] }],
   [{
     id: 'oscs', title: 'Oscillator Bank', rowTitles: ['Oscillator 1', 'Oscillator 2', 'Oscillator 3'],
-    rows: [[null, 'osc1.range', null, 'osc1.wave'], [null, 'osc2.range', 'osc2.freq', 'osc2.wave'], ['osc3.ctrl', 'osc3.range', 'osc3.freq', 'osc3.wave']],
+    rows: [['osc1.range', null, 'osc1.wave'], ['osc2.range', 'osc2.freq', 'osc2.wave'], ['osc3.range', 'osc3.freq', 'osc3.wave']],
   }],
   [{
     // staggered like the classic mixer: Feedback sits between Osc 1 and 2, Noise between Osc 2 and 3,
@@ -111,7 +111,7 @@ export const LAYOUT = [
     offsets: { 'mix.feedback': '50%', 'mix.noise': '50%', 'mix.noisetype': '36px' },
   }],
   // on the line between the Mixer and the Modifiers
-  [{ id: 'filtsw', title: '', bridge: true, rowTitles: [' ', ' ', ' '], rows: [['filt.mod'], ['filt.kb1'], ['filt.kb2']] }],
+  [{ id: 'filtsw', title: '', bridge: true, matchRows: 'mods', rowTitles: [' ', ' ', ' '], rows: [['filt.mod'], ['filt.kb1'], ['filt.kb2']] }],
   [{
     id: 'mods', title: 'Modifiers', rowTitles: ['Filter', 'Filter Contour', 'Loudness Contour'],
     rows: [['filt.cutoff', 'filt.res', 'filt.env'], ['fenv.a', 'fenv.d', 'fenv.s'], ['aenv.a', 'aenv.d', 'aenv.s']],

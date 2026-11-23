@@ -849,3 +849,6 @@ body[data-skin="vintage"] .panel-column.stacked, body[data-skin="vintage"] .pane
 body[data-skin="vintage"] .perf .wheel-label { font-size: 12px; }
 body[data-skin="vintage"] .perf .toggle-row { padding-left: 16px; }
 body[data-skin="vintage"] .perf .section-title { font-size: 13px; }
+
+.panel-column.bridge .section-grid { align-items: center; }
+.panel-column.bridge .knob-cell.blank { height: 0; }
