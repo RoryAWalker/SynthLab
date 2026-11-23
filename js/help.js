@@ -334,6 +334,14 @@ export const HELP = {
     title: 'Hear target',
     body: ['Plays the target sound again. While it plays, the scope and spectrum capture it, and keep it as a dashed amber "target" trace behind your own.'],
   },
+  'lesson-hint': {
+    title: 'Hint',
+    body: ['Appears when you seem stuck. In matching challenges it shows a Hotter/Colder bar that fills up as your sound gets closer to the target; in other challenges it gives a tip.'],
+  },
+  'lesson-pick': {
+    title: 'Choose a lesson',
+    body: ['Switch between lessons. Your progress in each lesson is kept.'],
+  },
   'lesson-reset': {
     title: 'Reset controls',
     body: ['Puts the unlocked controls back to where this challenge started.'],

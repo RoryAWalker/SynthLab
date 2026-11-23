@@ -214,7 +214,7 @@ const keyboard = new Keyboard(document.getElementById('keys'), {
     ensureAudio(); engine.noteOn(n); // noteOn is queued until audio is up
     if (lesson) lesson.onNote(n);
   },
-  onNoteOff: (n) => engine.noteOff(n),
+  onNoteOff: (n) => { engine.noteOff(n); if (lesson) lesson.onNoteOff(n); },
   onOctave: (o) => (document.getElementById('oct-readout').textContent = 'C' + o),
 });
 if (SYNTH.keyboard) document.querySelector('.oct-hint').textContent = 'Play with A–K on your computer keyboard';

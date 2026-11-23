@@ -1,60 +1,69 @@
-// Lesson mode: the lesson bar, playing targets, checking matches, progress and celebrations.
+// Lesson mode: the lesson bar, playing targets, checking answers, hints, progress and celebrations.
+// Challenge types (see lessons.js): match (hear a target and match it), goal (do something,
+// the result is checked) and question (try something, then choose the right answer).
 
-import { LESSONS, patchMatches, soundMatches } from './lessons.js';
+import { LESSONS, patchMatches, soundMatches, closeness, osc1Hz } from './lessons.js';
 import { defaultPatch, ALL_SECTIONS } from './params.js';
 import { Fireworks, Smiley, finale } from './fireworks.js';
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const LISTEN_MS = 1600; // how long the target plays
+// The Hint button appears when a student seems stuck:
+const HINT_AFTER_MS = 40000;  // ...after this long on one challenge,
+const HINT_AFTER_NOTES = 10;  // ...or this many notes played without success,
+const HINT_AFTER_LISTENS = 3; // ...or this many replays of the target (a wrong answer also counts)
 const $ = (id) => document.getElementById(id);
 
-function loadProgress() {
-  try { return JSON.parse(localStorage.getItem('nf1.progress')) || {}; } catch { return {}; }
-}
-function loadNote() {
-  try { const n = Number(localStorage.getItem('nf1.lessonNote')); return n > 0 ? n : null; } catch { return null; }
-}
-function saveNote(n) {
-  try { localStorage.setItem('nf1.lessonNote', String(n)); } catch { /* storage unavailable */ }
-}
-function saveProgress(p) {
-  try { localStorage.setItem('nf1.progress', JSON.stringify(p)); } catch { /* storage unavailable */ }
-}
+function load(key, d) { try { const v = localStorage.getItem(key); return v == null ? d : JSON.parse(v); } catch { return d; } }
+function save(key, v) { try { localStorage.setItem(key, JSON.stringify(v)); } catch { /* storage unavailable */ } }
 
 export class LessonController {
   // deps: { getPatch, setPatch, engine, scope, keyboard, lockSection, ensureAudio, onModeChange }
   constructor(deps) {
     this.d = deps;
-    this.lessonIndex = 0;
+    this.lessonIndex = Math.min(LESSONS.length - 1, Math.max(0, load('sl.lessonIndex', 0)));
     this.index = -1;          // current challenge (-1 = intro screen)
     this.busy = false;        // target is playing: student input is ignored
     this.solved = false;
     this.lastNote = null;
-    this.note = loadNote();   // the lesson's key: found in challenge 1, reused (and marked) after
-    this.progress = loadProgress();
+    this.held = 0;            // keys currently held
+    const n = Number(load('nf1.lessonNote', 0));
+    this.note = n > 0 ? n : null; // the lessons' key, reused and marked between challenges
+    this.progress = load('nf1.progress', {});
     this.mode = null; // set by setMode() at start-up
 
-    // celebrations drawn on the two screens: a smiley per matched sound, fireworks per lesson
+    // celebrations drawn on the two screens: a smiley per success, fireworks per lesson
     this.smileys = [new Smiley(), new Smiley()];
     this.fireworks = [new Fireworks(), new Fireworks()];
     deps.scope.fx = { a: [this.smileys[0], this.fireworks[0]], b: [this.smileys[1], this.fireworks[1]] };
     deps.scope.showTarget = true;
 
-    $('lb-hear').addEventListener('click', () => this.audition());
+    $('lb-hear').addEventListener('click', () => { this.listens++; this.audition(); });
     $('lb-reset').addEventListener('click', () => this.resetControls());
     $('lb-start').addEventListener('click', () => this.begin());
+    $('lb-hint').addEventListener('click', () => this.showHint());
     $('lb-ghost').addEventListener('change', (e) => { deps.scope.showTarget = e.target.checked; });
     $('lm-replay').addEventListener('click', () => { this.closeModal(); this.restartLesson(); });
     $('lm-free').addEventListener('click', () => { this.closeModal(); this.setMode('free'); });
     $('lm-next').addEventListener('click', () => {
       if (!LESSONS[this.lessonIndex + 1]) return;
-      this.closeModal(); this.lessonIndex++; this.showIntro();
+      this.closeModal(); this.chooseLesson(this.lessonIndex + 1);
     });
+
+    // lesson picker
+    const pick = $('lb-lesson');
+    LESSONS.forEach((l, i) => pick.appendChild(new Option(`Lesson ${l.number}: ${l.title}`, String(i))));
+    pick.value = String(this.lessonIndex);
+    pick.addEventListener('change', () => { this.chooseLesson(Number(pick.value)); pick.blur(); });
+
+    // the Hint button appears when the student seems stuck
+    setInterval(() => this.maybeOfferHint(), 1000);
   }
 
   get lesson() { return LESSONS[this.lessonIndex]; }
   get done() { return this.progress[this.lesson.id] || []; }
   get challenge() { return this.lesson.challenges[this.index]; }
+  get type() { return (this.challenge && this.challenge.type) || 'match'; }
 
   // ---- modes ------------------------------------------------------------------------------
   setMode(mode) {
@@ -67,6 +76,7 @@ export class LessonController {
       this.showIntro();
     } else {
       this.busy = false;
+      this.index = -1;
       this.runId = (this.runId || 0) + 1; // abandon a target that is still playing
       document.body.classList.remove('auditioning');
       this.d.scope.clearTarget();
@@ -77,25 +87,39 @@ export class LessonController {
     if (this.d.onModeChange) this.d.onModeChange(mode);
   }
 
+  chooseLesson(i) {
+    this.lessonIndex = i;
+    save('sl.lessonIndex', i);
+    $('lb-lesson').value = String(i);
+    this.showIntro();
+  }
+
   // ---- intro / navigation ---------------------------------------------------------------------
   showIntro() {
     this.index = -1;
+    this.runId = (this.runId || 0) + 1;
+    this.busy = false;
+    document.body.classList.remove('auditioning');
     this.d.keyboard.markTarget(null);
     this.d.scope.clearTarget();
     this.lockFor(['osc1']);
     this.d.setPatch({});
     const started = this.done.some(Boolean);
-    const complete = this.done.filter(Boolean).length === this.lesson.challenges.length;
+    const total = this.lesson.challenges.length;
+    const complete = this.done.filter(Boolean).length === total;
+    const allMatch = this.lesson.challenges.every((c) => !c.type || c.type === 'match');
     $('lb-eyebrow').textContent = `Lesson ${this.lesson.number}`;
     $('lb-title').textContent = this.lesson.title;
     $('lb-task-title').textContent = complete ? 'Lesson complete' : started ? 'Welcome back' : 'Ready?';
     $('lb-task-text').textContent = complete
-      ? 'You have matched every sound in this lesson. Replay any challenge by clicking its number, or start again.'
-      : `${this.lesson.summary} Listen to each target sound, then use the synth to match it. There are ${this.lesson.challenges.length} sounds to match.`;
+      ? 'You have completed every challenge in this lesson. Replay any of them by clicking its number, or start again.'
+      : `${this.lesson.summary} ${allMatch ? `Listen to each target sound, then use the synth to match it. There are ${total} sounds to match.` : `There are ${total} challenges.`}`;
     $('lb-start').textContent = complete ? 'Start again' : started ? 'Continue' : `Start lesson ${this.lesson.number}`;
     $('lb-start').hidden = false;
     this.setStatus('', '');
     this.showPlayControls(false);
+    this.clearQuestion();
+    this.hideHint();
     this.renderSteps();
   }
 
@@ -108,13 +132,8 @@ export class LessonController {
 
   restartLesson() {
     this.progress[this.lesson.id] = [];
-    saveProgress(this.progress);
-    this.note = null;
+    save('nf1.progress', this.progress);
     this.enter(0);
-  }
-
-  next() {
-    if (this.index < this.lesson.challenges.length - 1) this.enter(this.index + 1);
   }
 
   // ---- a challenge ---------------------------------------------------------------------------
@@ -122,12 +141,15 @@ export class LessonController {
     this.index = i;
     this.solved = false;
     this.lastNote = null;
+    this.enteredAt = performance.now();
+    this.notesPlayed = 0;
+    this.listens = 0;
+    this.wrongAnswers = 0;
     const ch = this.challenge;
-    this.startPatch = { ...defaultPatch(), ...ch.start };
     this.target = this.makeTarget(ch);
     this.lockFor(ch.unlocked);
     this.d.keyboard.markTarget(ch.showKey ? this.target.note : null);
-    this.d.setPatch(ch.start);
+    this.d.setPatch(this.startOverrides);
     this.d.scope.clearTarget();
 
     $('lb-start').hidden = true;
@@ -135,8 +157,12 @@ export class LessonController {
     $('lb-next').hidden = true;
     $('lb-task-title').textContent = `${i + 1}. ${ch.title}`;
     $('lb-task-text').textContent = ch.text;
+    this.clearQuestion();
+    this.hideHint();
+    if (this.type === 'question') this.renderQuestion(ch.question);
     this.renderSteps();
-    this.audition();
+    if (this.type === 'match') this.audition();
+    else this.setStatus('Your turn', 'turn');
   }
 
   makeTarget(ch) {
@@ -144,6 +170,7 @@ export class LessonController {
       note: this.note,
       pick: (list) => list[Math.floor(Math.random() * list.length)],
       pickDistinct: (list, n) => [...list].sort(() => Math.random() - 0.5).slice(0, n),
+      level: (lo, hi) => Math.round((lo + Math.random() * (hi - lo)) * 20) / 20, // in steps of 5%
       newNote: () => {
         // a random key in the lowest octave shown on the keyboard (12 notes from its C)
         const lo = this.d.keyboard.low;
@@ -154,18 +181,26 @@ export class LessonController {
         return n;
       },
     };
-    // the lesson's key must be on the visible keyboard (the octave may have changed)
+    // the lessons' key must be on the visible keyboard (the octave may have changed)
     const kb = this.d.keyboard;
     if (ctx.note == null || ctx.note < kb.low || ctx.note > kb.high) ctx.newNote();
     let t;
-    for (let tries = 0; tries < 30; tries++) {
-      t = ch.make(ctx);
-      t.patch = { ...this.startPatch, ...t.patch };
-      // make sure there is something to change (the first challenge only asks for the note)
-      if (this.index === 0 || !patchMatches(this.startPatch, t.patch, ch.compare)) break;
+    if (this.type === 'match') {
+      this.startOverrides = ch.start || {};
+      this.startPatch = { ...defaultPatch(), ...this.startOverrides };
+      for (let tries = 0; tries < 30; tries++) {
+        t = ch.make(ctx);
+        t.patch = { ...this.startPatch, ...t.patch };
+        // make sure there is something to change (Lesson 1's first challenge only asks for the note)
+        if ((this.lessonIndex === 0 && this.index === 0) || !patchMatches(this.startPatch, t.patch, ch.compare)) break;
+      }
+    } else {
+      t = ch.make(ctx); // { start, note }
+      this.startOverrides = t.start || {};
+      this.startPatch = { ...defaultPatch(), ...this.startOverrides };
     }
     this.note = t.note;
-    saveNote(t.note);
+    save('nf1.lessonNote', t.note);
     return t;
   }
 
@@ -175,13 +210,13 @@ export class LessonController {
 
   resetControls() {
     if (this.busy || this.index < 0) return;
-    this.d.setPatch(this.challenge.start);
+    this.d.setPatch(this.startOverrides);
     this.check();
   }
 
   // Play the target sound, and capture it for the ghost traces on the scopes.
   async audition() {
-    if (this.busy || this.index < 0) return;
+    if (this.busy || this.index < 0 || this.type !== 'match') return;
     this.busy = true;
     const run = (this.runId = (this.runId || 0) + 1);
     document.body.classList.add('auditioning');
@@ -207,11 +242,18 @@ export class LessonController {
     if (!this.solved) this.setStatus('Your turn', 'turn');
   }
 
-  // ---- matching -------------------------------------------------------------------------------
+  // ---- checking --------------------------------------------------------------------------------
   onNote(n) {
     if (this.mode !== 'lessons' || this.index < 0) return;
     this.lastNote = n;
+    this.held++;
+    this.notesPlayed = (this.notesPlayed || 0) + 1;
     this.check();
+  }
+
+  onNoteOff() {
+    this.held = Math.max(0, this.held - 1);
+    if (this.mode === 'lessons' && this.index >= 0) this.check();
   }
 
   onPatchChange() {
@@ -219,31 +261,40 @@ export class LessonController {
     this.check();
   }
 
-  check() {
-    if (this.busy || this.solved || this.index < 0) return;
-    if (this.lastNote == null) return;
-    if (!soundMatches(this.d.getPatch(), this.lastNote, this.target.patch, this.target.note, this.challenge.compare)) return;
-    this.success();
+  state() {
+    const patch = this.d.getPatch();
+    return { patch, note: this.lastNote, held: this.held > 0, f0: osc1Hz(patch, this.lastNote) };
   }
 
-  success() {
+  check() {
+    if (this.busy || this.index < 0) return;
+    this.updateHintBar();
+    if (this.solved) return;
+    const ch = this.challenge;
+    if (this.type === 'match') {
+      if (this.lastNote == null) return;
+      if (soundMatches(this.d.getPatch(), this.lastNote, this.target.patch, this.target.note, ch.compare)) this.success('Matched!');
+    } else if (this.type === 'goal') {
+      if (ch.check(this.state())) this.success('Done!');
+    }
+  }
+
+  success(label) {
     this.solved = true;
     const done = this.done.slice();
     done[this.index] = true;
     this.progress[this.lesson.id] = done;
-    saveProgress(this.progress);
+    save('nf1.progress', this.progress);
     this.smileys.forEach((s) => s.start());
     this.renderSteps();
+    this.setStatus(label, 'matched');
     const total = this.lesson.challenges.length;
-    const all = done.filter(Boolean).length === total;
-    if (all) {
-      this.setStatus('Matched!', 'matched');
+    if (done.filter(Boolean).length === total) {
       setTimeout(() => this.lessonComplete(), 1400);
     } else {
-      this.setStatus('Matched!', 'matched');
       const nextIdx = this.index < total - 1 ? this.index + 1 : done.findIndex((d) => !d);
       $('lb-next').hidden = false;
-      $('lb-next').textContent = 'Next sound ▸';
+      $('lb-next').textContent = 'Next ▸';
       $('lb-next').onclick = () => this.enter(nextIdx);
     }
   }
@@ -255,7 +306,7 @@ export class LessonController {
     const nextLesson = LESSONS[this.lessonIndex + 1];
     $('lm-eyebrow').textContent = `Lesson ${this.lesson.number} complete`;
     $('lm-title').textContent = this.lesson.title;
-    $('lm-text').textContent = `You matched all ${this.lesson.challenges.length} sounds by ear. You now know how pitch, octave range, waveform and detuning shape the raw sound of an oscillator.`;
+    $('lm-text').textContent = this.lesson.doneText;
     $('lm-next').textContent = nextLesson ? `Start lesson ${nextLesson.number}: ${nextLesson.title}` : `Lesson ${this.lesson.number + 1}: coming soon`;
     $('lm-next').classList.toggle('soon', !nextLesson);
     $('lm-replay').textContent = `Replay lesson ${this.lesson.number}`;
@@ -265,6 +316,86 @@ export class LessonController {
 
   closeModal() { $('lesson-modal').hidden = true; }
 
+  // ---- questions --------------------------------------------------------------------------------
+  renderQuestion(q) {
+    const wrap = $('lb-question');
+    wrap.hidden = false;
+    q.options.forEach((opt) => {
+      const b = document.createElement('button');
+      b.className = 'lb-answer';
+      b.textContent = opt.text;
+      b.addEventListener('click', () => this.answer(opt, b));
+      wrap.appendChild(b);
+    });
+  }
+
+  answer(opt, btn) {
+    if (this.solved) return;
+    const fb = $('lb-feedback');
+    if (opt.correct) {
+      btn.classList.add('right');
+      $('lb-question').querySelectorAll('.lb-answer').forEach((b) => { b.disabled = true; });
+      fb.textContent = this.challenge.question.explain;
+      fb.className = 'lb-feedback right';
+      this.success('Correct!');
+    } else {
+      btn.classList.add('wrong');
+      btn.disabled = true;
+      fb.textContent = `Not quite. ${opt.feedback || ''}`;
+      fb.className = 'lb-feedback wrong';
+      this.wrongAnswers++;
+    }
+  }
+
+  clearQuestion() {
+    $('lb-question').innerHTML = '';
+    $('lb-question').hidden = true;
+    $('lb-feedback').textContent = '';
+    $('lb-feedback').className = 'lb-feedback';
+  }
+
+  // ---- hints -----------------------------------------------------------------------------------
+  maybeOfferHint() {
+    if (this.mode !== 'lessons' || this.index < 0 || this.solved || !$('lb-hint').hidden || this.hintShown) return;
+    const stuck = performance.now() - this.enteredAt > HINT_AFTER_MS
+      || this.notesPlayed >= HINT_AFTER_NOTES
+      || this.listens >= HINT_AFTER_LISTENS
+      || this.wrongAnswers > 0;
+    if (stuck) $('lb-hint').hidden = false;
+  }
+
+  showHint() {
+    this.hintShown = true;
+    $('lb-hint').hidden = true;
+    const ch = this.challenge;
+    const box = $('lb-hintbox');
+    box.hidden = false;
+    $('lb-hint-text').textContent = ch.hint || 'Turn one control at a time and watch the bar: it fills up as you get closer to the target sound.';
+    const hasBar = this.type === 'match' || (this.type === 'goal' && ch.progress);
+    $('lb-heat').hidden = !hasBar;
+    this.updateHintBar();
+  }
+
+  hideHint() {
+    this.hintShown = false;
+    $('lb-hint').hidden = true;
+    $('lb-hintbox').hidden = true;
+  }
+
+  updateHintBar() {
+    if (!this.hintShown || $('lb-heat').hidden || this.index < 0) return;
+    let v = 0;
+    if (this.type === 'match') {
+      v = closeness(this.d.getPatch(), this.lastNote, this.target.patch, this.target.note, this.challenge.compare);
+    } else if (this.challenge.progress) {
+      const s = this.state();
+      v = s.note == null ? 0 : this.challenge.progress(s);
+    }
+    v = Math.max(0, Math.min(1, v || 0));
+    $('lb-heat-fill').style.width = `${Math.round(v * 100)}%`;
+    $('lb-heat-word').textContent = v > 0.95 ? 'Hot!' : v > 0.75 ? 'Warmer' : v > 0.5 ? 'Getting there' : 'Cold';
+  }
+
   // ---- rendering ---------------------------------------------------------------------------------
   setStatus(text, kind) {
     const el = $('lb-status');
@@ -273,7 +404,10 @@ export class LessonController {
   }
 
   showPlayControls(on) {
-    ['lb-hear', 'lb-reset', 'lb-ghost-wrap'].forEach((id) => { $(id).hidden = !on; });
+    const match = on && this.index >= 0 && this.type === 'match';
+    $('lb-hear').hidden = !match;
+    $('lb-ghost-wrap').hidden = !match;
+    $('lb-reset').hidden = !on;
   }
 
   renderSteps() {
@@ -285,7 +419,7 @@ export class LessonController {
       const b = document.createElement('button');
       b.className = 'lb-step' + (done[i] ? ' done' : '') + (i === this.index ? ' current' : '');
       b.innerHTML = done[i] ? '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" /></svg>' : String(i + 1);
-      b.title = `${i + 1}. ${ch.title}${done[i] ? ' (matched)' : ''}`;
+      b.title = `${i + 1}. ${ch.title}${done[i] ? ' (done)' : ''}`;
       b.setAttribute('aria-label', b.title);
       // completed challenges can be replayed; the next open one can be started
       const reachable = done[i] || i === firstOpen;

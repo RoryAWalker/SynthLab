@@ -184,7 +184,9 @@ class VAProcessor extends AudioWorkletProcessor {
       this.ph2 += dt2; if (this.ph2 >= 1) this.ph2 -= 1;
 
       // mixer
-      const x = o1 * sm.m1 + o2 * sm.m2;
+      // a whisper of noise, like a real circuit's, so a resonant filter can start oscillating
+      // on its own even with both oscillators turned off
+      const x = o1 * sm.m1 + o2 * sm.m2 + (Math.random() - 0.5) * 2e-5;
       if (M1) { M1[i] = o1 * sm.m1 * OUTPUT_GAIN; M2[i] = o2 * sm.m2 * OUTPUT_GAIN; }
 
       // envelopes
