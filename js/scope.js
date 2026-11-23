@@ -25,6 +25,36 @@ function setupCanvas(canvas, pixelScale = 1) {
   return { ctx, w, h, r };
 }
 
+// Trigger: last rising zero crossing (with hysteresis) that leaves a full window after it.
+// Searching backwards from the newest data keeps the display current. Returns -1 if none.
+function findTrigger(buf, win) {
+  const hyst = 0.02;
+  for (let i = buf.length - win - 1; i > 0; i--) {
+    // walking backwards: a rising edge forwards is "above then below" backwards
+    if (buf[i] >= 0 && buf[i - 1] < 0) {
+      // confirm a real dip below -hyst shortly before it
+      const lim = Math.max(0, i - 2000);
+      for (let j = i - 1; j >= lim; j--) { if (buf[j] < -hyst) return i; if (buf[j] > hyst) break; }
+    }
+  }
+  return -1;
+}
+
+// Spectrum outline: one point per pixel column, taking the loudest bin in that column.
+function spectrumPath(ctx, fb, binHz, w, h, fMin, fMax) {
+  for (let x = 0; x <= w; x++) {
+    const f0 = fMin * Math.pow(fMax / fMin, x / w);
+    const f1 = fMin * Math.pow(fMax / fMin, (x + 1) / w);
+    const b0 = Math.floor(f0 / binHz), b1 = Math.max(b0 + 1, Math.ceil(f1 / binHz));
+    let m = -Infinity;
+    for (let b = b0; b < b1 && b < fb.length; b++) if (fb[b] > m) m = fb[b];
+    const db = Math.max(-100, Math.min(0, m));
+    ctx.lineTo(x, (-db / 100) * h);
+  }
+}
+
+const GHOST = 'rgba(255, 181, 71, 0.7)';
+
 function drawGraticule(ctx, w, h, cols, rows) {
   ctx.lineWidth = 1;
   for (let i = 0; i <= cols; i++) {
@@ -79,7 +109,25 @@ export class Scope {
     if (this.frozen) return;
     this.drawScope();
     this.drawSpectrum();
+    // celebration fireworks drawn on top of both screens
+    if (this.fx) {
+      this.fx.a.forEach((f) => f.draw(this.a.ctx, this.a.w, this.a.h));
+      this.fx.b.forEach((f) => f.draw(this.b.ctx, this.b.w, this.b.h));
+    }
   }
+
+  // Lesson target: keep a copy of what the scope and spectrum showed while the target
+  // played, to draw as an amber ghost behind the player's own trace.
+  captureTarget() {
+    const an = this.engine.scope, sp = this.engine.spectrum;
+    if (!an || !sp) return;
+    const buf = new Float32Array(an.fftSize);
+    an.getFloatTimeDomainData(buf);
+    const fbuf = new Float32Array(sp.frequencyBinCount);
+    sp.getFloatFrequencyData(fbuf);
+    this.target = { buf, fbuf, binHz: this.engine.ctx.sampleRate / sp.fftSize };
+  }
+  clearTarget() { this.target = null; }
 
   drawScope() {
     const { ctx, w, h } = this.a;
@@ -102,21 +150,7 @@ export class Scope {
     const sr = this.engine.ctx.sampleRate;
     const win = Math.min(buf.length - 1, Math.round((this.timebase * 10 / 1000) * sr));
 
-    // Trigger: last rising zero crossing (with hysteresis) that leaves a full window after it.
-    // Searching backwards from the newest data keeps the display current.
-    let trig = -1;
-    const hyst = 0.02;
-    let armed = false;
-    for (let i = buf.length - win - 1; i > 0; i--) {
-      // walking backwards: a rising edge forwards is "above then below" backwards
-      if (buf[i] >= 0 && buf[i - 1] < 0) {
-        // confirm a real dip below -hyst shortly before it
-        armed = false;
-        const lim = Math.max(0, i - 2000);
-        for (let j = i - 1; j >= lim; j--) { if (buf[j] < -hyst) { armed = true; break; } if (buf[j] > hyst) break; }
-        if (armed) { trig = i; break; }
-      }
-    }
+    const trig = findTrigger(buf, win);
     const start = trig >= 0 ? trig : buf.length - win - 1;
     this.triggered = trig >= 0;
 
@@ -125,7 +159,7 @@ export class Scope {
     // the edge, as on a real oscilloscope.
     const vScale = (h / 2) * 0.92 / 0.5;
     const step = Math.max(1, Math.floor(win / (w * 2)));
-    const trace = (data, color, width, dash) => {
+    const trace = (data, color, width, dash, from = start) => {
       ctx.save();
       ctx.lineJoin = 'round';
       ctx.strokeStyle = color;
@@ -134,12 +168,21 @@ export class Scope {
       ctx.beginPath();
       for (let i = 0; i <= win; i += step) {
         const x = (i / win) * w;
-        const y = h / 2 - data(start + i) * vScale;
+        const y = h / 2 - data(from + i) * vScale;
         if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
       }
       ctx.stroke();
       ctx.restore();
     };
+
+    // Lesson target ghost, triggered the same way so matching waves line up.
+    if (this.target && this.showTarget) {
+      const tb = this.target.buf;
+      const tt = findTrigger(tb, win);
+      trace((i) => tb[i], GHOST, 2, [5, 3], tt >= 0 ? tt : tb.length - win - 1);
+      label(ctx, 'TARGET - -', w - 10, 16, '#ffb547', 'right', 10, 800);
+      label(ctx, 'YOU', w - 10, 30, PHOSPHOR, 'right', 10, 800);
+    }
 
     // Mixer view: each oscillator (after its mixer level) and their sum, behind the output.
     if (mixAlpha && this.engine.osc1Scope) {
@@ -269,6 +312,18 @@ export class Scope {
 
     const an = this.engine.spectrum;
     if (an && this.engine.running) this.drawSpectrumTrace(ctx, w, h, an, fMin, fMax);
+    if (this.target && this.showTarget) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(0, h);
+      spectrumPath(ctx, this.target.fbuf, this.target.binHz, w, h, fMin, fMax);
+      ctx.strokeStyle = GHOST;
+      ctx.lineWidth = 1.6;
+      ctx.setLineDash([5, 3]);
+      ctx.stroke();
+      ctx.restore();
+      label(ctx, 'TARGET - -', w - 10, 28, '#ffb547', 'right', 10, 800);
+    }
     if (this.overlay) this.overlay.draw(ctx, w, h, this.fbuf && an ? { fbuf: this.fbuf, binHz: this.engine.ctx.sampleRate / an.fftSize } : null);
   }
 
@@ -281,16 +336,7 @@ export class Scope {
     ctx.save();
     ctx.beginPath();
     ctx.moveTo(0, h);
-    // one point per pixel column, taking the loudest bin in that column
-    for (let x = 0; x <= w; x++) {
-      const f0 = fMin * Math.pow(fMax / fMin, x / w);
-      const f1 = fMin * Math.pow(fMax / fMin, (x + 1) / w);
-      let b0 = Math.floor(f0 / binHz), b1 = Math.max(b0 + 1, Math.ceil(f1 / binHz));
-      let m = -Infinity;
-      for (let b = b0; b < b1 && b < fb.length; b++) if (fb[b] > m) m = fb[b];
-      const db = Math.max(-100, Math.min(0, m));
-      ctx.lineTo(x, (-db / 100) * h);
-    }
+    spectrumPath(ctx, fb, binHz, w, h, fMin, fMax);
     ctx.lineTo(w, h);
     ctx.closePath();
     const grad = ctx.createLinearGradient(0, 0, 0, h);

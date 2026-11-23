@@ -66,15 +66,6 @@ select, .btn {
   cursor: pointer;
 }
 .btn:hover, select:hover { background: #33363c; }
-.dropdown { position: relative; }
-.dropdown-menu {
-  display: none; position: absolute; right: 0; top: calc(100% + 6px); z-index: 50;
-  background: #24262b; border: 1px solid #3a3d44; border-radius: 8px; padding: 8px 4px;
-  min-width: 190px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-}
-.dropdown-menu.open { display: block; }
-.dropdown-menu label { display: flex; gap: 8px; align-items: center; padding: 5px 10px; font-size: 12px; color: #d6d8dc; cursor: pointer; border-radius: 4px; }
-.dropdown-menu label:hover { background: #2f3238; }
 
 /* ---- stage: fixed design size, scaled to fit ----------------------------- */
 /* #fit is the viewport; #stage is positioned and scaled inside it by zoom.js */
@@ -498,3 +489,86 @@ body.help-open .help-panel.visible { display: block; animation: help-in 0.15s ea
   box-shadow: 0 0 0 1px #000, 0 0 calc(var(--glow) * 12px) calc(var(--glow) * 3px) rgba(255, 181, 71, calc(var(--glow) * 0.8));
 }
 .beat-label { font-size: 8.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-dim); }
+
+/* ==========================================================================
+   Lessons
+   ========================================================================== */
+.mode-switch { display: inline-flex; border: 1px solid #3a3d44; border-radius: 7px; overflow: hidden; }
+.mode-switch button { font: 600 12px var(--font); color: #b9bcc2; background: #23252a; border: none; padding: 6px 12px; cursor: pointer; }
+.mode-switch button + button { border-left: 1px solid #3a3d44; }
+.mode-switch button.on { background: #3b3220; color: #ffd9a0; }
+body.lesson-mode .free-only { display: none; }
+
+.lesson-bar {
+  display: grid; grid-template-columns: auto auto minmax(260px, 1fr) auto; gap: 26px; align-items: center;
+  padding: 14px 24px;
+  background: linear-gradient(#202227, #1a1c20);
+  border-bottom: 1px solid #2e3137;
+}
+.lesson-bar[hidden] { display: none; }
+.lb-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent); }
+.lb-title { font-size: 22px; font-weight: 700; color: #fff; white-space: nowrap; }
+.lb-steps { display: flex; gap: 6px; }
+.lb-step {
+  width: 30px; height: 30px; border-radius: 50%; padding: 0; cursor: pointer;
+  font: 700 12px var(--font); color: #c9ccd1;
+  background: #2a2c31; border: 1.5px solid #3d4047;
+  display: grid; place-items: center; transition: transform 0.15s, background 0.2s;
+}
+.lb-step:disabled { cursor: default; color: #5d6168; background: #1f2125; border-color: #2c2f35; }
+.lb-step:not(:disabled):hover { transform: translateY(-1px); border-color: #6a6e76; }
+.lb-step.current { border-color: var(--accent); color: #fff; box-shadow: 0 0 0 3px rgba(255, 181, 71, 0.2); }
+.lb-step.done { background: #2f8a55; border-color: #49c07c; color: #fff; }
+.lb-step.done.current { box-shadow: 0 0 0 3px rgba(255, 181, 71, 0.35); border-color: var(--accent); }
+.lb-step svg { width: 15px; height: 15px; fill: none; stroke: #fff; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.lb-step.done.pop { animation: step-pop 0.5s ease-out; }
+@keyframes step-pop { 0% { transform: scale(1); } 40% { transform: scale(1.35); } 100% { transform: scale(1); } }
+.lb-task-head { display: flex; align-items: center; gap: 12px; margin-bottom: 3px; }
+.lb-task-title { font-size: 16px; font-weight: 700; color: #fff; }
+.lb-task-text { font-size: 13.5px; line-height: 1.5; color: #c3c6cc; max-width: 70ch; }
+.lb-status { font-size: 11px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; padding: 3px 9px; border-radius: 20px; }
+.lb-status:empty { display: none; }
+.lb-status.listen { background: #22344a; color: #9fd0ff; animation: listen-pulse 1s ease-in-out infinite; }
+.lb-status.turn { background: #2b2d33; color: #d8dade; }
+.lb-status.matched { background: #2f8a55; color: #fff; animation: step-pop 0.5s ease-out; }
+@keyframes listen-pulse { 50% { opacity: 0.55; } }
+.lb-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+.lb-btn {
+  font: 600 13px var(--font); color: #e6e7ea; background: #2c2e34; border: 1px solid #41444c;
+  border-radius: 8px; padding: 8px 14px; cursor: pointer; white-space: nowrap;
+}
+.lb-btn:hover { background: #35383f; }
+.lb-btn.primary { background: linear-gradient(#ffcf7a, #f0a43a); border-color: #c98a2e; color: #24180a; }
+.lb-btn.primary:hover { background: linear-gradient(#ffd98f, #f5ae4a); }
+.lb-btn.quiet { background: none; border-color: transparent; color: #b9bcc2; }
+.lb-btn.quiet:hover { background: #2a2c31; }
+.lb-btn[hidden], .lb-check[hidden] { display: none; }
+.lb-check { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: #b9bcc2; cursor: pointer; white-space: nowrap; }
+@media (max-width: 1250px) {
+  .lesson-bar { grid-template-columns: auto 1fr; }
+  .lb-task { grid-column: 1 / -1; }
+  .lb-actions { grid-column: 1 / -1; justify-content: flex-start; }
+}
+
+/* while the target plays, the student can only listen */
+body.auditioning .panel-sections, body.auditioning .keybed { pointer-events: none; }
+body.auditioning #lb-hear, body.auditioning #lb-reset, body.auditioning .lb-steps { opacity: 0.5; pointer-events: none; }
+
+.lesson-modal {
+  position: fixed; inset: 0; z-index: 60; display: grid; place-items: center;
+  background: rgba(8, 9, 11, 0.55); animation: help-in 0.3s ease-out;
+}
+.lesson-modal[hidden] { display: none; }
+.lm-card {
+  width: min(520px, calc(100vw - 32px)); padding: 30px 32px 26px; border-radius: 16px;
+  background: #1d1f24; border: 1px solid #3a3d44; box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+  text-align: center; animation: card-in 0.45s cubic-bezier(.2,1.4,.4,1);
+}
+@keyframes card-in { from { transform: translateY(20px) scale(0.92); opacity: 0; } to { transform: none; opacity: 1; } }
+.lm-eyebrow { font-size: 12px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent); }
+.lm-title { margin: 6px 0 10px; font-size: 32px; color: #fff; }
+.lm-text { margin: 0 0 22px; font-size: 15px; line-height: 1.6; color: #c9ccd1; }
+.lm-actions { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.lm-actions .lb-btn { min-width: 260px; padding: 11px 16px; font-size: 14px; }
+.lm-actions .lb-btn.soon { opacity: 0.6; cursor: default; background: #2c2e34; color: #c9ccd1; border-color: #41444c; }
+.finale-canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 70; pointer-events: none; }

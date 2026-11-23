@@ -10,15 +10,15 @@
   <header class="appbar">
     <div class="appbar-title"><b>SynthLab</b><span>Sound design workbench</span></div>
     <div class="appbar-controls">
-      <label class="ctl" data-help="presets">Patch
+      <div class="mode-switch" id="mode-switch" data-help="mode" role="tablist">
+        <button data-mode="lessons" role="tab">Lessons</button>
+        <button data-mode="free" role="tab">Free play</button>
+      </div>
+      <label class="ctl free-only" data-help="presets">Patch
         <select id="preset"></select>
       </label>
-      <button id="btn-init" class="btn" data-help="init">Init</button>
+      <button id="btn-init" class="btn free-only" data-help="init">Init</button>
       <label class="ctl check" data-help="showvalues"><input type="checkbox" id="show-values" checked> Show values</label>
-      <div class="dropdown" data-help="lock">
-        <button class="btn" id="btn-lock">Lock sections ▾</button>
-        <div class="dropdown-menu" id="lock-menu"></div>
-      </div>
       <div class="zoom-ctl" data-help="zoom">
         <button id="zoom-out" aria-label="Zoom out">−</button>
         <button id="zoom-level" class="zoom-level" title="Fit to window">100%</button>
@@ -27,6 +27,25 @@
       <button class="btn btn-help" id="btn-help" data-help="help" aria-pressed="false" title="Hover help: rest on any control for a second"><span class="help-q">?</span> Help</button>
     </div>
   </header>
+
+  <section class="lesson-bar" id="lesson-bar" hidden>
+    <div class="lb-head">
+      <div class="lb-eyebrow" id="lb-eyebrow">Lesson 1</div>
+      <div class="lb-title" id="lb-title">Oscillators</div>
+    </div>
+    <div class="lb-steps" id="lb-steps" data-help="lesson-steps"></div>
+    <div class="lb-task">
+      <div class="lb-task-head"><span class="lb-task-title" id="lb-task-title"></span><span class="lb-status" id="lb-status"></span></div>
+      <div class="lb-task-text" id="lb-task-text"></div>
+    </div>
+    <div class="lb-actions">
+      <button class="lb-btn primary" id="lb-start">Start</button>
+      <button class="lb-btn" id="lb-hear" data-help="lesson-hear"><span aria-hidden="true">▶</span> Hear target</button>
+      <button class="lb-btn quiet" id="lb-reset" data-help="lesson-reset">Reset controls</button>
+      <label class="lb-check" id="lb-ghost-wrap" data-help="lesson-ghost"><input type="checkbox" id="lb-ghost" checked> Show target on scopes</label>
+      <button class="lb-btn primary" id="lb-next" hidden>Next sound ▸</button>
+    </div>
+  </section>
 
   <main id="fit">
     <div id="stage">
@@ -86,6 +105,19 @@
       </section>
     </div>
   </main>
+
+  <div class="lesson-modal" id="lesson-modal" hidden>
+    <div class="lm-card" role="dialog" aria-labelledby="lm-title">
+      <div class="lm-eyebrow" id="lm-eyebrow">Lesson complete</div>
+      <h2 class="lm-title" id="lm-title"></h2>
+      <p class="lm-text" id="lm-text"></p>
+      <div class="lm-actions">
+        <button class="lb-btn primary" id="lm-next">Next lesson</button>
+        <button class="lb-btn" id="lm-replay">Replay lesson</button>
+        <button class="lb-btn quiet" id="lm-free">Free play</button>
+      </div>
+    </div>
+  </div>
 
   <aside class="help-panel" id="help-panel" aria-label="Help">
     <div class="help-content"></div>

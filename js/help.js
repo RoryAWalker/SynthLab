@@ -310,6 +310,26 @@ export const HELP = {
     title: 'Lock sections',
     body: ['Greys out parts of the panel so they cannot be changed. Locked sections keep their settings and still affect the sound. Useful for focusing on one section at a time.'],
   },
+  mode: {
+    title: 'Lessons and Free play',
+    body: ['Lessons: match target sounds by ear, one challenge at a time, with only the controls you need unlocked.', 'Free play: every control is available, along with the factory patches.'],
+  },
+  'lesson-steps': {
+    title: 'Progress',
+    body: ['Each circle is one sound to match. Matched sounds get a green tick. Click a ticked circle to try that challenge again with a new random target.'],
+  },
+  'lesson-hear': {
+    title: 'Hear target',
+    body: ['Plays the target sound again. While it plays, the scope and spectrum capture it, and keep it as a dashed amber "target" trace behind your own.'],
+  },
+  'lesson-reset': {
+    title: 'Reset controls',
+    body: ['Puts the unlocked controls back to where this challenge started.'],
+  },
+  'lesson-ghost': {
+    title: 'Show target on scopes',
+    body: ['Shows the target sound as a dashed amber trace on the oscilloscope and spectrum. Turn it off to match by ear alone.'],
+  },
   zoom: {
     title: 'Zoom',
     body: [

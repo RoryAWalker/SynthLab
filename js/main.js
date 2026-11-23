@@ -7,12 +7,14 @@ import { Keyboard, noteName } from './keyboard.js';
 import { HelpPanel } from './helpPanel.js';
 import { Overlay } from './visuals.js';
 import { ZoomPan } from './zoom.js';
+import { LessonController } from './lessonUI.js';
 
 const engine = new Engine();
 let patch = defaultPatch();
 const knobs = {};
 const sections = {};
 let help = null; // HelpPanel, created at boot
+let lesson = null; // LessonController, created at boot
 const overlay = new Overlay(() => patch, engine); // teaching graphs on the spectrum display
 
 // ---- panel ---------------------------------------------------------------------------
@@ -79,7 +81,8 @@ function ensureAudio() {
 
 function onKnob(id, value) {
   patch[id] = value;
-  engine.setParam(id, value);
+  if (!(lesson && lesson.busy)) engine.setParam(id, value); // while a lesson target plays, keep it intact
+  if (lesson) lesson.onPatchChange();
   if (help) help.refresh(id);
   overlay.activate(id);
   if (presetSel.value !== '') presetSel.value = '';
@@ -97,9 +100,7 @@ function lockSection(id, locked = true) {
   const el = sections[id];
   if (!el) return;
   el.classList.toggle('locked', locked);
-  el.querySelectorAll('.knob').forEach((k) => (k.tabIndex = locked ? -1 : 0));
-  const cb = document.querySelector(`#lock-menu input[data-section="${id}"]`);
-  if (cb) cb.checked = locked;
+  el.querySelectorAll('.knob, .toggle, .toggle-label').forEach((k) => (k.tabIndex = locked ? -1 : 0));
 }
 
 // ---- toolbar ------------------------------------------------------------------------------
@@ -121,16 +122,6 @@ function buildToolbar() {
   document.body.classList.toggle('show-values', showValues.checked);
   showValues.addEventListener('change', (e) => document.body.classList.toggle('show-values', e.target.checked));
 
-  const menu = document.getElementById('lock-menu');
-  ALL_SECTIONS.forEach((sec) => {
-    const lab = document.createElement('label');
-    lab.innerHTML = `<input type="checkbox" data-section="${sec.id}"> ${sec.title}`;
-    lab.querySelector('input').addEventListener('change', (e) => lockSection(sec.id, e.target.checked));
-    menu.appendChild(lab);
-  });
-  const btn = document.getElementById('btn-lock');
-  btn.addEventListener('click', (e) => { e.stopPropagation(); menu.classList.toggle('open'); });
-  document.addEventListener('click', (e) => { if (!menu.contains(e.target)) menu.classList.remove('open'); });
 
   // scope timebase
   const tb = document.getElementById('tb-buttons');
@@ -179,7 +170,11 @@ const savePref = (k, v) => { try { localStorage.setItem(k, v); } catch { /* stor
 
 const keyboard = new Keyboard(document.getElementById('keys'), {
   octaves: Number(loadPref('nf1.octaves', 2)),
-  onNoteOn: (n) => { ensureAudio(); engine.noteOn(n); }, // noteOn is queued until audio is up
+  onNoteOn: (n) => {
+    if (lesson && lesson.busy) return; // listening to a lesson target
+    ensureAudio(); engine.noteOn(n); // noteOn is queued until audio is up
+    if (lesson) lesson.onNote(n);
+  },
   onNoteOff: (n) => engine.noteOff(n),
   onOctave: (o) => (document.getElementById('oct-readout').textContent = 'C' + o),
 });
@@ -249,6 +244,18 @@ const beatLamp = beatLed.querySelector('.beat-lamp');
   beatLamp.style.setProperty('--glow', glow.toFixed(3));
 })();
 
+// ---- lessons ----
+lesson = new LessonController({
+  getPatch: () => ({ ...patch }), setPatch, engine, scope, keyboard, lockSection, ensureAudio,
+  onModeChange: (mode) => {
+    document.querySelectorAll('#mode-switch button').forEach((b) => b.classList.toggle('on', b.dataset.mode === mode));
+    savePref('nf1.mode', mode);
+    requestAnimationFrame(fit);
+  },
+});
+document.querySelectorAll('#mode-switch button').forEach((b) => b.addEventListener('click', () => lesson.setMode(b.dataset.mode)));
+lesson.setMode(loadPref('nf1.mode', 'lessons'));
+
 fit();
 window.addEventListener('resize', fit);
 document.addEventListener('visibilitychange', () => {
@@ -265,6 +272,7 @@ window.synth = {
   noteOn: (n) => { ensureAudio(); engine.noteOn(n); },
   noteOff: (n) => engine.noteOff(n),
   setKeyboardOctaves: (o) => keyboard.setOctaves(o),
+  get lesson() { return lesson; },
   params: PARAMS,
   noteName,
 };
