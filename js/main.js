@@ -154,8 +154,9 @@ function fit() {
   const stage = document.getElementById('stage');
   const fitEl = document.getElementById('fit');
   const designW = stage.offsetWidth;
-  const helpW = document.body.classList.contains('help-open') ? document.getElementById('help-panel').offsetWidth : 0;
-  const scale = Math.min(1, (window.innerWidth - helpW - 32) / designW);
+  const scale = Math.min(1, (window.innerWidth - 32) / designW);
+  // help panel overlays below the top bar
+  document.getElementById('help-panel').style.top = document.querySelector('.appbar').offsetHeight + 'px';
   stage.style.transform = `scale(${scale})`;
   fitEl.style.height = stage.offsetHeight * scale + 40 + 'px';
 }
@@ -205,7 +206,6 @@ function setHelp(open) {
   fit();
 }
 document.getElementById('btn-help').addEventListener('click', () => setHelp(!document.body.classList.contains('help-open')));
-document.getElementById('help-close').addEventListener('click', () => setHelp(false));
 setHelp(loadPref('nf1.help', '1') === '1'); // on by default: this is a learning tool
 
 fit();

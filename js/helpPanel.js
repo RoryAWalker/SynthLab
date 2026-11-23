@@ -25,10 +25,34 @@ export class HelpPanel {
     const onHover = (e) => {
       if (!this.open || document.body.classList.contains('knob-dragging')) return;
       const t = e.target.closest && e.target.closest('[data-help]');
-      if (t && !el.contains(t)) this.show(t.dataset.help);
+      if (t && !el.contains(t)) {
+        this.show(t.dataset.help);
+        if (e.type === 'focusin') this.moveAwayFromElement(t); // keyboard users
+      }
     };
     document.addEventListener('mouseover', onHover);
     document.addEventListener('focusin', onHover);
+    // The panel lets the mouse pass through. When the pointer goes underneath it,
+    // the panel jumps to the other side of the screen.
+    document.addEventListener('mousemove', (e) => {
+      if (!this.open) return;
+      const r = el.getBoundingClientRect();
+      if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top) this.flip();
+    });
+  }
+
+  flip() {
+    this.el.classList.toggle('left');
+    this.el.classList.remove('flipping');
+    void this.el.offsetWidth; // restart the fade
+    this.el.classList.add('flipping');
+  }
+
+  // For keyboard focus: if the focused control sits under the panel, move the panel.
+  moveAwayFromElement(target) {
+    const r = target.getBoundingClientRect();
+    const p = this.el.getBoundingClientRect();
+    if (r.right > p.left && r.left < p.right && r.width < window.innerWidth - p.width) this.flip();
   }
 
   get open() { return document.body.classList.contains('help-open'); }
