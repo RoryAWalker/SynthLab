@@ -13,15 +13,12 @@ const WAVES = [
 ];
 
 const RANGES = [
-  { v: -2, label: "32'" },
-  { v: -1, label: "16'" },
-  { v: 0, label: "8'" },
-  { v: 1, label: "4'" },
-  { v: 2, label: "2'" },
+  { v: -2, label: '−2' },
+  { v: -1, label: '−1' },
+  { v: 0, label: '0' },
+  { v: 1, label: '+1' },
+  { v: 2, label: '+2' },
 ];
-
-const SEMIS = [];
-for (let s = -7; s <= 7; s++) SEMIS.push({ v: s, label: s === 0 ? '0' : (s > 0 ? '+' + s : String(s)), minor: false });
 
 const LFO_SHAPES = [
   { v: 'tri', label: 'triangle', icon: 'tri' },
@@ -51,35 +48,32 @@ export const PARAMS = {
                    help: 'Portamento: time to slide from one note to the next.' },
 
   'osc1.range':  { type: 'step', label: 'Range', options: RANGES, def: 0,
-                   help: "Octave in organ-pipe footage. 8' is concert pitch; each halving is one octave up." },
+                   unit: 'oct', help: 'Octave shift. 0 is concert pitch; each step is one octave up or down.' },
   'osc1.wave':   { type: 'step', label: 'Waveform', options: WAVES, def: 'saw',
                    help: 'The raw shape of the wave, which sets its harmonic content.' },
 
-  'osc2.range':  { type: 'step', label: 'Range', options: RANGES, def: 0, help: 'Octave of oscillator 2.' },
+  'osc2.range':  { type: 'step', label: 'Range', options: RANGES, def: 0, unit: 'oct', help: 'Octave shift of oscillator 2.' },
   'osc2.wave':   { type: 'step', label: 'Waveform', options: WAVES, def: 'saw', help: 'Waveform of oscillator 2.' },
-  'osc2.semi':   { type: 'step', label: 'Interval', options: SEMIS, def: 0,
-                   help: 'Transpose oscillator 2 in semitones (+7 is a fifth up).' },
   'osc2.fine':   { type: 'cont', label: 'Detune', min: -50, max: 50, def: 0, curve: 'lin', fmt: fmtCents, unit: 'cents',
                    marks: [[-50, '−50'], [-25, '−25'], [0, '0'], [25, '+25'], [50, '+50']],
                    help: 'Fine detune in cents. Small amounts make the two oscillators beat against each other.' },
 
   'mix.osc1':    { type: 'cont', label: 'Osc 1', min: 0, max: 1, def: 0.8, curve: 'lin', fmt: fmtPct, help: 'Level of oscillator 1 into the filter.' },
   'mix.osc2':    { type: 'cont', label: 'Osc 2', min: 0, max: 1, def: 0, curve: 'lin', fmt: fmtPct, help: 'Level of oscillator 2 into the filter.' },
-  'mix.noise':   { type: 'cont', label: 'Noise', min: 0, max: 1, def: 0, curve: 'lin', fmt: fmtPct, help: 'Level of white noise into the filter.' },
 
   'filt.cutoff': { type: 'cont', label: 'Cutoff', min: 20, max: 20000, def: 20000, curve: 'log', fmt: fmtHz, unit: 'Hz',
                    marks: [[20, '20'], [100, '100'], [500, '500'], [2000, '2k'], [10000, '10k'], [20000, '20k']],
                    help: 'Frequency above which the 24 dB/oct low-pass filter removes harmonics.' },
   'filt.res':    { type: 'cont', label: 'Resonance', min: 0, max: 1, def: 0, curve: 'lin', fmt: fmtPct,
                    help: 'Boosts frequencies around the cutoff. Near maximum the filter whistles on its own.' },
-  'filt.env':    { type: 'cont', label: 'Env Amount', min: 0, max: 1, def: 0, curve: 'lin', fmt: (v) => fmtOct(v * 7), unit: 'oct',
-                   marks: [0, 1, 2, 3, 4, 5, 6, 7].map((o) => [o / 7, String(o)]),
-                   help: 'How far the filter envelope pushes the cutoff up (up to 7 octaves).' },
+  'filt.env':    { type: 'cont', label: 'Env Amount', min: -1, max: 1, def: 0, curve: 'lin', unit: '%',
+                   fmt: (v) => (v > 0.005 ? '+' : '') + Math.round(v * 100) + '%',
+                   marks: [[-1, '−100'], [-0.5, '−50'], [0, '0'], [0.5, '+50'], [1, '+100']],
+                   help: 'How far, and which way, the filter envelope moves the cutoff. +100% sweeps it up 7 octaves; negative values sweep it down.' },
 
   'fenv.a':      { type: 'cont', label: 'Attack', min: 0.001, max: 10, def: 0.005, curve: 'log', fmt: fmtTime, unit: 'sec', marks: TIME_MARKS, help: 'Filter envelope: time to rise to full.' },
-  'fenv.d':      { type: 'cont', label: 'Decay', min: 0.001, max: 10, def: 0.4, curve: 'log', fmt: fmtTime, unit: 'sec', marks: TIME_MARKS, help: 'Filter envelope: time to fall to the sustain level.' },
-  'fenv.s':      { type: 'cont', label: 'Sustain', min: 0, max: 1, def: 0.3, curve: 'lin', fmt: fmtPct, help: 'Filter envelope: level held while the key is down.' },
-  'fenv.r':      { type: 'cont', label: 'Release', min: 0.001, max: 10, def: 0.4, curve: 'log', fmt: fmtTime, unit: 'sec', marks: TIME_MARKS, help: 'Filter envelope: time to fall to zero after the key is let go.' },
+  'fenv.d':      { type: 'cont', label: 'Decay', min: 0.001, max: 10, def: 0.4, curve: 'log', fmt: fmtTime, unit: 'sec', marks: TIME_MARKS, help: 'Filter envelope: time to fall back to zero.' },
+  'fenv.r':      { type: 'cont', label: 'Release', min: 0.001, max: 10, def: 0.4, curve: 'log', fmt: fmtTime, unit: 'sec', marks: TIME_MARKS, help: 'Filter envelope: if the key is let go before the decay ends, the time to fall to zero from there.' },
 
   'aenv.a':      { type: 'cont', label: 'Attack', min: 0.001, max: 10, def: 0.002, curve: 'log', fmt: fmtTime, unit: 'sec', marks: TIME_MARKS, help: 'Loudness envelope: time to rise to full volume.' },
   'aenv.d':      { type: 'cont', label: 'Decay', min: 0.001, max: 10, def: 0.3, curve: 'log', fmt: fmtTime, unit: 'sec', marks: TIME_MARKS, help: 'Loudness envelope: time to fall to the sustain level.' },
@@ -90,6 +84,9 @@ export const PARAMS = {
                    marks: [[0.05, '.05'], [0.2, '.2'], [1, '1'], [5, '5'], [30, '30']],
                    help: 'Speed of the low-frequency oscillator, from one cycle every 20 seconds up to 30 cycles a second.' },
   'lfo.shape':   { type: 'step', label: 'Shape', options: LFO_SHAPES, def: 'tri', help: 'Waveform of the LFO.' },
+  'lfo.delay':   { type: 'cont', label: 'Delay', min: 0, max: 5, def: 0, curve: 'pow', k: 2, fmt: fmtTime, unit: 'sec',
+                   marks: [[0, '0'], [0.2, '.2'], [0.5, '.5'], [1, '1'], [2, '2'], [5, '5']],
+                   help: 'Time for the LFO to fade in after a new note starts, like a singer adding vibrato to a held note.' },
   'lfo.pitch':   { type: 'cont', label: '→ Pitch', min: 0, max: 12, def: 0, curve: 'pow', k: 2, fmt: fmtSemis, unit: 'semi',
                    marks: [[0, '0'], [0.5, '.5'], [2, '2'], [6, '6'], [12, '12']],
                    help: 'Vibrato depth: how far the LFO bends pitch.' },
@@ -103,20 +100,21 @@ export const PARAMS = {
 // Each section is a grid of rows; null = empty cell.
 // Section ids are what the game uses to lock (grey out) parts of the synth.
 // place: 'keybed' puts a section in the performance area left of the keys.
+// alignRows: line each row up with the rows of these sections (so the Mixer's
+// Osc 1 knob sits level with Oscillator 1, and so on).
+const ROW_ALIGN = ['osc1', 'osc2'];
 export const LAYOUT = [
   [
-    { id: 'osc1', title: 'Oscillator 1', rows: [['osc1.range', 'osc1.wave', null, null]] },
-    { id: 'osc2', title: 'Oscillator 2', rows: [['osc2.range', 'osc2.wave', 'osc2.semi', 'osc2.fine']] },
+    { id: 'osc1', title: 'Oscillator 1', rows: [['osc1.range', 'osc1.wave', null]] },
+    { id: 'osc2', title: 'Oscillator 2', rows: [['osc2.range', 'osc2.wave', 'osc2.fine']] },
   ],
+  [{ id: 'mix', title: 'Mixer', rows: [['mix.osc1'], ['mix.osc2']], alignRows: ROW_ALIGN }],
+  [{ id: 'filt', title: 'Low Pass Filter', rows: [['filt.cutoff'], ['filt.res']], alignRows: ROW_ALIGN }],
   [
-    { id: 'mix', title: 'Mixer', rows: [['mix.osc1', 'mix.osc2', 'mix.noise']] },
-    { id: 'filt', title: 'Low Pass Filter', rows: [['filt.cutoff', 'filt.res', 'filt.env']] },
-  ],
-  [
-    { id: 'fenv', title: 'Filter Envelope', rows: [['fenv.a', 'fenv.d', 'fenv.s', 'fenv.r']] },
+    { id: 'fenv', title: 'Filter Envelope', rows: [['filt.env', 'fenv.a', 'fenv.d', 'fenv.r']] },
     { id: 'aenv', title: 'Loudness Envelope', rows: [['aenv.a', 'aenv.d', 'aenv.s', 'aenv.r']] },
   ],
-  [{ id: 'lfo', title: 'LFO', rows: [['lfo.rate', 'lfo.shape', null], ['lfo.pitch', 'lfo.filter', 'lfo.amp']] }],
+  [{ id: 'lfo', title: 'LFO', rows: [['lfo.rate', 'lfo.shape', 'lfo.delay'], ['lfo.pitch', 'lfo.filter', 'lfo.amp']], alignRows: ROW_ALIGN }],
 ];
 export const KEYBED_SECTIONS = [{ id: 'glide', title: 'Glide', rows: [['ctrl.glide']] }];
 export const ALL_SECTIONS = [...LAYOUT.flat(), ...KEYBED_SECTIONS];
@@ -160,31 +158,31 @@ export const PRESETS = {
   'Init': {},
   'Fat Bass': {
     'osc1.range': -1, 'osc2.range': -1, 'osc2.wave': 'saw', 'osc2.fine': 9, 'mix.osc1': 0.8, 'mix.osc2': 0.7,
-    'filt.cutoff': 260, 'filt.res': 0.35, 'filt.env': 0.45,
-    'fenv.a': 0.002, 'fenv.d': 0.28, 'fenv.s': 0.1, 'fenv.r': 0.2,
+    'filt.cutoff': 300, 'filt.res': 0.35, 'filt.env': 0.45,
+    'fenv.a': 0.002, 'fenv.d': 0.35, 'fenv.r': 0.2,
     'aenv.a': 0.002, 'aenv.d': 0.5, 'aenv.s': 0.85, 'aenv.r': 0.08,
   },
   'Gliding Lead': {
     'osc1.wave': 'saw', 'osc2.wave': 'square', 'osc2.fine': -6, 'mix.osc1': 0.75, 'mix.osc2': 0.55, 'ctrl.glide': 0.09,
-    'filt.cutoff': 1400, 'filt.res': 0.4, 'filt.env': 0.3,
-    'fenv.a': 0.02, 'fenv.d': 0.6, 'fenv.s': 0.4, 'aenv.r': 0.25,
-    'lfo.rate': 5.5, 'lfo.pitch': 0.18,
+    'filt.cutoff': 2200, 'filt.res': 0.4, 'filt.env': 0.25,
+    'fenv.a': 0.02, 'fenv.d': 0.8, 'aenv.r': 0.25,
+    'lfo.rate': 5.5, 'lfo.pitch': 0.25, 'lfo.delay': 0.6,
   },
   'Pluck': {
     'osc1.wave': 'square', 'mix.osc1': 0.9, 'filt.cutoff': 180, 'filt.res': 0.25, 'filt.env': 0.65,
-    'fenv.a': 0.001, 'fenv.d': 0.18, 'fenv.s': 0, 'fenv.r': 0.18,
+    'fenv.a': 0.001, 'fenv.d': 0.18, 'fenv.r': 0.18,
     'aenv.a': 0.001, 'aenv.d': 0.55, 'aenv.s': 0, 'aenv.r': 0.4,
   },
   'Brass': {
     'osc1.wave': 'saw', 'osc2.wave': 'saw', 'osc2.fine': 5, 'mix.osc1': 0.8, 'mix.osc2': 0.6,
-    'filt.cutoff': 380, 'filt.res': 0.12, 'filt.env': 0.5,
-    'fenv.a': 0.09, 'fenv.d': 0.7, 'fenv.s': 0.45, 'fenv.r': 0.3,
+    'filt.cutoff': 650, 'filt.res': 0.12, 'filt.env': 0.4,
+    'fenv.a': 0.09, 'fenv.d': 1.2, 'fenv.r': 0.3,
     'aenv.a': 0.04, 'aenv.d': 0.4, 'aenv.s': 0.9, 'aenv.r': 0.25,
   },
-  'Fifth Stab': {
-    'osc1.wave': 'saw', 'osc2.wave': 'saw', 'osc2.semi': 7, 'mix.osc1': 0.8, 'mix.osc2': 0.7,
-    'filt.cutoff': 700, 'filt.res': 0.3, 'filt.env': 0.4, 'fenv.d': 0.3, 'fenv.s': 0.05,
-    'aenv.d': 0.45, 'aenv.s': 0.2, 'aenv.r': 0.2,
+  'Reverse Sweep': {
+    'osc1.wave': 'saw', 'osc2.wave': 'saw', 'osc2.fine': 7, 'mix.osc2': 0.7,
+    'filt.cutoff': 6000, 'filt.res': 0.5, 'filt.env': -0.6,
+    'fenv.a': 0.002, 'fenv.d': 0.9, 'fenv.r': 0.4, 'aenv.r': 0.3,
   },
   'Wobble': {
     'osc1.range': -1, 'osc1.wave': 'saw', 'osc2.range': -1, 'osc2.wave': 'square', 'mix.osc2': 0.6, 'osc2.fine': 4,
@@ -192,11 +190,7 @@ export const PRESETS = {
   },
   'Resonant Sweep': {
     'osc1.wave': 'saw', 'filt.cutoff': 120, 'filt.res': 0.85, 'filt.env': 0.6,
-    'fenv.a': 0.6, 'fenv.d': 1.6, 'fenv.s': 0.15, 'fenv.r': 0.8, 'aenv.r': 0.8,
-  },
-  'Wind': {
-    'mix.osc1': 0, 'mix.noise': 0.9, 'filt.cutoff': 600, 'filt.res': 0.75, 'lfo.rate': 0.15, 'lfo.filter': 2.2,
-    'aenv.a': 1.2, 'aenv.r': 2.5,
+    'fenv.a': 0.6, 'fenv.d': 2.5, 'fenv.r': 0.8, 'aenv.r': 0.8,
   },
 };
 

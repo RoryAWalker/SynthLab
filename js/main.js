@@ -53,6 +53,19 @@ function buildPanel() {
   KEYBED_SECTIONS.forEach((sec) => perf.appendChild(buildSection(sec)));
 }
 
+// Line up the rows of single-section columns (Mixer, Filter, LFO) with the rows of
+// stacked sections (Oscillator 1 / 2), so related knobs sit level across the panel.
+// Runs before the stage is scaled, so measurements are in design pixels.
+function alignRows() {
+  LAYOUT.flat().forEach((sec) => {
+    if (!sec.alignRows) return;
+    const grid = sections[sec.id].querySelector('.section-grid');
+    const [a, b] = sec.alignRows.map((id) => sections[id].querySelector('.section-grid').getBoundingClientRect().top);
+    const rowH = grid.firstElementChild.getBoundingClientRect().height;
+    grid.style.rowGap = Math.max(0, b - a - rowH) + 'px';
+  });
+}
+
 // Audio can only start after a user gesture; the first key press does it.
 function ensureAudio() {
   if (!engine.running) return engine.start(patch);
@@ -143,6 +156,7 @@ function fit() {
 
 // ---- boot ------------------------------------------------------------------------------------
 buildPanel();
+alignRows();
 buildToolbar();
 
 const loadPref = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } };

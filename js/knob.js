@@ -113,9 +113,9 @@ export class Knob {
       } else {
         for (let i = 0; i <= 10; i++) { tick(i / 10, true); label(i / 10, String(i)); }
       }
-      if (spec.unit) {
-        svg('text', { x: C, y: C + R_LABEL - 4, class: 'unit' }, s).textContent = spec.unit;
-      }
+    }
+    if (spec.unit) {
+      svg('text', { x: C, y: C + R_LABEL - 4, class: 'unit' }, s).textContent = spec.unit;
     }
     return s;
   }

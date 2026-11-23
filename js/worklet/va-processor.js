@@ -1,7 +1,8 @@
 // NF-1 voice: a monophonic virtual-analog synth running in an AudioWorklet.
 // Signal path (classic subtractive):
-//   OSC1 + OSC2 + NOISE -> MIXER -> 4-pole ladder LOW-PASS -> VCA -> out
-// Modulators: filter envelope, loudness envelope, LFO, glide.
+//   OSC1 + OSC2 -> MIXER -> 4-pole ladder LOW-PASS -> VCA -> out
+// Modulators: filter envelope (AD-R, bipolar amount), loudness envelope (ADSR),
+// LFO with fade-in delay, glide.
 
 const TWO_PI = Math.PI * 2;
 const OUTPUT_GAIN = 0.45; // fixed master level (no volume knob on the panel)
@@ -69,6 +70,7 @@ class VAProcessor extends AudioWorkletProcessor {
     this.hasPlayed = false;
     this.ph1 = 0; this.ph2 = 0;
     this.lfoPh = 0; this.shVal = 0;
+    this.lfoFade = 1;      // 0..1 LFO depth multiplier, ramps up after a fresh note (LFO delay)
     this.fenv = new Envelope();
     this.aenv = new Envelope();
     this.s = [0, 0, 0, 0];  // ladder filter state
@@ -84,6 +86,7 @@ class VAProcessor extends AudioWorkletProcessor {
       case 'noteOn': {
         const i = this.notes.indexOf(m.note);
         if (i >= 0) this.notes.splice(i, 1);
+        if (!this.notes.length) this.lfoFade = 0; // fresh note (not legato): restart LFO delay
         this.notes.push(m.note);
         this.target = m.note;
         if (!this.hasPlayed) { this.note = m.note; this.hasPlayed = true; }
@@ -115,17 +118,18 @@ class VAProcessor extends AudioWorkletProcessor {
     const n = L.length;
 
     // ---- per-block derived values ----
-    this.fenv.setTimes(p['fenv.a'], p['fenv.d'], p['fenv.s'], p['fenv.r'], sr);
+    this.fenv.setTimes(p['fenv.a'], p['fenv.d'], 0, p['fenv.r'], sr); // no sustain: AD-R
     this.aenv.setTimes(p['aenv.a'], p['aenv.d'], p['aenv.s'], p['aenv.r'], sr);
     const glideCoef = p['ctrl.glide'] > 0.0005 ? 1 - Math.exp(-4.6 / (p['ctrl.glide'] * sr)) : 1;
     const lfoInc = p['lfo.rate'] / sr;
+    const fadeInc = p['lfo.delay'] > 0.001 ? 1 / (p['lfo.delay'] * sr) : 1;
     const lfoShape = p['lfo.shape'];
     const w1 = p['osc1.wave'], w2 = p['osc2.wave'];
     const off1 = p['osc1.range'] * 12;
-    const off2 = p['osc2.range'] * 12 + p['osc2.semi'] + p['osc2.fine'] / 100;
+    const off2 = p['osc2.range'] * 12 + p['osc2.fine'] / 100;
 
     const tgt = {
-      m1: p['mix.osc1'], m2: p['mix.osc2'], mn: p['mix.noise'],
+      m1: p['mix.osc1'], m2: p['mix.osc2'],
       cut: Math.log2(p['filt.cutoff']), res: p['filt.res'], env: p['filt.env'],
       lp: p['lfo.pitch'], lf: p['lfo.filter'], la: p['lfo.amp'],
     };
@@ -152,9 +156,11 @@ class VAProcessor extends AudioWorkletProcessor {
         case 'sh': if (wrapped) this.shVal = Math.random() * 2 - 1; lfo = this.shVal; break;
         default: lfo = 1 - 4 * Math.abs(this.lfoPh - 0.5);
       }
+      if (this.lfoFade < 1) this.lfoFade = Math.min(1, this.lfoFade + fadeInc);
+      const lfoDepth = this.lfoFade;
 
       // oscillators
-      const vib = lfo * sm.lp;
+      const vib = lfo * sm.lp * lfoDepth;
       const f1 = 440 * Math.pow(2, (this.note + off1 + vib - 69) / 12);
       const f2 = 440 * Math.pow(2, (this.note + off2 + vib - 69) / 12);
       const dt1 = Math.min(f1 / sr, 0.49), dt2 = Math.min(f2 / sr, 0.49);
@@ -162,17 +168,16 @@ class VAProcessor extends AudioWorkletProcessor {
       const o2 = oscSample(w2, this.ph2, dt2);
       this.ph1 += dt1; if (this.ph1 >= 1) this.ph1 -= 1;
       this.ph2 += dt2; if (this.ph2 >= 1) this.ph2 -= 1;
-      const noise = Math.random() * 2 - 1;
 
       // mixer
-      const x = o1 * sm.m1 + o2 * sm.m2 + noise * sm.mn;
+      const x = o1 * sm.m1 + o2 * sm.m2;
 
       // envelopes
       const fe = this.fenv.next();
       const ae = this.aenv.next();
 
       // filter cutoff in octaves
-      let fc = Math.pow(2, sm.cut + sm.env * 7 * fe + sm.lf * lfo);
+      let fc = Math.pow(2, sm.cut + sm.env * 7 * fe + sm.lf * lfo * lfoDepth);
       if (fc > nyq) fc = nyq; else if (fc < 8) fc = 8;
 
       // 4-pole ladder low-pass, zero-delay-feedback (TPT) form with input saturation
@@ -192,7 +197,7 @@ class VAProcessor extends AudioWorkletProcessor {
       const filtered = u * (1 + fb * 0.45); // partial passband make-up gain
 
       // VCA
-      const trem = 1 - sm.la * (0.5 + 0.5 * lfo);
+      const trem = 1 - sm.la * lfoDepth * (0.5 + 0.5 * lfo);
       L[i] = Math.tanh(filtered * ae * trem * OUTPUT_GAIN);
     }
 
