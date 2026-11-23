@@ -1,4 +1,4 @@
-// MiniNFoog voice (internal id nf3): three-oscillator monosynth in the classic 1970s layout.
+// NiniFoog voice (internal id nf3): three-oscillator monosynth in the classic 1970s layout.
 // Signal path:
 //   OSC1 + OSC2 + OSC3 + NOISE + FEEDBACK -> MIXER -> 4-pole ladder LOW-PASS -> VCA -> out
 // Modulation: Osc 3 and/or noise (Modulation Mix), scaled by the mod wheel, sent to the

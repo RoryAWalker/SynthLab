@@ -2,7 +2,7 @@
 // chosen, and from the Synths button. Picking another synth reloads the page with
 // ?synth=<id>, so each synth starts clean with its own panel and sound engine.
 
-import { SYNTHS, SYNTH, SYNTH_CHOSEN } from './params.js';
+import { SYNTHS, SYNTH, SYNTH_CHOSEN, nameHtml } from './params.js';
 
 export class StartMenu {
   constructor() {
@@ -15,7 +15,7 @@ export class StartMenu {
       card.innerHTML = `
         <div class="sm-preview sm-preview-${s.id}" aria-hidden="true">${'<i></i>'.repeat(s.id === 'nf3' ? 18 : 12)}</div>
         <div class="sm-tag">${s.card.tagline}</div>
-        <div class="sm-name">${s.name}</div>
+        <div class="sm-name">${nameHtml(s.name)}</div>
         <p class="sm-text">${s.card.text}</p>
         <div class="sm-foot"><span class="sm-play">Play ${s.name} ▸</span>${s.lessons ? '<span class="sm-badge">Lessons</span>' : ''}${s.id === SYNTH.id && SYNTH_CHOSEN ? '<span class="sm-badge current">Playing now</span>' : ''}</div>`;
       card.addEventListener('click', () => this.choose(s.id));

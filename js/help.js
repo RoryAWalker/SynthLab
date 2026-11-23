@@ -366,7 +366,7 @@ export function helpKeyFor(key) {
   return key;
 }
 
-// Entries that differ on the MiniNFoog (nf3), or exist only there. Looked up first on that synth.
+// Entries that differ on the NiniFoog (nf3), or exist only there. Looked up first on that synth.
 export const HELP_NF3 = {
   'section:ctrl': { title: 'Controllers', body: ['Overall tuning, the glide (portamento) time, and Modulation Mix, which chooses what the modulation wheel applies: Oscillator 3, noise, or a blend.'] },
   'section:oscs': {

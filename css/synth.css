@@ -649,7 +649,7 @@ body.auditioning #lb-hear, body.auditioning #lb-reset, body.auditioning .lb-step
 .wheel-value { margin-top: 0; }
 
 /* ==========================================================================
-   MiniNFoog (nf3) skin: vintage. Walnut case (end cheeks, a rail above the panel
+   NiniFoog (nf3) skin: vintage. Walnut case (end cheeks, a rail above the panel
    and along the front of the keys), black panel with white legends, classic black
    knobs with silver caps, coloured rocker switches. No names or logos copied.
    ========================================================================== */
@@ -799,7 +799,7 @@ body[data-skin="vintage"] .perf { padding: 8px 10px; }
 .sm-badge.current { background: #2f8a55; color: #fff; }
 
 .mode-switch[hidden] { display: none; }
-/* MiniNFoog: longer classic control names wrap onto two lines */
+/* NiniFoog: longer classic control names wrap onto two lines */
 body[data-skin="slate"] .knob-label {
   white-space: normal; text-align: center; line-height: 1.1; height: 24px; width: calc(var(--cell-w) - 6px);
   display: flex; align-items: flex-end; justify-content: center; font-size: 10.5px;
@@ -818,7 +818,7 @@ body[data-skin="slate"] .perf .knob-label { height: 24px; }
 .panel-column.bridge .toggle-cell { position: relative; z-index: 1; padding-bottom: 6px; } /* the switch sits on the line */
 
 /* ==========================================================================
-   MiniNFoog: bigger pots and lettering, using the space the layout frees
+   NiniFoog: bigger pots and lettering, using the space the layout frees
    ========================================================================== */
 body[data-skin="vintage"] { --cell-w: 132px; --narrow-w: 92px; }
 body[data-skin="vintage"] .dial { width: 132px; height: 132px; }
@@ -879,3 +879,7 @@ body[data-skin="vintage"] .panel {
     repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0 1px, transparent 1px 2px),
     linear-gradient(180deg, var(--panel-hi), var(--panel) 25%, #26282b);
 }
+
+/* synth names: bold capitals, lighter lower-case (e.g. NiniFoog) */
+.synth-name { font-weight: 400; }
+.synth-name b { font-weight: 900; }

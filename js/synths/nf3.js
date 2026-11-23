@@ -1,11 +1,11 @@
-// MiniNFoog (working name; internal id nf3): a three-oscillator monosynth whose controls
+// NiniFoog (internal id nf3): a three-oscillator monosynth whose controls
 // and panel layout follow the classic 1970s three-oscillator design. Oscillator 3 can
 // leave the keyboard and run slowly, becoming the modulation source, blended with noise
 // by Modulation Mix and applied with the modulation wheel. All names and artwork are our own.
 
 import { fmtHz, fmtTime, fmtPct, fmtOct, TIME_MARKS } from './nf1.js';
 
-const NAME = 'MiniNFoog'; // placeholder name: change it here
+const NAME = 'NiniFoog'; // the synth's name, shown on the panel, name plate and start menu
 
 const OFF_ON = [{ v: 'off', label: 'Off' }, { v: 'on', label: 'On' }];
 const sw = (label, def, extra = {}) => ({ type: 'step', ui: 'toggle', titled: !!label, label: label || '', options: OFF_ON, def, ...extra });

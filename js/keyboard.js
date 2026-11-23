@@ -10,7 +10,7 @@ const NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A�
 export const noteName = (n) => NAMES[n % 12] + (Math.floor(n / 12) - 1);
 
 export class Keyboard {
-  // fixed: [low, high] for a keyboard of fixed size with no octave shift (MiniNFoog)
+  // fixed: [low, high] for a keyboard of fixed size with no octave shift (NiniFoog)
   constructor(container, { octaves = 2, fixed = null, onNoteOn, onNoteOff, onOctave }) {
     this.container = container;
     this.fixed = fixed;

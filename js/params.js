@@ -16,6 +16,12 @@ export const KEYBED_SECTIONS = SYNTH.KEYBED_SECTIONS;
 export const PRESETS = SYNTH.PRESETS;
 export const ALL_SECTIONS = [...LAYOUT.flat(), ...KEYBED_SECTIONS];
 
+// A synth name for display: capitals (and digits) bold, lower-case letters lighter,
+// e.g. NiniFoog -> bold N and F.
+export function nameHtml(name) {
+  return `<span class="synth-name">${name.replace(/[A-Z0-9-]/g, (c) => `<b>${c}</b>`)}</span>`;
+}
+
 // ---- value <-> knob position (0..1) -------------------------------------------
 export function toNorm(id, v) {
   const p = PARAMS[id];

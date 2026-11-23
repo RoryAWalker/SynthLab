@@ -170,7 +170,7 @@ export class Overlay {
     const p = this.getPatch();
     const loud = this.group === 'aenv';
     const pre = loud ? 'aenv.' : 'fenv.';
-    // MiniNFoog: both contours are ADS, and Release comes from the Decay switch
+    // NiniFoog: both contours are ADS, and Release comes from the Decay switch
     const decaySwitch = p['perf.decay'];
     const adsFilter = !loud && p['fenv.s'] !== undefined;
     const A = p[pre + 'a'], D = p[pre + 'd'];
@@ -439,7 +439,7 @@ export class Overlay {
   oscHz(osc, range) {
     const p = this.getPatch();
     const r = range === undefined ? p[`osc${osc}.range`] : range;
-    // NF-1: Detune in cents on Osc 2. MiniNFoog: Frequency in semitones on Osc 2 and 3.
+    // NF-1: Detune in cents on Osc 2. NiniFoog: Frequency in semitones on Osc 2 and 3.
     const fine = (osc === 2 ? (p['osc2.fine'] || 0) / 100 : 0) + (p[`osc${osc}.freq`] || 0);
     return noteHz(this.lastNote + r * 12 + fine);
   }
@@ -548,9 +548,9 @@ export class Overlay {
   // ---- glide ------------------------------------------------------------------------------------
   drawGlide(ctx, w, h, box) {
     const p = this.getPatch();
-    const G = p['perf.glideon'] === 'off' ? 0 : p['ctrl.glide']; // MiniNFoog: the Glide switch must be on
+    const G = p['perf.glideon'] === 'off' ? 0 : p['ctrl.glide']; // NiniFoog: the Glide switch must be on
     const legato = p['ctrl.mode'] === 'legato';
-    const glideOff = p['perf.glideon'] === 'off'; // MiniNFoog: glide needs its switch
+    const glideOff = p['perf.glideon'] === 'off'; // NiniFoog: glide needs its switch
     const span = 3; // seconds across
     const now = performance.now() / 1000;
     const hist = this.history.filter((s) => s.t >= now - span);

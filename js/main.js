@@ -1,4 +1,4 @@
-import { PARAMS, LAYOUT, KEYBED_SECTIONS, ALL_SECTIONS, defaultPatch, SYNTH } from './params.js';
+import { PARAMS, LAYOUT, KEYBED_SECTIONS, ALL_SECTIONS, defaultPatch, SYNTH, nameHtml } from './params.js';
 import { Knob } from './knob.js';
 import { Toggle } from './toggle.js';
 import { Wheel } from './wheel.js';
@@ -30,7 +30,7 @@ function buildSection(sec) {
   el.innerHTML = `<div class="section-title" data-help="section:${sec.id}"><span>${sec.title}</span></div><div class="section-grid"></div><div class="lock-veil"><span>LOCKED</span></div>`;
   const grid = el.querySelector('.section-grid');
   const cols = Math.max(...sec.rows.map((r) => r.length));
-  // Columns holding only switches or wheels can be narrow (MiniNFoog), freeing panel space.
+  // Columns holding only switches or wheels can be narrow (NiniFoog), freeing panel space.
   const narrowCol = (c) => {
     const ids = sec.rows.map((r) => r[c]).filter(Boolean);
     return SYNTH.narrowSwitches && ids.length && ids.every((id) => PARAMS[id].ui === 'toggle' || PARAMS[id].type === 'wheel');
@@ -185,8 +185,8 @@ function fit() {
 }
 
 // ---- boot ------------------------------------------------------------------------------------
-document.querySelector('.brand-model').textContent = SYNTH.name;
-document.querySelector('.np-model').textContent = SYNTH.name; // name plate on the wood band (vintage look)
+document.querySelector('.brand-model').innerHTML = nameHtml(SYNTH.name);
+document.querySelector('.np-model').innerHTML = nameHtml(SYNTH.name); // name plate on the wood band (vintage look)
 document.querySelector('.brand-sub').textContent = SYNTH.brandSub;
 document.title = `SynthLab · ${SYNTH.name}`;
 buildPanel();
@@ -198,7 +198,7 @@ const savePref = (k, v) => { try { localStorage.setItem(k, v); } catch { /* stor
 
 const keyboard = new Keyboard(document.getElementById('keys'), {
   octaves: Number(loadPref('nf1.octaves', 2)),
-  fixed: SYNTH.keyboard, // MiniNFoog: a fixed 44-key keyboard
+  fixed: SYNTH.keyboard, // NiniFoog: a fixed 44-key keyboard
   onNoteOn: (n) => {
     if (lesson && lesson.busy) return; // listening to a lesson target
     ensureAudio(); engine.noteOn(n); // noteOn is queued until audio is up
@@ -286,7 +286,7 @@ document.querySelectorAll('#mode-switch button').forEach((b) => b.addEventListen
 document.getElementById('mode-switch').hidden = !SYNTH.lessons; // lessons are written for the NF-1
 lesson.setMode('free'); // always open in Free play; Lessons is one click away
 
-// ---- overload light by the Feedback pot (MiniNFoog) ----
+// ---- overload light by the Feedback pot (NiniFoog) ----
 // Glows yellow, then red, as the mixer drives the filter harder.
 if (knobs['mix.feedback']) {
   const led = document.createElement('div');
