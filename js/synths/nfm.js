@@ -13,8 +13,8 @@ export const OUTPUTS = {
   'kb.pitch': { label: 'Pitch', module: 'Keyboard' },
   'kb.gate':  { label: 'Gate', module: 'Keyboard' },
   'lfo.out':  { label: 'Out', module: 'LFO' },
-  'osc.out':  { label: 'Out', module: 'Oscillator' },
-  'filt.out': { label: 'Out', module: 'Filter' },
+  'osc.out':  { label: 'Out', module: 'VCO' },
+  'filt.out': { label: 'Out', module: 'VCF' },
   'env.out':  { label: 'Out', module: 'Envelope' },
   'vca.out':  { label: 'Out', module: 'VCA' },
 };
@@ -31,7 +31,8 @@ export const PARAMS = {
 
   // LFO
   'lfo.rate':    pick('lfo.rate', { def: 5 }),
-  'lfo.shape':   pick('lfo.shape'),
+  // the three basic shapes (no random step on this simple synth)
+  'lfo.shape':   pick('lfo.shape', { options: NF1_PARAMS['lfo.shape'].options.filter((o) => o.v !== 'sh') }),
 
   // oscillator
   'osc1.range':  pick('osc1.range'),
@@ -73,9 +74,10 @@ export const PARAMS = {
 // Panel: one module per section. 'jacks' is the row of sockets along the bottom of a module:
 // input ids are params (jack.*); 'out:<id>' is an output socket.
 export const LAYOUT = [
+  [{ id: 'osc', title: 'VCO', rows: [['osc1.range', 'osc1.wave'], ['osc1.tune', 'osc.fm']], jacks: ['jack.osc.pitch', 'jack.osc.fm', 'out:osc.out'] }],
+  [{ id: 'filt', title: 'VCF', rows: [['filt.cutoff', 'filt.res'], ['filt.cv', null]], jacks: ['jack.filt.in', 'jack.filt.cv', 'out:filt.out'] }],
+  // the two modulators side by side
   [{ id: 'lfo', title: 'LFO', rows: [['lfo.rate'], ['lfo.shape']], jacks: ['jack.lfo.gate', 'out:lfo.out'] }],
-  [{ id: 'osc', title: 'Oscillator', rows: [['osc1.range', 'osc1.wave'], ['osc1.tune', 'osc.fm']], jacks: ['jack.osc.pitch', 'jack.osc.fm', 'out:osc.out'] }],
-  [{ id: 'filt', title: 'Filter', rows: [['filt.cutoff', 'filt.res'], ['filt.cv', null]], jacks: ['jack.filt.in', 'jack.filt.cv', 'out:filt.out'] }],
   [{ id: 'env', title: 'Envelope', rows: [['aenv.a', 'aenv.d'], ['aenv.s', 'aenv.r']], jacks: ['jack.env.gate', 'out:env.out'] }],
   [{ id: 'vca', title: 'VCA', rows: [['vca.level'], [null]], jacks: ['jack.vca.in', 'jack.vca.cv', 'out:vca.out'] }],
   [{ id: 'out', title: 'Output', rows: [['out.vol'], [null]], jacks: ['jack.out.in'] }],
@@ -83,7 +85,7 @@ export const LAYOUT = [
 export const KEYBED_SECTIONS = [{ id: 'kb', title: 'Keyboard', rows: [['kb.glide']], jacks: ['out:kb.pitch', 'out:kb.gate'] }];
 
 // ---- factory patches: what differs from the starting patch -------------------------------
-const UNPATCHED = Object.fromEntries(Object.keys(PARAMS).filter((id) => id.startsWith('jack.')).map((id) => [id, '']));
+export const UNPATCHED = Object.fromEntries(Object.keys(PARAMS).filter((id) => id.startsWith('jack.')).map((id) => [id, '']));
 export const PRESETS = {
   'Init': {},
   'No Cables': { ...UNPATCHED },
@@ -101,7 +103,7 @@ export const NFM = {
   skin: 'modular',
   module: 'js/worklet/mod-processor.js',
   processor: 'mod-processor',
-  lessons: false,
+  lessons: true,
   modular: true,
   card: {
     tagline: 'Patch it yourself',

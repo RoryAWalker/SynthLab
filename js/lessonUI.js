@@ -2,8 +2,13 @@
 // Challenge types (see lessons.js): match (hear a target and match it), goal (do something,
 // the result is checked) and question (try something, then choose the right answer).
 
-import { LESSONS, patchMatches, soundMatches, closeness, osc1Hz } from './lessons.js';
-import { defaultPatch, ALL_SECTIONS } from './params.js';
+import { LESSONS as NF1_LESSONS, patchMatches, soundMatches, closeness, osc1Hz } from './lessons.js';
+import { MOD_LESSONS } from './lessonsModular.js';
+import { defaultPatch, ALL_SECTIONS, SYNTH } from './params.js';
+
+// each synth with lessons has its own set
+const LESSONS = SYNTH.id === 'nfm' ? MOD_LESSONS : NF1_LESSONS;
+const INDEX_KEY = SYNTH.id === 'nf1' ? 'sl.lessonIndex' : `sl.lessonIndex.${SYNTH.id}`;
 import { Fireworks, Smiley, finale } from './fireworks.js';
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -21,7 +26,7 @@ export class LessonController {
   // deps: { getPatch, setPatch, engine, scope, keyboard, lockSection, ensureAudio, onModeChange }
   constructor(deps) {
     this.d = deps;
-    this.lessonIndex = Math.min(LESSONS.length - 1, Math.max(0, load('sl.lessonIndex', 0)));
+    this.lessonIndex = Math.min(LESSONS.length - 1, Math.max(0, load(INDEX_KEY, 0)));
     this.index = -1;          // current challenge (-1 = intro screen)
     this.busy = false;        // target is playing: student input is ignored
     this.solved = false;
@@ -89,7 +94,7 @@ export class LessonController {
 
   chooseLesson(i) {
     this.lessonIndex = i;
-    save('sl.lessonIndex', i);
+    save(INDEX_KEY, i);
     $('lb-lesson').value = String(i);
     this.showIntro();
   }
@@ -102,8 +107,9 @@ export class LessonController {
     document.body.classList.remove('auditioning');
     this.d.keyboard.markTarget(null);
     this.d.scope.clearTarget();
-    this.lockFor(['osc1']);
-    this.d.setPatch({});
+    // the intro shows the lesson's starting point (NF-1: Init, with only Oscillator 1 open)
+    this.lockFor(this.lesson.introUnlocked || ['osc1']);
+    this.d.setPatch(this.lesson.base || {});
     const started = this.done.some(Boolean);
     const total = this.lesson.challenges.length;
     const complete = this.done.filter(Boolean).length === total;
@@ -137,7 +143,10 @@ export class LessonController {
   }
 
   // ---- a challenge ---------------------------------------------------------------------------
-  enter(i) {
+  // carry: arrived with Next from the previous challenge. Lessons marked 'carry' (the
+  // NF-Modular's patching lessons) then keep the student's own patch, so it builds up step
+  // by step; otherwise (and with Reset) the challenge's starting patch is loaded.
+  enter(i, carry = false) {
     this.index = i;
     this.solved = false;
     this.lastNote = null;
@@ -151,7 +160,8 @@ export class LessonController {
     this.target = this.makeTarget(ch);
     this.lockFor(ch.unlocked);
     this.d.keyboard.markTarget(ch.showKey ? this.target.note : null);
-    this.d.setPatch(this.startOverrides);
+    if (!(carry && this.lesson.carry)) this.d.setPatch(this.startOverrides);
+    else if (this.challenge.set) this.d.setPatch({ ...this.d.getPatch(), ...this.challenge.set });
     this.d.scope.clearTarget();
 
     $('lb-start').hidden = true;
@@ -301,7 +311,7 @@ export class LessonController {
       const nextIdx = this.index < total - 1 ? this.index + 1 : done.findIndex((d) => !d);
       $('lb-next').hidden = false;
       $('lb-next').textContent = 'Next ▸';
-      $('lb-next').onclick = () => this.enter(nextIdx);
+      $('lb-next').onclick = () => this.enter(nextIdx, nextIdx === this.index + 1);
     }
   }
 

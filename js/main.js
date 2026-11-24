@@ -126,6 +126,8 @@ function ensureAudio() {
 
 function onKnob(id, value) {
   patch[id] = value;
+  // NF-Modular: a patch can sound without a key (a drone), so any change may start the audio
+  if (SYNTH.modular && !engine.running) ensureAudio();
   refreshScales();
   if (!(lesson && lesson.busy)) engine.setParam(id, value); // while a lesson target plays, keep it intact
   if (lesson) lesson.onPatchChange();
