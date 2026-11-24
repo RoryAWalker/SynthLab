@@ -1,7 +1,8 @@
-import { PARAMS, LAYOUT, KEYBED_SECTIONS, FX_SECTIONS, ALL_SECTIONS, defaultPatch, updateAlts, SYNTH, nameHtml } from './params.js';
+import { PARAMS, LAYOUT, KEYBED_SECTIONS, FX_SECTIONS, SIDE_SECTIONS, ALL_SECTIONS, defaultPatch, updateAlts, SYNTH, nameHtml } from './params.js';
 import { Knob } from './knob.js';
 import { Toggle } from './toggle.js';
 import { Wheel } from './wheel.js';
+import { LedButton } from './ledbutton.js';
 import { StartMenu } from './startMenu.js';
 import { Engine } from './engine.js';
 import { Scope, TIMEBASES } from './scope.js';
@@ -38,6 +39,25 @@ function buildSection(sec) {
   el.innerHTML = `<div class="section-title"${titleHelp}><span>${sec.title}</span></div><div class="section-grid"></div><div class="lock-veil"><span>LOCKED</span></div>`;
   const grid = el.querySelector('.section-grid');
   sections[sec.id] = el;
+  // a module that can fold away to a thin strip (the sequencer): a button in its title bar
+  if (sec.foldable) {
+    const fb = document.createElement('button');
+    fb.className = 'fold-btn';
+    fb.dataset.help = 'foldmodule';
+    el.querySelector('.section-title').prepend(fb);
+    const key = `${SYNTH.id}.fold.${sec.id}`;
+    const setFold = (on) => {
+      el.classList.toggle('folded', on);
+      fb.textContent = on ? '◂' : '▸';
+      fb.setAttribute('aria-label', on ? `Open the ${sec.title}` : `Fold the ${sec.title} away`);
+      try { localStorage.setItem(key, on ? '1' : '0'); } catch { /* storage unavailable */ }
+      requestAnimationFrame(() => { if (typeof fit === 'function') fit(); });
+    };
+    fb.addEventListener('click', (e) => { e.stopPropagation(); setFold(!el.classList.contains('folded')); });
+    let folded = false;
+    try { folded = localStorage.getItem(key) === '1'; } catch { /* storage unavailable */ }
+    setFold(folded);
+  }
   // A module split into side-by-side halves with a line between them (the NF-Modular's Dual
   // VCA): each part has its own knobs and jacks.
   if (sec.parts) {
@@ -65,6 +85,7 @@ function buildSection(sec) {
 function makeControl(id, sec) {
   const spec = PARAMS[id];
   const k = spec.ui === 'toggle' ? new Toggle(id, patch[id], onKnob)
+    : spec.ui === 'led' ? new LedButton(id, patch[id], onKnob)
     : spec.type === 'wheel' ? new Wheel(id, patch[id], onKnob)
     : new Knob(id, patch[id], onKnob);
   knobs[id] = k;
@@ -116,12 +137,17 @@ function buildPanel() {
   // A rack (NF-Modular): LAYOUT is rows of modules, each row stretched across the full width.
   if (SYNTH.rack) {
     root.classList.add('rack');
+    // rows of modules, with any side column (the sequencer) beside them, full height
+    const rowsBox = document.createElement('div');
+    rowsBox.className = 'rack-rows';
     LAYOUT.forEach((row) => {
       const r = document.createElement('div');
       r.className = 'rack-row';
       row.forEach((sec) => r.appendChild(buildSection(sec)));
-      root.appendChild(r);
+      rowsBox.appendChild(r);
     });
+    root.appendChild(rowsBox);
+    SIDE_SECTIONS.forEach((sec) => { const el = buildSection(sec); el.classList.add('rack-side'); root.appendChild(el); });
     const perf = document.getElementById('perf-sections');
     KEYBED_SECTIONS.forEach((sec) => perf.appendChild(buildSection(sec)));
     const fx = document.getElementById('fx-sections');
@@ -547,6 +573,14 @@ if (cables) {
     requestAnimationFrame(lamps);
     const live = engine.running && engine.live;
     cables.showLevels(live ? live.outs : null);
+    // the sequencer's current step lights up while it runs
+    if (sections.seq) {
+      const cur = live && live.seqRun ? live.seqStep + 1 : 0;
+      for (let n = 1; n <= 8; n++) {
+        const cell = knobs[`seq.s${n}`] && knobs[`seq.s${n}`].el.parentNode;
+        if (cell) cell.classList.toggle('current', n === cur);
+      }
+    }
     if (overLamp) {
       const level = live ? Math.min(1, Math.max(0, ((live.over || 0) - 0.7) / 1.3)) : 0;
       overShown = Math.max(level, overShown * 0.93);

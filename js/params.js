@@ -19,7 +19,8 @@ export const LAYOUT = SYNTH.LAYOUT;
 export const KEYBED_SECTIONS = SYNTH.KEYBED_SECTIONS;
 export const PRESETS = SYNTH.PRESETS;
 export { FX_SECTIONS };
-export const ALL_SECTIONS = [...LAYOUT.flat(), ...KEYBED_SECTIONS, ...FX_SECTIONS];
+export const SIDE_SECTIONS = SYNTH.SIDE_SECTIONS || []; // the NF-Modular's sequencer column
+export const ALL_SECTIONS = [...LAYOUT.flat(), ...SIDE_SECTIONS, ...KEYBED_SECTIONS, ...FX_SECTIONS];
 
 // A synth name for display: capitals (and digits) bold, lower-case letters lighter,
 // e.g. NiniFoog -> bold N and F.
