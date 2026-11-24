@@ -48,7 +48,7 @@ export class Wheel {
     const range = this.spec.max - this.spec.min;
     s.addEventListener('pointerdown', (e) => {
       e.preventDefault();
-      s.setPointerCapture(e.pointerId);
+      try { s.setPointerCapture(e.pointerId); } catch { /* pointer already gone */ }
       dragging = true; startY = e.clientY; startV = this.value;
       document.body.classList.add('knob-dragging');
     });

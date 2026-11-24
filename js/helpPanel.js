@@ -23,6 +23,7 @@ function rangeText(id) {
 }
 
 const DWELL_MS = 1000; // how long to rest on a control before its help appears
+const TOUCH_DWELL_MS = 300; // touch screens can't hover: a tap shows help almost at once
 
 const helpTarget = (node) => (node && node.closest ? node.closest('[data-help]') : null);
 
@@ -47,7 +48,7 @@ export class HelpPanel {
       this.hoverTo(helpTarget(e.target));
     });
     document.addEventListener('mouseout', (e) => { if (!e.relatedTarget && !this.pinned) this.hoverTo(null); });
-    document.addEventListener('pointerdown', (e) => this.engage(helpTarget(e.target)), true);
+    document.addEventListener('pointerdown', (e) => { this.touch = e.pointerType === 'touch'; this.engage(helpTarget(e.target)); }, true);
     document.addEventListener('wheel', (e) => this.engage(helpTarget(e.target)), { capture: true, passive: true });
     document.addEventListener('keydown', (e) => {
       if (/^(Arrow|Home$|End$)/.test(e.key)) this.engage(helpTarget(e.target));
@@ -65,11 +66,12 @@ export class HelpPanel {
     if (!t || !this.open) return;
     this.timer = setTimeout(() => {
       if (this.current === t && this.suppressed !== t) this.showFor(t);
-    }, DWELL_MS);
+    }, this.touch ? TOUCH_DWELL_MS : DWELL_MS);
   }
 
   engage(t) {
     if (!t) return;
+    if (this.touch) return; // on touch, the tap itself is how you ask for help (see release)
     if (t === this.shownFor) { this.pinned = true; return; } // help already up: keep it while turning
     if (t === this.current) { clearTimeout(this.timer); this.suppressed = t; } // too soon: no help this visit
   }
@@ -79,6 +81,8 @@ export class HelpPanel {
     this.pinned = false;
     // mouseover is ignored during a drag, so re-check what is under the pointer now
     const under = helpTarget(document.elementFromPoint(e.clientX, e.clientY));
+    // touch: every tap on a control (re)opens its help; a tap on empty space closes it
+    if (this.touch) { this.current = null; this.hoverTo(under); return; }
     if (under !== this.current || (wasPinned && under !== this.shownFor)) this.hoverTo(under);
   }
 

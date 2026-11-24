@@ -1176,3 +1176,18 @@ body[data-skin="modular"] .perf .section-grid { column-gap: 2px; }
 /* start menu: "SynthLab by NoFoe" at the top, in its own capitals */
 .sm-brand { text-transform: none; font-size: 15px; letter-spacing: 0.08em; }
 .sm-brand span { font-weight: 600; color: #c9ccd1; }
+
+/* ==========================================================================
+   Touch screens
+   ========================================================================== */
+/* no grey flash on tap, no text selection or long-press menu on the instrument, and no
+   double-tap page zoom on buttons */
+html { -webkit-tap-highlight-color: transparent; }
+#stage, .lesson-bar, .appbar, .start-menu { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+button, .btn, .toggle, .toggle-label, .lb-btn, .range-btn, .oct-btn, .tb-btn, .sm-card { touch-action: manipulation; }
+/* fingers need bigger targets: the jack sockets grow an invisible ring that also counts as the socket */
+@media (pointer: coarse) {
+  .socket { position: relative; }
+  .socket::after { content: ''; position: absolute; inset: -12px; border-radius: 50%; }
+  .knob::after { content: ''; position: absolute; inset: -8px; border-radius: 50%; }
+}

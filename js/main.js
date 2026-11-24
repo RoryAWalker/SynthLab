@@ -517,6 +517,12 @@ if (cables) {
   })();
 }
 
+// Touch screens (iPhone/iPad Safari): audio may only be allowed to start when a finger
+// lifts, so resume a waiting audio engine on every touch end as well
+document.addEventListener('touchend', () => {
+  if (engine.ctx && engine.ctx.state !== 'running' && !document.hidden) engine.ctx.resume();
+}, { capture: true, passive: true });
+
 fit();
 window.addEventListener('resize', fit);
 // fit again once fonts and late layout have settled, so the whole synth stays on screen
