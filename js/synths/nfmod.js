@@ -203,7 +203,7 @@ export const LAYOUT = [
 ];
 // (no title: the keyboard section is plainly the keyboard's; it holds Glide and the keyboard's jacks.
 // Mono/Legato (kb.mode) is placed by main.js where the Keyboard Range switch would be.)
-// The sequencer stands in its own column to the right of the rack, the height of all three rows
+// The sequencer stands in its own column to the left of the rack (it is a source of notes, like the keyboard), the height of all three rows
 // (the rack is wider than tall screens need, so this uses spare width). It can fold away.
 // Steps run down the left column (1-4) then the right (5-8); each is a pitch knob over an on/off light.
 export const SIDE_SECTIONS = [{

@@ -48,7 +48,7 @@ function buildSection(sec) {
     const key = `${SYNTH.id}.fold.${sec.id}`;
     const setFold = (on) => {
       el.classList.toggle('folded', on);
-      fb.textContent = on ? '◂' : '▸';
+      fb.textContent = on ? '▸' : '◂'; // it sits on the left: folds leftwards
       fb.setAttribute('aria-label', on ? `Open the ${sec.title}` : `Fold the ${sec.title} away`);
       try { localStorage.setItem(key, on ? '1' : '0'); } catch { /* storage unavailable */ }
       requestAnimationFrame(() => { if (typeof fit === 'function') fit(); });
@@ -153,8 +153,10 @@ function buildPanel() {
       row.forEach((sec) => r.appendChild(buildSection(sec)));
       rowsBox.appendChild(r);
     });
-    root.appendChild(rowsBox);
+    // the side column (the sequencer) stands on the left: it is a source of notes, like the
+    // keyboard, and signals in the rack flow from left to right
     SIDE_SECTIONS.forEach((sec) => { const el = buildSection(sec); el.classList.add('rack-side'); root.appendChild(el); });
+    root.appendChild(rowsBox);
     const perf = document.getElementById('perf-sections');
     KEYBED_SECTIONS.forEach((sec) => perf.appendChild(buildSection(sec)));
     const fx = document.getElementById('fx-sections');

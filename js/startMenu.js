@@ -7,7 +7,7 @@ import { SYNTHS, SYNTH, SYNTH_CHOSEN, nameHtml } from './params.js';
 
 // Changed by tools/make-previews.sh each time the pictures are re-captured, so browsers fetch
 // the new pictures instead of showing ones they have kept from before.
-const PREVIEW_VERSION = '202611242226';
+const PREVIEW_VERSION = '202611242227';
 
 export class StartMenu {
   constructor({ skip = false } = {}) {

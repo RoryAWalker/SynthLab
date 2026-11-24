@@ -1219,7 +1219,7 @@ body.preview .graph-pop { display: none; }
    ========================================================================== */
 .panel-sections.rack { flex-direction: row; align-items: stretch; }
 .rack-rows { display: flex; flex-direction: column; gap: 8px; flex: 1 1 auto; }
-.rack-side { flex: none; margin-left: 8px; display: flex; flex-direction: column; }
+.rack-side { flex: none; margin-right: 8px; display: flex; flex-direction: column; }
 body[data-skin="modular"] .section[data-section="seq"] { --mod: #2fa6c9; } /* Sequencer: cyan */
 .rack-side .section-grid { row-gap: 0; }
 .rack-side .jack-rows { margin-top: auto; }
