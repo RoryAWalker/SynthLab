@@ -34,7 +34,8 @@ export class ZoomPan {
     // In lessons the scopes sit under the lesson panel (scroll up to see them), so they don't count either.
     const noFit = [...this.stage.querySelectorAll('[data-no-fit]')];
     const scopes = this.stage.querySelector('.scope-unit');
-    if (document.body.classList.contains('lesson-mode') && scopes) noFit.push(scopes);
+    const b = document.body.classList;
+    if (b.contains('lesson-mode') && !b.contains('lesson-scopes-visible') && scopes) noFit.push(scopes);
     const outer = (el) => { const cs = getComputedStyle(el); return el.offsetHeight + parseFloat(cs.marginTop) + parseFloat(cs.marginBottom); };
     const extra = noFit.reduce((s, el) => s + (el.offsetParent ? outer(el) : 0), 0);
     const oldScale = this.scale;

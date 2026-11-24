@@ -361,18 +361,20 @@ lesson = new LessonController({
   onModeChange: (mode) => {
     document.querySelectorAll('#mode-switch button').forEach((b) => b.classList.toggle('on', b.dataset.mode === mode));
     // each lesson chooses whether the scopes start on (showScopes below); Free play restores your setting
-    if (mode !== 'lessons') { setScopes(loadPref(scopesPref, '0') === '1', false); window.scrollTo(0, 0); }
+    if (mode !== 'lessons') { document.body.classList.remove('lesson-scopes-visible'); setScopes(loadPref(scopesPref, '0') === '1', false); window.scrollTo(0, 0); }
     requestAnimationFrame(fit);
   },
   // A lesson turns the scopes on or off. With them on, the page scrolls so the lesson panel
   // hangs over them and the synth sits just below it; scrolling up shows the scopes.
-  showScopes: (on) => {
+  // visible: show the scopes in full instead, with the whole instrument fitted below the panel.
+  showScopes: (on, visible = false) => {
+    document.body.classList.toggle('lesson-scopes-visible', on && visible);
     setScopes(on, false);
     requestAnimationFrame(() => {
       fit();
       const synthTop = document.querySelector('.synth').getBoundingClientRect().top + window.scrollY;
       const pinned = document.querySelector('.appbar').offsetHeight + lessonWrap.offsetHeight;
-      window.scrollTo(0, on ? Math.max(0, synthTop - pinned - 12) : 0);
+      window.scrollTo(0, on && !visible ? Math.max(0, synthTop - pinned - 12) : 0);
     });
   },
 });
