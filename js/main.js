@@ -184,6 +184,7 @@ function onKnob(id, value) {
   if (lesson) lesson.onPatchChange();
   if (help) help.refresh(id);
   overlay.activate(id);
+  graphPop.from(id);
   if (patchMenu) patchMenu.markEdited();
 }
 
@@ -336,13 +337,55 @@ const liveCutoff = () => {
   return l && l.gate && l.a.s !== 0 ? l.fc : patch['filt.cutoff'] ?? patch['vcf.cutoff']; // (the NF-Modular's is vcf.cutoff)
 };
 const scope = new Scope(document.getElementById('scope'), document.getElementById('spectrum'), engine, liveCutoff);
+
+// ---- pop-out graph (with Help on) ----
+// The teaching graphs are drawn on the spectrum screen. When that screen is too small to read
+// them (the slim scope strip) or hidden, and Help is on, they also appear in a larger floating screen on the
+// far side of the panel from the control being used, and fade away with the graph. It never
+// takes clicks, so it cannot get in the way of a knob. Maximised scopes show the graph themselves.
+const graphPop = (() => {
+  const el = document.createElement('div');
+  el.className = 'graph-pop';
+  el.innerHTML = '<canvas></canvas>';
+  document.body.appendChild(el);
+  const cv = el.querySelector('canvas');
+  const W = 620, H = 280;
+  const slim = document.body.dataset.skin !== 'classic'; // NiniFoog and the modulars: the slim strip
+  // only with Help on: the pop-out is part of the teaching aids, not something that appears
+  // over the panel while you are just playing
+  const wanted = () => document.body.classList.contains('help-open')
+    && !document.body.classList.contains('scopes-max')
+    && (slim || document.body.classList.contains('scopes-hidden'));
+  (function loop() {
+    requestAnimationFrame(loop);
+    const a = overlay.group && !overlay.scopeOnly && wanted() ? overlay.alpha() : 0;
+    el.style.opacity = String(a);
+    if (!a) return;
+    const dpr = window.devicePixelRatio || 1;
+    if (cv.width !== W * dpr) { cv.width = W * dpr; cv.height = H * dpr; }
+    const ctx = cv.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = '#06100a';
+    ctx.fillRect(0, 0, W, H);
+    overlay.draw(ctx, W, H, null);
+  })();
+  return {
+    // open on the side of the screen away from this control
+    from(id) {
+      const k = knobs[id];
+      const r = k && k.el ? k.el.getBoundingClientRect() : null;
+      el.classList.toggle('left', !!r && r.left + r.width / 2 > window.innerWidth / 2);
+      el.style.top = (document.querySelector('.appbar').offsetHeight + 12) + 'px';
+    },
+  };
+})();
 scope.overlay = overlay;
 setInterval(() => document.getElementById('trig-led').classList.toggle('on', !!scope.triggered && engine.running), 120);
 
 // ---- help panel ----
 help = new HelpPanel(document.getElementById('help-panel'), () => patch);
 // when hover help opens on a control, show its graph too
-help.onShow = (key) => overlay.activate(key, true); // key may be an option, e.g. osc1.wave=square
+help.onShow = (key) => { overlay.activate(key, true); graphPop.from(key.split('=')[0]); }; // key may be an option, e.g. osc1.wave=square
 help.onHide = () => overlay.release();
 function setHelp(open) {
   document.body.classList.toggle('help-open', open);
