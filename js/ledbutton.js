@@ -15,16 +15,19 @@ export class LedButton {
     this.btn = document.createElement('button');
     this.btn.className = 'led-btn';
     this.btn.setAttribute('aria-label', this.spec.label);
-    this.btn.innerHTML = '<span class="led-lamp"></span>';
-    this.btn.addEventListener('click', () => this.commit(this.value === 'on' ? 'off' : 'on'));
+    // the two options: [off, on] (e.g. off/on, stop/run)
+    [this.offV, this.onV] = this.spec.options.map((o) => o.v);
+    this.btn.innerHTML = '<span class="led-lamp"></span>' + (this.spec.button ? `<span class="led-word">${this.spec.button}</span>` : '');
+    if (this.spec.button) this.el.classList.add('wide');
+    this.btn.addEventListener('click', () => this.commit(this.value === this.onV ? this.offV : this.onV));
     this.el.appendChild(this.btn);
     this.set(value);
   }
 
   set(value) {
     this.value = value;
-    this.btn.classList.toggle('on', value === 'on');
-    this.btn.setAttribute('aria-pressed', String(value === 'on'));
+    this.btn.classList.toggle('on', value === this.onV);
+    this.btn.setAttribute('aria-pressed', String(value === this.onV));
   }
 
   commit(value) {

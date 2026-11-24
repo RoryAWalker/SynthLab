@@ -15,7 +15,7 @@ shot() { # synth, width, height
 shot nf1 1600 680
 shot nf3 1600 940
 shot nfm 1600 760
-shot nfmod 1960 1080
+shot nfmod 1880 1080
 rm -rf "$PROFILE"
 # new pictures: bump the version in the start menu so browsers do not keep showing the old ones
 V=$(date +%Y%m%d%H%M)

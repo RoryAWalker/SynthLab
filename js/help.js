@@ -677,9 +677,9 @@ export const HELP_NFMOD = {
   // ---- sequencer
   'section:seq': { title: 'Sequencer', body: [
     'Plays a repeating pattern of up to 8 notes by itself. Each step has a pitch (its knob, in semitones) and can be switched on or off (its light). It sends out Pitch, Gate and Trig, just like the keyboard: patch them where you would patch the keyboard\'s.',
-    'Run starts it. Rate sets its speed, unless something is patched into Clock: then it moves one step for every rise there. Length sets how many of the 8 steps it uses; Reset sends it back to step 1. The step playing now lights up.'],
+    'The Run button starts and stops it. Rate sets its speed, unless something is patched into Clock: then it moves one step for every rise there. Length sets how many of the 8 steps it uses; Reset sends it back to step 1. The step playing now lights up.'],
     tip: 'Patch Sequencer Pitch into both VCOs\' Pitch inputs and Sequencer Gate into both envelopes\' Gate inputs, then press Run. (The Sequence preset does exactly this.)' },
-  'seq.run': { title: 'Run / Stop', body: ['Starts and stops the sequencer. Stopped, it holds its place with the Gate low.'] },
+  'seq.run': { title: 'Run', body: ['Press to start the sequencer (the button lights up); press again to stop it. Stopped, it holds its place with the Gate low.'] },
   'seq.rate': { title: 'Rate', body: ['How many steps it plays each second, when nothing is patched into Clock. At 4 steps a second, 8 steps take two seconds; 8 steps a second is quick.'] },
   'seq.len': { title: 'Length', body: ['How many of the 8 steps it plays before starting again. Odd lengths (3, 5, 7) against an even rhythm elsewhere make patterns that drift in and out of line.'] },
   ...Object.fromEntries([1, 2, 3, 4, 5, 6, 7, 8].flatMap((n) => [

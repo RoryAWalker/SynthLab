@@ -76,6 +76,13 @@ function buildSection(sec) {
     });
     return el;
   }
+  // controls across the top of a module, before its grid (the sequencer's Run button)
+  if (sec.head) {
+    const hd = document.createElement('div');
+    hd.className = 'section-head';
+    sec.head.forEach((id) => hd.appendChild(makeControl(id, sec)));
+    grid.before(hd);
+  }
   if (sec.jacks && cables) el.appendChild(cables.buildStrip(sec.jacks)); // modular synths: sockets along the module's foot
   if (!sec.rows.length) { grid.remove(); return el; } // a module with only jacks
   fillGrid(grid, sec.rows, sec);

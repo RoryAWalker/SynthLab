@@ -135,7 +135,8 @@ export const PARAMS = {
 
   // sequencer: 8 steps of pitch (semitones, snapped to whole notes) and on/off, its own clock
   // (Rate) unless something is patched into Clock, and a Length of 1-8 steps
-  'seq.run': toggle('Run', { v: 'stop', label: 'Stop' }, { v: 'run', label: 'Run' }, 'stop'),
+  // Run is a lit push button: lit while the sequence plays
+  'seq.run': { type: 'step', ui: 'led', button: 'Run', label: 'Run / Stop', def: 'stop', options: [{ v: 'stop', label: 'Stop' }, { v: 'run', label: 'Run' }] },
   'seq.rate': { type: 'cont', label: 'Rate', min: 0.5, max: 20, def: 4, curve: 'log', unit: 'Hz',
     fmt: (v) => v.toFixed(v < 10 ? 1 : 0) + ' steps/s', marks: [[0.5, '.5'], [2, '2'], [5, '5'], [20, '20']] },
   'seq.len': { type: 'step', label: 'Length', def: 8, span: 240,
@@ -207,9 +208,10 @@ export const LAYOUT = [
 // Steps run down the left column (1-4) then the right (5-8); each is a pitch knob over an on/off light.
 export const SIDE_SECTIONS = [{
   id: 'seq', title: 'Sequencer', foldable: true,
-  rows: [['seq.run', 'seq.rate', 'seq.len'],
-    [['seq.s1', 'seq.g1'], ['seq.s5', 'seq.g5'], null], [['seq.s2', 'seq.g2'], ['seq.s6', 'seq.g6'], null],
-    [['seq.s3', 'seq.g3'], ['seq.s7', 'seq.g7'], null], [['seq.s4', 'seq.g4'], ['seq.s8', 'seq.g8'], null]],
+  head: ['seq.run'], // a wide Run button across the top
+  rows: [['seq.rate', 'seq.len'],
+    [['seq.s1', 'seq.g1'], ['seq.s5', 'seq.g5']], [['seq.s2', 'seq.g2'], ['seq.s6', 'seq.g6']],
+    [['seq.s3', 'seq.g3'], ['seq.s7', 'seq.g7']], [['seq.s4', 'seq.g4'], ['seq.s8', 'seq.g8']]],
   jacks: [['jack.seq.clock', 'jack.seq.reset'], ['out:seq.pitch', 'out:seq.gate', 'out:seq.trig']],
 }];
 

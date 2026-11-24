@@ -1252,3 +1252,12 @@ body .rack-side .knob-cell.small .knob-value { font-size: 10.5px; height: 14px; 
 .section.folded .section-grid, .section.folded .jack-rows, .section.folded .jack-strip { display: none; }
 .section.folded .section-title { border-bottom: none; writing-mode: vertical-rl; margin: 4px auto 0; padding: 0; }
 .section.folded .fold-btn { float: none; margin: 0 0 8px; writing-mode: horizontal-tb; }
+/* sequencer v2: two columns, a wide Run button on top, small step lights tucked under each knob */
+.section-head { display: flex; justify-content: center; margin: 2px 0 4px; }
+.led-cell.wide .led-btn { width: 132px; height: 26px; gap: 8px; display: flex; align-items: center; justify-content: center; }
+.led-cell.wide .led-lamp { width: 9px; height: 9px; border-radius: 50%; }
+.led-word { font: 800 11px var(--font); letter-spacing: 0.2em; color: var(--ink); }
+.led-btn.on .led-word { color: #ffd2c6; }
+.rack-side .stack-cell .led-cell { margin-top: -9px; position: relative; z-index: 1; }
+.rack-side .stack-cell .led-btn { width: 22px; height: 12px; border-radius: 3px; }
+.rack-side .stack-cell .led-lamp { width: 8px; height: 4px; }
