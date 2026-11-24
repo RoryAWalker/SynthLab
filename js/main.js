@@ -1,4 +1,4 @@
-import { PARAMS, LAYOUT, KEYBED_SECTIONS, FX_SECTIONS, SIDE_SECTIONS, ALL_SECTIONS, defaultPatch, updateAlts, SYNTH, nameHtml } from './params.js';
+import { PARAMS, LAYOUT, KEYBED_SECTIONS, FX_SECTIONS, SIDE_SECTIONS, ALL_SECTIONS, defaultPatch, updateAlts, SYNTH, nameHtml, LAB_NAME } from './params.js';
 import { Knob } from './knob.js';
 import { Toggle } from './toggle.js';
 import { Wheel } from './wheel.js';
@@ -14,7 +14,9 @@ import { LessonController } from './lessonUI.js';
 import { PatchMenu } from './patches.js';
 import { Cables } from './cables.js';
 import { CompScope } from './compScope.js';
-import { loadSource, loadUserFile, userFileName } from './sources.js';
+import { ConsoleScope } from './consoleScope.js';
+import { Fader } from './fader.js';
+import { loadSource, loadUserFile, userFileName, loadSong } from './sources.js';
 
 const engine = new Engine({ module: SYNTH.module, processor: SYNTH.processor });
 document.body.dataset.skin = SYNTH.skin;
@@ -22,12 +24,13 @@ document.body.dataset.skin = SYNTH.skin;
 const PREVIEW = new URLSearchParams(location.search).has('preview');
 document.body.classList.toggle('preview', PREVIEW);
 document.body.dataset.synth = SYNTH.id;
-// the processors (the NF-C1 compressor): no keyboard; they play a sound through themselves
-const PROC = SYNTH.kind === 'processor';
+// the studio units (StudioLab: compressors, consoles): no keyboard; they play sounds through themselves
+const PROC = !!SYNTH.kind;
 document.body.classList.toggle('processor', PROC);
 let patch = defaultPatch();
 const sentSources = new Set(); // processors: sounds already handed to the engine
 const meters = []; // processors: the level meters
+const consoleMeters = []; // the console's meters (makeMeter)
 const knobs = {};
 const sections = {};
 let help = null; // HelpPanel, created at boot
@@ -90,7 +93,30 @@ function buildSection(sec) {
     sec.head.forEach((id) => hd.appendChild(makeControl(id, sec)));
     grid.before(hd);
   }
-  if (sec.meters) { grid.replaceWith(buildMeters()); return el; } // the processors' level meters
+  if (sec.meters === true) { grid.replaceWith(buildMeters()); return el; } // the NF-C1's level meters
+  // the console: a fader with its meters beside it, meters on their own, a scribble strip
+  if (sec.fader || Array.isArray(sec.meters) || sec.scribble) {
+    if (sec.rows.length) fillGrid(grid, sec.rows, sec); else grid.remove();
+    if (sec.strip) el.classList.add('strip');
+    const foot = document.createElement('div');
+    foot.className = 'strip-foot';
+    if (Array.isArray(sec.meters)) {
+      const mb = document.createElement('div');
+      mb.className = 'meter-group' + (sec.fader ? ' beside-fader' : '');
+      sec.meters.forEach(([key, text, help]) => mb.appendChild(makeMeter(key, text, help)));
+      if (sec.fader) foot.appendChild(mb); else foot.appendChild(mb);
+    }
+    if (sec.fader) foot.prepend(makeControl(sec.fader, sec));
+    if (foot.children.length) el.appendChild(foot);
+    if (sec.scribble) {
+      const sc = document.createElement('div');
+      sc.className = 'scribble';
+      sc.dataset.help = 'scribble';
+      sc.innerHTML = `<b>${sec.scribble}</b>${sec.scribbleNote ? `<span>${sec.scribbleNote}</span>` : ''}`;
+      el.appendChild(sc);
+    }
+    return el;
+  }
   if (sec.load) el.appendChild(buildLoadButton()); // the processors: load your own sound file
   if (sec.jacks && cables) el.appendChild(cables.buildStrip(sec.jacks)); // modular synths: sockets along the module's foot
   if (!sec.rows.length) { grid.remove(); return el; } // a module with only jacks
@@ -102,6 +128,7 @@ function makeControl(id, sec) {
   const spec = PARAMS[id];
   const k = spec.ui === 'toggle' ? new Toggle(id, patch[id], onKnob)
     : spec.ui === 'led' ? new LedButton(id, patch[id], onKnob)
+    : spec.ui === 'fader' ? new Fader(id, patch[id], onKnob)
     : spec.type === 'wheel' ? new Wheel(id, patch[id], onKnob)
     : new Knob(id, patch[id], onKnob);
   knobs[id] = k;
@@ -223,7 +250,7 @@ function onKnob(id, value) {
   patch[id] = value;
   // modular synths: a patch can sound without a key (a drone), so any change may start the audio
   if ((SYNTH.modular || PROC) && !engine.running) ensureAudio();
-  if (PROC) { if (id === 'src.sound' || id === 'src.play') sendSource(); scope.focus(id); }
+  if (PROC) { if (id === 'src.sound' || id === 'src.play' || id === 'tape.play') sendSource(); scope.focus(id); }
   refreshScales();
   if (!(lesson && lesson.busy)) engine.setParam(id, value); // while a lesson target plays, keep it intact
   if (lesson) lesson.onPatchChange();
@@ -330,7 +357,7 @@ function fit() {
 document.querySelector('.brand-model').innerHTML = nameHtml(SYNTH.name);
 document.querySelector('.np-model').innerHTML = nameHtml(SYNTH.name); // name plate on the wood band (vintage look)
 document.querySelector('.brand-sub').textContent = SYNTH.brandSub;
-document.title = `SynthLab · ${SYNTH.name}`;
+document.title = `${LAB_NAME} · ${SYNTH.name}`;
 buildPanel();
 refreshScales(); // e.g. Osc 3 Frequency starts in Hz when Osc 3 is an LFO
 alignRows();
@@ -382,7 +409,9 @@ const liveCutoff = () => {
   const l = engine.live;
   return l && l.gate && l.a.s !== 0 ? l.fc : patch['filt.cutoff'] ?? patch['vcf.cutoff']; // (the NF-Modular's is vcf.cutoff)
 };
-const scope = PROC
+const scope = SYNTH.kind === 'console'
+  ? new ConsoleScope(document.getElementById('scope'), document.getElementById('spectrum'), engine, () => patch)
+  : PROC
   ? new CompScope(document.getElementById('scope'), document.getElementById('spectrum'), engine, () => patch)
   : new Scope(document.getElementById('scope'), document.getElementById('spectrum'), engine, liveCutoff);
 
@@ -638,6 +667,13 @@ if (cables) {
 // ---- processors: the sound going in, the meters, the space bar ----
 // Make (or fetch) the chosen sound once the audio is running, and hand it to the engine.
 function sendSource() {
+  // the console: its four-track song, all at once
+  if (SYNTH.kind === 'console') {
+    if (sentSources.has('song')) return;
+    sentSources.add('song');
+    Promise.resolve(ensureAudio()).then(() => engine.post({ type: 'source', chans: loadSong(engine.ctx) }));
+    return;
+  }
   const id = patch['src.sound'];
   if (sentSources.has(id)) return;
   Promise.resolve(ensureAudio()).then(async () => {
@@ -699,7 +735,44 @@ function buildMeters() {
   box.insertBefore(scale, box.children[1]);
   return box;
 }
-if (PROC) {
+// The console's meters: segmented ladders fed from the engine's level reports, falling slowly.
+// Each is named by a key: ch1..ch4 (a channel before its fader), aux1, aux2, ret, gr, mainL, mainR.
+function makeMeter(key, text, help) {
+  const m = document.createElement('div');
+  m.className = `meter meter-${help}` + (key === 'gr' ? ' meter-gr' : '');
+  m.dataset.help = help;
+  const segs = key === 'gr' ? 12 : 16;
+  m.innerHTML = `<div class="meter-clip"></div><div class="meter-ladder">${'<i></i>'.repeat(segs)}</div>${text ? `<div class="meter-label">${text}</div>` : ''}`;
+  consoleMeters.push({ key, segs: [...m.querySelectorAll('i')].reverse(), clip: m.querySelector('.meter-clip'), shown: key === 'gr' ? 0 : -120, clipAt: 0 });
+  return m;
+}
+if (SYNTH.kind === 'console') {
+  let last = performance.now();
+  (function consoleMeterLoop() {
+    requestAnimationFrame(consoleMeterLoop);
+    const now = performance.now(), dt = (now - last) / 1000;
+    last = now;
+    const l = engine.running && engine.live && engine.live.console ? engine.live : null;
+    consoleMeters.forEach((m) => {
+      if (m.key === 'gr') {
+        const g = l ? l.grMax : 0;
+        m.shown = Math.max(g, m.shown - 30 * dt);
+        m.segs.forEach((s, i) => s.classList.toggle('on', m.shown > 0.3 && (m.segs.length - 1 - i) < m.shown / 12 * m.segs.length));
+        if (m.clip) m.clip.classList.toggle('on', false);
+        return;
+      }
+      const ch = /^ch(\d)$/.exec(m.key);
+      const v = !l ? -120 : ch ? l.ch[ch[1] - 1].eq : l[m.key];
+      m.shown = Math.max(v, m.shown - 24 * dt);
+      // 16 lights, 3 dB apart, the top one at 0 dB; the top three amber
+      m.segs.forEach((s, i) => s.classList.toggle('on', m.shown >= -45 + i * 3));
+      const clipped = l && (ch ? l.ch[ch[1] - 1].clip : v >= -0.1);
+      if (clipped) m.clipAt = now;
+      if (m.clip) m.clip.classList.toggle('on', now - m.clipAt < 1200);
+    });
+  })();
+}
+if (PROC && SYNTH.kind !== 'console') {
   let last = performance.now();
   (function meterLoop() {
     requestAnimationFrame(meterLoop);
@@ -722,16 +795,21 @@ if (PROC) {
       m.clip.classList.toggle('on', now - m.clipAt < 1200);
     });
   })();
+}
+if (PROC) {
   // space bar: play / stop
+  const playId = PARAMS['src.play'] ? 'src.play' : 'tape.play';
   window.addEventListener('keydown', (e) => {
     if (e.code !== 'Space' || e.repeat || /INPUT|SELECT|TEXTAREA|BUTTON/.test(document.activeElement.tagName)) return;
     e.preventDefault();
-    knobs['src.play'].commit(patch['src.play'] === 'play' ? 'stop' : 'play');
+    knobs[playId].commit(patch[playId] === 'play' ? 'stop' : 'play');
   });
-  // the screens are the point of the NF-C1: label them for what they show
+  // label the screens for what they show
   const caps = document.querySelectorAll('.screen-caption');
-  if (caps[0]) caps[0].innerHTML = '<span>LEVELS</span><span>in · out · gain reduction</span>';
-  if (caps[1]) caps[1].innerHTML = '<span>TRANSFER CURVE</span><span>out against in, dB</span>';
+  const names = SYNTH.kind === 'console'
+    ? ['<span>SIGNAL FLOW</span><span>the selected channel, stage by stage</span>', '<span>EQ</span><span>the selected channel · bus compressor</span>']
+    : ['<span>LEVELS</span><span>in · out · gain reduction</span>', '<span>TRANSFER CURVE</span><span>out against in, dB</span>'];
+  caps.forEach((cap, i) => { if (names[i]) cap.innerHTML = names[i]; });
 }
 
 // Touch screens (iPhone/iPad Safari): audio may only be allowed to start when a finger

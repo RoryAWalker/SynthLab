@@ -7,7 +7,7 @@ import { SYNTHS, SYNTH, SYNTH_CHOSEN, nameHtml } from './params.js';
 
 // Changed by tools/make-previews.sh each time the pictures are re-captured, so browsers fetch
 // the new pictures instead of showing ones they have kept from before.
-const PREVIEW_VERSION = '202611242254';
+const PREVIEW_VERSION = '202611242330';
 
 export class StartMenu {
   constructor({ skip = false } = {}) {
@@ -16,14 +16,15 @@ export class StartMenu {
     // the processors (the NF-C1 compressor) get their own row under the synths
     const procCards = document.createElement('div');
     procCards.className = 'sm-cards sm-proc';
-    if (SYNTHS.some((s) => s.kind === 'processor')) {
+    const mixed = SYNTHS.some((s) => s.kind) && SYNTHS.some((s) => !s.kind);
+    if (mixed) {
       const h = document.createElement('h2');
       h.className = 'sm-group';
       h.textContent = 'Processors';
       cards.after(h, procCards);
     }
     SYNTHS.forEach((s) => {
-      const proc = s.kind === 'processor';
+      const proc = mixed && !!s.kind; // a wide card in its own row, only on a mixed menu
       const card = document.createElement('button');
       card.className = 'sm-card' + (proc ? ' wide' : '');
       card.dataset.synth = s.id;
@@ -32,7 +33,7 @@ export class StartMenu {
         <div class="sm-tag">${s.card.tagline}</div>
         <div class="sm-name">${nameHtml(s.name)}</div>
         <p class="sm-text">${s.card.text}</p>
-        <div class="sm-foot"><span class="sm-play">${proc ? 'Open' : 'Play'} ${s.name} ▸</span>${s.lessons ? '<span class="sm-badge">Lessons</span>' : ''}${s.id === SYNTH.id && SYNTH_CHOSEN ? '<span class="sm-badge current">Playing now</span>' : ''}</div>`;
+        <div class="sm-foot"><span class="sm-play">${s.kind ? 'Open' : 'Play'} ${s.name} ▸</span>${s.lessons ? '<span class="sm-badge">Lessons</span>' : ''}${s.id === SYNTH.id && SYNTH_CHOSEN ? '<span class="sm-badge current">Playing now</span>' : ''}</div>`;
       card.addEventListener('click', () => this.choose(s.id));
       (proc ? procCards : cards).appendChild(card);
     });

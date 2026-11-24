@@ -7,11 +7,16 @@ import { NF3 } from './synths/nf3.js';
 import { NFM } from './synths/nfm.js';
 import { NFMOD } from './synths/nfmod.js';
 import { NFC1 } from './synths/nfc1.js';
+import { NF4 } from './synths/nf4.js';
 import { FX_PARAMS, FX_SECTIONS } from './fx.js';
 
-export const SYNTHS = [NF1, NF3, NFM, NFMOD, NFC1]; // synths first, then the processors (kind: 'processor')
+// Two apps share this code: SynthLab (index.html) shows the synths, StudioLab (studio.html,
+// <html data-lab="studio">) shows the studio units (they have a kind: processor, console).
+export const LAB = document.documentElement.dataset.lab === 'studio' ? 'studio' : 'synth';
+export const LAB_NAME = LAB === 'studio' ? 'StudioLab' : 'SynthLab';
+export const SYNTHS = [NF1, NF3, NFM, NFMOD, NFC1, NF4].filter((s) => !!s.kind === (LAB === 'studio'));
 const wanted = new URLSearchParams(location.search).get('synth');
-export const SYNTH = SYNTHS.find((s) => s.id === wanted) || NF1;
+export const SYNTH = SYNTHS.find((s) => s.id === wanted) || SYNTHS[0];
 export const SYNTH_CHOSEN = SYNTHS.some((s) => s.id === wanted); // false: show the start menu
 
 // every synth's own controls, plus the shared effects

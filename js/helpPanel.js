@@ -1,14 +1,14 @@
-import { HELP, HELP_NF3, HELP_NFM, HELP_NFMOD, HELP_NFC1, helpKeyFor } from './help.js';
+import { HELP, HELP_NF3, HELP_NFM, HELP_NFMOD, HELP_NFC1, HELP_NF4, helpKeyFor } from './help.js';
 import { PARAMS, ALL_SECTIONS, formatValue, SYNTH } from './params.js';
 
-const HELP_FOR_SYNTH = { nf3: HELP_NF3, nfm: HELP_NFM, nfmod: HELP_NFMOD, nfc1: HELP_NFC1 }[SYNTH.id] || {};
+const HELP_FOR_SYNTH = { nf3: HELP_NF3, nfm: HELP_NFM, nfmod: HELP_NFMOD, nfc1: HELP_NFC1, nf4: HELP_NF4 }[SYNTH.id] || {};
 const lookup = (k) => HELP_FOR_SYNTH[k] || HELP[k];
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 // Every control id in a section: its rows, the rows of its parts (a split module), and stacked cells
 function idsIn(sec) {
-  const rows = [...(sec.rows || []), ...(sec.parts || []).flatMap((p) => p.rows || []), sec.head || []];
+  const rows = [...(sec.rows || []), ...(sec.parts || []).flatMap((p) => p.rows || []), sec.head || [], sec.fader ? [sec.fader] : []];
   return rows.flat(2).filter(Boolean);
 }
 function sectionOf(paramId) {
@@ -116,7 +116,7 @@ export class HelpPanel {
     let valueHtml = '';
     if (PARAMS[paramId]) {
       const sec = sectionOf(paramId);
-      eyebrow = sec ? sec.title : '';
+      eyebrow = sec ? (sec.strip ? 'Channel ' + sec.title : sec.title) : '';
       if (optValue !== undefined) {
         eyebrow += ' · ' + PARAMS[paramId].label + ' option';
       } else {

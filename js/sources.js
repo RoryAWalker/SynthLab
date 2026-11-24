@@ -184,3 +184,57 @@ function makeTone(sr) {
   }
   return [L, R];
 }
+
+// ---- the NF-4 console's song: four stems that play together, one per channel -------------
+// Each stem arrives at the level its source really would: the two microphones (drum overheads
+// and the lead, both condenser mics) about 50 dB below the two line-level sources (bass DI and
+// keys). That gap is why a console has Mic and Line inputs and a preamp with so much gain.
+export const SONG_STEMS = [
+  { label: 'Drums', input: 'mic', note: 'condenser overhead mic' },
+  { label: 'Bass', input: 'line', note: 'DI box (line level)' },
+  { label: 'Keys', input: 'line', note: 'keyboard (line level)' },
+  { label: 'Lead', input: 'mic', note: 'condenser vocal mic' },
+];
+const MIC_PEAK = -58, LINE_PEAK = -8; // dBFS peaks of the stems as they arrive
+
+export function makeSong(sr) {
+  const mono = ([L, R]) => { const m = new Float32Array(L.length); for (let i = 0; i < m.length; i++) m[i] = (L[i] + R[i]) / 2; return m; };
+  const stems = [mono(makeDrums(sr)), mono(makeBass(sr)), mono(makeKeys(sr)), makeLead(sr)];
+  return stems.map((s, i) => {
+    let pk = 0;
+    for (let j = 0; j < s.length; j++) pk = Math.max(pk, Math.abs(s[j]));
+    const g = Math.pow(10, (SONG_STEMS[i].input === 'mic' ? MIC_PEAK : LINE_PEAK) / 20) / (pk || 1);
+    for (let j = 0; j < s.length; j++) s[j] *= g;
+    return s;
+  });
+}
+let songCache = null;
+export function loadSong(ctx) { return (songCache = songCache || makeSong(ctx.sampleRate)); }
+
+// A singing lead line, standing in for a vocal: a buzzy tone through two vowel-like resonances,
+// with vibrato that grows on long notes, and phrases that swell and fade (lots of dynamics).
+function makeLead(sr) {
+  const len = Math.round(BARS2 * sr);
+  const out = new Float32Array(len);
+  // [step, length in steps, note, loudness]
+  const notes = [[2, 2, 64, 0.5], [4, 4, 67, 0.8], [8, 2, 69, 0.6], [10, 6, 67, 1], [18, 2, 62, 0.4], [20, 3, 64, 0.65], [23, 1, 62, 0.35], [24, 6, 60, 0.9]];
+  const bp = (f, q) => { // a resonant band-pass (state variable)
+    const st = { lo: 0, bd: 0 }, k = 2 * Math.sin(Math.PI * f / sr), d = 1 / q;
+    return (x) => { st.lo += k * st.bd; const hi = x - st.lo - d * st.bd; st.bd += k * hi; return st.bd; };
+  };
+  notes.forEach(([stp, dur, m, v]) => {
+    const f = mtof(m), n = Math.round((dur * STEP + 0.15) * sr), gate = dur * STEP;
+    const f1 = bp(700, 6), f2 = bp(1150, 8), f3 = bp(2600, 10);
+    let ph = 0;
+    for (let i = 0; i < n; i++) {
+      const t = i / sr;
+      const vib = 1 + 0.006 * Math.min(1, t / 0.4) * Math.sin(2 * Math.PI * 5.4 * t);
+      ph = (ph + f * vib / sr) % 1;
+      const src = 2 * ph - 1;
+      const swell = Math.min(1, t / 0.06) * (t < gate ? 0.75 + 0.25 * Math.sin(Math.PI * Math.min(1, t / gate)) : Math.exp(-(t - gate) / 0.05));
+      const y = (f1(src) + 0.7 * f2(src) + 0.25 * f3(src)) * v * swell;
+      out[(Math.round(stp * STEP * sr) + i) % len] += y;
+    }
+  });
+  return out;
+}

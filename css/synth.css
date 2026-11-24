@@ -768,8 +768,8 @@ body[data-skin="vintage"] .perf { padding: 8px 10px; }
 }
 .start-menu[hidden] { display: none; }
 /* sized to the window's height, so all four synths fit on one screen without scrolling */
-.sm-inner { position: relative; width: min(1040px, calc(100vw - 32px), calc((100vh - 440px) * 1.55)); min-width: min(620px, calc(100vw - 32px)); padding: 2vh 0; text-align: center; }
-/* the processors: a heading, then wide, short cards (picture on the left) */
+.sm-inner { position: relative; width: min(1040px, calc(100vw - 32px), calc((100vh - 180px) * 1.55)); padding: 3vh 0; text-align: center; }
+/* a menu mixing synths and studio units (not used at present): a heading, then wide, short cards */
 .sm-group { margin: 2vh 0 1vh; font-size: 13px; font-weight: 800; letter-spacing: 0.22em; text-transform: uppercase; color: #c9ccd1; text-align: left; }
 .sm-cards.sm-proc { grid-template-columns: 1fr; }
 .sm-card.wide { display: grid; grid-template-columns: minmax(180px, 38%) 1fr; grid-template-rows: auto auto auto 1fr; column-gap: 0; padding: 0; align-items: start; }
@@ -794,7 +794,7 @@ body[data-skin="vintage"] .perf { padding: 8px 10px; }
 .sm-card:hover, .sm-card:focus-visible { transform: translateY(-3px); border-color: var(--accent); box-shadow: 0 16px 40px rgba(0,0,0,0.45); outline: none; }
 .sm-card > :not(.sm-preview) { margin-left: 22px; margin-right: 22px; }
 .sm-preview {
-  height: clamp(90px, 14vh, 210px); margin-bottom: 10px; padding: 12px 16px 0; display: flex; align-items: center; justify-content: center;
+  height: clamp(100px, 19.5vh, 210px); margin-bottom: 12px; padding: 12px 16px 0; display: flex; align-items: center; justify-content: center;
   background: radial-gradient(ellipse at 50% 30%, #2a2c31, #17181b 75%);
   border-bottom: 1px solid #2c2f35;
 }
@@ -1347,3 +1347,86 @@ body[data-skin="studio"] .section-divider { flex: none; width: 1px; margin: 6px 
 body[data-skin="studio"] .section-title { border-bottom-color: var(--rule); }
 body[data-skin="studio"] .panel .section { display: flex; flex-direction: column; height: 100%; }
 body[data-skin="studio"] .panel-footer { border-top-color: var(--rule); }
+
+/* ==========================================================================
+   NF-4 console: channel strips (two narrow columns of small knobs), faders, meters,
+   scribble strips. Its own colour: a warm charcoal faceplate.
+   ========================================================================== */
+body[data-synth="nf4"] { --panel: #2d2b29; --panel-hi: #3a3735; --panel-lo: #24221f; --cell-w: 74px; --rule: rgba(240, 236, 230, 0.3); }
+body[data-synth="nf4"] .synth-body { width: auto; }
+body[data-synth="nf4"] .panel-column { flex: 0 0 auto; }
+body[data-synth="nf4"] .section-divider { margin: 6px 8px 4px; }
+body[data-synth="nf4"] .section-grid { row-gap: 2px; justify-content: center; }
+body[data-synth="nf4"] .section-title { font-size: 12px; margin-bottom: 4px; }
+body[data-synth="nf4"] .strip .section-title span { font-size: 15px; letter-spacing: 0.08em; }
+/* small knobs */
+body[data-synth="nf4"] .knob-cell.small { width: 74px; padding-top: 0; }
+body[data-synth="nf4"] .knob-cell.small .knob-label { font-size: 9.5px; height: 12px; width: auto; display: block; white-space: nowrap; }
+body[data-synth="nf4"] .knob-cell.small .dial { width: 66px; height: 52px; margin-top: -4px; }
+body[data-synth="nf4"] .knob-cell.small .knob { width: 30px; height: 30px; margin: -15px 0 0 -15px; }
+body[data-synth="nf4"] .knob-cell.small .knob-cap { inset: 5px; }
+body[data-synth="nf4"] .knob-cell.small .knob-pointer { height: 8px; top: 2px; width: 2px; margin-left: -1px; }
+body[data-synth="nf4"] .knob-cell.small .knob-body::after { height: 5px; }
+body[data-synth="nf4"] .knob-cell.small .knob-value { font-size: 10px; height: 13px; margin-top: -6px; }
+body[data-synth="nf4"] .knob-cell.small.stepped .knob-cap { inset: -3px 10px; }
+/* knob caps coloured by job, as on many consoles: gain red, EQ green/blue, aux yellow, pan white */
+body[data-synth="nf4"] [data-param$=".gain"] .knob-cap { background: radial-gradient(circle at 40% 35%, #ff8a7a, #c5352a 60%, #8a1f17); }
+body[data-synth="nf4"] [data-param$=".hpf"] .knob-cap { background: radial-gradient(circle at 40% 35%, #c9ccd0, #6d7177 60%, #45484d); }
+body[data-synth="nf4"] [data-param$=".hf"] .knob-cap, body[data-synth="nf4"] [data-param$=".lf"] .knob-cap { background: radial-gradient(circle at 40% 35%, #7fd59a, #2f8f4f 60%, #1c5d32); }
+body[data-synth="nf4"] [data-param$=".mg"] .knob-cap, body[data-synth="nf4"] [data-param$=".mf"] .knob-cap { background: radial-gradient(circle at 40% 35%, #8ab8f0, #3466b0 60%, #1f3f73); }
+body[data-synth="nf4"] [data-param$=".aux1"] .knob-cap, body[data-synth="nf4"] [data-param$=".aux2"] .knob-cap,
+body[data-synth="nf4"] [data-param^="aux"] .knob-cap, body[data-synth="nf4"] [data-param="rev.ret"] .knob-cap { background: radial-gradient(circle at 40% 35%, #ffe08a, #d1a21f 60%, #8a6a10); }
+body[data-synth="nf4"] [data-param$=".pan"] .knob-cap { background: radial-gradient(circle at 40% 35%, #ffffff, #c9ccd0 60%, #8f9398); }
+/* the input toggle, narrower */
+body[data-synth="nf4"] .strip .toggle-cell { width: 74px; }
+body[data-synth="nf4"] .strip .toggle-label { font-size: 9.5px; padding: 0 2px; }
+/* small LED buttons with words (48V, Ø, EQ, L-R, Mute, Solo) */
+body[data-synth="nf4"] .stack-cell { display: flex; flex-direction: column; justify-content: center; gap: 4px; }
+body[data-synth="nf4"] .led-cell.wide .led-btn { width: 64px; height: 20px; gap: 5px; }
+body[data-synth="nf4"] .led-cell.wide .led-word { font-size: 9.5px; letter-spacing: 0.1em; }
+body[data-synth="nf4"] .led-cell.wide .led-lamp { width: 7px; height: 7px; }
+body[data-synth="nf4"] .section-head .led-cell.wide .led-btn { width: 120px; height: 24px; }
+body[data-synth="nf4"] [data-param$=".mute"] .led-btn.on .led-lamp { background: #ff3b2f; }
+body[data-synth="nf4"] [data-param$=".solo"] .led-btn.on .led-lamp { background: #ffc23a; box-shadow: 0 0 8px rgba(255, 194, 58, 0.9); }
+body[data-synth="nf4"] [data-param$=".main"] .led-btn.on .led-lamp,
+body[data-synth="nf4"] [data-param$=".eq"] .led-btn.on .led-lamp { background: #49e07a; box-shadow: 0 0 8px rgba(73, 224, 122, 0.8); }
+
+/* fader and meters along the foot of a strip */
+.strip-foot { display: flex; justify-content: center; align-items: stretch; gap: 8px; margin-top: 6px; }
+.fader-cell { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.fader-body { position: relative; display: flex; gap: 4px; height: 180px; }
+.fader-scale { position: relative; width: 22px; font-size: 8.5px; color: var(--ink-dim); }
+.fader-scale span { position: absolute; right: 0; transform: translateY(50%); line-height: 1; }
+.fader-scale span.unity { color: var(--ink); font-weight: 800; }
+.fader-slot { position: relative; width: 30px; height: 100%; cursor: ns-resize; touch-action: none; outline: none; }
+.fader-slot::before { content: ""; position: absolute; left: 50%; top: -4px; bottom: -4px; width: 5px; margin-left: -2.5px; border-radius: 3px; background: #0a0a0b; box-shadow: inset 0 1px 2px rgba(0,0,0,0.9), 0 1px 0 rgba(255,255,255,0.08); }
+.fader-cap {
+  position: absolute; left: 0; width: 30px; height: 22px; border-radius: 3px;
+  background: linear-gradient(#5b5f66, #2b2e33 45%, #1a1c1f 55%, #3a3d43);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.2);
+}
+.fader-cap i { position: absolute; left: 3px; right: 3px; top: 10px; height: 2px; background: #f2f2f2; border-radius: 1px; }
+body[data-synth="nf4"] [data-param="main.fader"] .fader-cap { background: linear-gradient(#e86a5c, #a8352b 45%, #7d2219 55%, #c24a3e); }
+.fader-slot:focus-visible .fader-cap { outline: 2px solid var(--accent); outline-offset: 1px; }
+.fader-value { font-size: 10px; color: var(--accent); height: 13px; visibility: hidden; }
+body.show-values .fader-value, .fader-cell.active .fader-value { visibility: visible; }
+.meter-group { display: flex; gap: 4px; align-items: stretch; }
+.meter-group .meter { width: 14px; }
+.meter-group:not(.beside-fader) .meter { width: 26px; }
+.meter-group .meter-ladder { width: 10px; min-height: 0; padding: 2px; gap: 1.5px; }
+.meter-group.beside-fader .meter-ladder { height: 180px; flex: none; }
+.meter-group:not(.beside-fader) { justify-content: center; padding-top: 4px; }
+.meter-group:not(.beside-fader) .meter-ladder { height: 110px; flex: none; }
+.meter-group .meter-label { font-size: 8.5px; }
+.meter-group .meter-clip { width: 9px; height: 5px; }
+.meter-group .meter-ladder i:nth-child(-n+3).on { background: #ffc23a; box-shadow: 0 0 4px rgba(255,194,58,0.6); }
+.meter-group .meter-gr .meter-ladder i.on { background: #ff5a4a; }
+.scribble {
+  margin: 8px 2px 0; padding: 4px 6px; border-radius: 3px; text-align: center;
+  background: linear-gradient(#efe9dc, #ddd5c4); color: #24211c; box-shadow: inset 0 1px 2px rgba(0,0,0,0.35);
+  font-family: "Marker Felt", "Comic Sans MS", "Chalkboard SE", sans-serif;
+}
+.scribble b { display: block; font-size: 14px; font-weight: 700; }
+.scribble span { display: block; font-size: 9px; color: #5a5348; font-family: var(--font); }
+body[data-synth="nf4"] .section[data-section="tape"] .scribble { margin-top: 2px; }
+body[data-synth="nf4"] .bezel { height: 250px; }

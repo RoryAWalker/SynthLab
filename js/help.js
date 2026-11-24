@@ -775,3 +775,84 @@ export const HELP_NFC1 = {
   'meter-gr': { title: 'GR meter (gain reduction)', body: ['How far the compressor is turning the sound down, lighting from the top downwards: each light is about 1.2 dB, so a full meter is 24 dB of reduction.', 'This is the most useful meter on any compressor. A few dB on the loudest moments is gentle control; 10 dB or more all the time is heavy compression.'] },
   'meter-out': { title: 'Out meter', body: ['The peak level coming out, after Makeup. The lamp at the top lights if it reaches 0 dB, the most a digital system can take: too much Makeup will distort.'] },
 };
+
+// Entries for the NF-4 console (nf4). Each channel strip has the same controls, so its entries
+// are made once per channel.
+function nf4Channel(n) {
+  const k = `ch${n}.`;
+  return {
+    [`section:ch${n}`]: { title: `Channel ${n}`, body: [
+      'One channel strip: everything one source goes through, read from top to bottom in the order the sound flows. Input and gain, the high-pass filter and EQ, the two aux sends and pan, routing, mute and solo, and finally the fader.',
+      'The meter beside the fader shows the level before the fader: the level the gain and EQ have left it at. Set the gain by that meter first, then use the fader to mix.'] },
+    [k + 'in']: { title: 'Mic / Line', body: [
+      'Which input the source comes in through. A microphone puts out a tiny signal (mic level, about 50 dB quieter than line level), so the Mic input has a preamp with lots of gain. Keyboards, DI boxes and other gear put out line level, which needs little or no gain.',
+      'The wrong choice is a classic mistake: a line-level source on the Mic input is far too hot and distorts; a mic on the Line input is far too quiet, and turning it up brings up hiss.'],
+      tip: 'Switch the Bass channel to Mic and watch its peak light and the signal-flow screen: the preamp clips.' },
+    [k + 'p48']: { title: '48 V phantom power', body: [
+      'Sends 48 volts up the microphone cable. Condenser microphones need it to work at all; dynamic microphones ignore it. On this desk the drum overheads and the lead vocal are condensers: switch their 48 V off and they go silent.',
+      'In a real studio, switch phantom power on and off with the fader down (it makes a loud thump), and never with a vintage ribbon microphone plugged in, which it can damage. It does nothing on a line input.'] },
+    [k + 'pol']: { title: 'Polarity (Ø)', body: [
+      'Flips the signal upside down (often called phase invert). On its own it sounds the same. It matters when two microphones pick up the same source, such as the top and bottom of a snare: if one is upside down relative to the other they cancel, and flipping one brings back the missing low end.'] },
+    [k + 'gain']: { title: 'Gain (preamp)', body: [
+      'How much the preamp amplifies the input: the first and most important level on the desk. On Mic it runs from +10 to +60 dB; on Line from −20 to +30 dB.',
+      'Gain staging: set the gain so the channel meter peaks around −12 to −6 dB, well clear of the top. Too little and you have to push the fader up, bringing up the desk\'s hiss with it; too much and the preamp clips (the red light at the top of the meter) and nothing later can undo the distortion.'],
+      tip: 'Load "Badly gain-staged": the drums are too low (hissy when brought up), the lead too high (clipping). Fix both with the gain, not the fader.' },
+    [k + 'hpf']: { title: 'High-pass filter (HPF)', body: [
+      'Removes low frequencies below its setting, at 12 dB per octave: rumble, stand thumps, breath pops and low "mud" that most sources do not need. Off at the bottom of its travel.',
+      'Most sources except kick drum and bass benefit from some high-pass: 80 to 120 Hz on a vocal, more on keys and guitars in a busy mix. Cleaning up the lows on every channel leaves room for the bass and kick.'] },
+    [k + 'eq']: { title: 'EQ in', body: ['Switches the three EQ bands in and out, so you can compare. The high-pass filter is separate and stays on.'], tip: 'Toggle EQ in and out while listening: if you cannot hear the difference, the EQ is probably not needed.' },
+    [k + 'hf']: { title: 'High (shelf, 12 kHz)', body: ['Turns up or down everything above about 12 kHz: air, sparkle and hiss. A shelf lifts or lowers the whole range above its frequency, like a step.'] },
+    [k + 'mg']: { title: 'Mid (gain)', body: ['Boosts or cuts a band of frequencies around the Mid Freq setting: a bell-shaped curve on the EQ screen.'], tip: 'Find a problem frequency by boosting the Mid a lot and sweeping Mid Freq until it sounds worst, then cut it instead. Cutting is usually cleaner than boosting.' },
+    [k + 'mf']: { title: 'Mid Freq', body: ['Where the Mid band sits, from 100 Hz to 8 kHz. Around 200 to 400 Hz is "boxy" or "muddy"; 1 to 3 kHz is presence and bite; 5 to 8 kHz is edge and sibilance.'] },
+    [k + 'lf']: { title: 'Low (shelf, 80 Hz)', body: ['Turns up or down everything below about 80 Hz: weight, thump and rumble.'] },
+    [k + 'aux1']: { title: 'Aux 1 (pre-fader)', body: [
+      'Sends a copy of this channel to the Aux 1 bus, taken BEFORE the fader. Moving the fader does not change it. That makes it right for a performer\'s headphone or monitor mix: you can change the main mix freely without changing what they hear.',
+      'Aux 1 is heard on its own by choosing Aux 1 on the Monitor switch.'],
+      tip: 'Load "Headphone mix (Aux 1)", then pull a channel\'s fader right down: it disappears from the main mix but not from the headphones.' },
+    [k + 'aux2']: { title: 'Aux 2 (post-fader)', body: [
+      'Sends a copy of this channel to the Aux 2 bus, taken AFTER the fader. Moving the fader changes the send too, so the balance between the dry sound and its effect stays the same. That makes it right for effects: here Aux 2 feeds the reverb.',
+      'The reverb comes back on the Rev Return in the master section and joins the main mix.'] },
+    [k + 'pan']: { title: 'Pan', body: ['Places the channel between the left and right speakers. In the centre it goes equally to both (each 3 dB down, so it does not sound louder in the middle).'], tip: 'Bass, kick and lead vocal usually stay in the centre; keys, guitars and backing parts spread to the sides.' },
+    [k + 'main']: { title: 'Route to Main L-R', body: ['Sends the channel to the main stereo mix. With it off, the channel does not reach the main mix at all, though its aux sends still work: a simple first look at routing. Bigger desks also have subgroups to route to.'] },
+    [k + 'mute']: { title: 'Mute', body: ['Silences the channel: in the main mix and in both aux sends. The meter still shows the signal coming in, so you can see it is there.'] },
+    [k + 'solo']: { title: 'Solo (PFL)', body: [
+      'Lets you hear this channel on its own in the monitors, without changing the mix. This desk\'s solo is PFL (pre-fade listen): you hear the channel as it is before its fader, so even a channel with its fader down can be checked. Solo several channels to hear them together.',
+      'While anything is soloed the monitor plays the solo instead of the main mix. The main mix itself, and its meters, carry on unchanged.'] },
+    [k + 'fader']: { title: 'Fader', body: [
+      'The channel\'s level in the mix. 0 dB (unity), about three quarters of the way up, leaves the level as the gain set it; above that it adds up to 10 dB, below it turns the channel down, to off at the bottom.',
+      'Mixing happens on the faders, after the gain has been set properly. If a fader needs to sit near the top or bottom to get the balance right, the gain is probably wrong.'] },
+  };
+}
+export const HELP_NF4 = {
+  ...nf4Channel(1), ...nf4Channel(2), ...nf4Channel(3), ...nf4Channel(4),
+  scope: { title: 'Signal flow', body: [
+    'The path through the desk for the selected channel (the one you touched last), block by block in the same order as the strip, with the live level at each stage. Green is a healthy level, amber is hot, red is clipping.',
+    'The two aux sends branch off underneath: Aux 1 before the mute and fader, Aux 2 after them. Aux 2 feeds the reverb, whose return goes back into the main bus. Along the bottom is the master section: bus compressor, main fader, and what the monitor is playing.',
+    'Anything muted, switched off or not routed goes dark, so you can see where a signal stops.'] },
+  spectrum: { title: 'EQ and bus compressor', body: [
+    'The selected channel\'s high-pass filter and EQ as a curve: across is frequency (20 Hz to 20 kHz), up and down is boost or cut. The dots mark the bands: HPF, Low, Mid and High.',
+    'Underneath, the bus compressor\'s gain reduction over the last few seconds.'] },
+  scribble: { title: 'Scribble strip', body: ['What is plugged into the channel, written on tape the way engineers label a desk. Drums: a pair of condenser overhead microphones. Bass: a DI box. Keys: a keyboard at line level. Lead: a condenser vocal microphone.'] },
+  chmeter: { title: 'Channel meter', body: ['The channel\'s level before the fader (after the gain and EQ). Each light is 3 dB; the top three are amber; the red lamp above lights if the preamp clips. Aim for peaks around −12 to −6 dB.'] },
+  'section:tape': { title: 'Song', body: ['The multitrack being mixed: four tracks of one song, one per channel, playing in time. Play starts and stops it (the space bar does too).'] },
+  'tape.play': { title: 'Play / Stop', body: ['Starts and stops the song, looping. The space bar does the same.'] },
+  'section:aux': { title: 'Aux masters', body: ['The overall level of each aux bus, and the reverb that Aux 2 feeds. The meters show Aux 1, Aux 2 and the reverb\'s return.'] },
+  'aux1.master': { title: 'Aux 1 master', body: ['The overall level of the Aux 1 bus (the headphone or monitor mix) before it leaves the desk.'] },
+  'aux2.master': { title: 'Aux 2 master', body: ['The overall level of the Aux 2 bus going to the reverb.'] },
+  'rev.time': { title: 'Reverb time', body: ['How long the reverb takes to die away (by 60 dB): short for a small room, long for a hall.'] },
+  'rev.ret': { title: 'Reverb return', body: ['How loud the reverb comes back into the main mix. Aux 2 sends set how much of each channel goes in; the return sets how much reverb you hear overall.'] },
+  auxmeter: { title: 'Aux meters', body: ['The level of the Aux 1 bus, the Aux 2 bus (going into the reverb), and the reverb coming back.'] },
+  'section:bc': { title: 'Bus compressor', body: ['A compressor across the whole main mix, after the channels are added together. Used gently (a low ratio, 1 to 3 dB of gain reduction) it "glues" the mix: the parts sit together and move as one. It works exactly like the NF-C1, with a soft knee fixed at 6 dB.'], tip: 'Load "Glued with the bus comp" and switch it in and out, matching the loudness with Makeup first.' },
+  'bc.on': { title: 'Bus compressor in', body: ['Switches the bus compressor in and out. The GR meter keeps showing what it would do even when it is out.'] },
+  'bc.thresh': { title: 'Threshold', body: ['The level of the main mix where the compression starts.'] },
+  'bc.ratio': { title: 'Ratio', body: ['How strongly the mix is turned down above the threshold. Bus compression is usually gentle: 2:1 to 4:1.'] },
+  'bc.attack': { title: 'Attack', body: ['How fast it reacts. Slower attacks (10 to 30 ms) let the drums\' hits through and keep the mix punchy.'] },
+  'bc.release': { title: 'Release', body: ['How fast it lets go. Set it so the gain reduction meter moves in time with the music.'] },
+  'bc.makeup': { title: 'Makeup', body: ['Turns the mix back up after compression, so in and out can be compared at the same loudness.'] },
+  grmeter: { title: 'Bus compressor GR', body: ['How far the bus compressor is turning the mix down. Each light is 1 dB.'] },
+  'section:main': { title: 'Main and monitor', body: ['The main fader sets the level of the whole mix. The Monitor switch chooses what you hear: the Main mix, Aux 1 (the headphone mix) or Aux 2 (what goes to the reverb). Solo overrides it while any channel is soloed.'] },
+  'main.fader': { title: 'Main fader', body: ['The level of the whole stereo mix, after the bus compressor. Keep it near 0 dB and balance the mix on the channel faders.'] },
+  'mon.src': { title: 'Monitor', body: ['What you hear: the Main mix, the Aux 1 bus (a performer\'s headphone mix) or the Aux 2 bus (what is being sent to the reverb). While any channel is soloed, you hear the solo instead.'] },
+  'mon.vol': { title: 'Listen', body: ['Your listening level. It does not change the mix or any meter.'] },
+  mainmeter: { title: 'Main meters', body: ['The left and right levels of the main mix, after the main fader. The red lamps light if the mix reaches 0 dB, the most a digital recording can hold.'] },
+};
