@@ -10,18 +10,21 @@
 }
 
 body[data-skin="classic"] {
+  /* NF-1: an aubergine panel (a near-black purple) in dark walnut ends, so it stands apart
+     from the NiniFoog's black panel and warmer, lighter wood */
   --desk: #141517;
   --desk-2: #1d1f23;
-  --panel: #18191b;
-  --panel-hi: #232427;
-  --ink: #ececec;          /* silk-screen print */
-  --ink-dim: #a9a9a9;
-  --rule: rgba(236, 236, 236, 0.55);
+  --panel: #1f1428;
+  --panel-hi: #2b1d36;
+  --panel-lo: #160e1c;
+  --ink: #ece6f2;          /* silk-screen print, a touch of lilac */
+  --ink-dim: #ada5b6;
+  --rule: rgba(236, 230, 242, 0.55);
   --accent: #ffb547;       /* readouts, active option */
   --led: #ff3b2f;
-  --wood-1: #5b3219;
-  --wood-2: #3e200f;
-  --wood-3: #7a4524;
+  --wood-1: #3a1f12;       /* dark walnut */
+  --wood-2: #24130a;
+  --wood-3: #4e2a17;
 }
 
 * { box-sizing: border-box; }
@@ -1191,3 +1194,13 @@ button, .btn, .toggle, .toggle-label, .lb-btn, .range-btn, .oct-btn, .tb-btn, .s
   .socket::after { content: ''; position: absolute; inset: -12px; border-radius: 50%; }
   .knob::after { content: ''; position: absolute; inset: -8px; border-radius: 50%; }
 }
+
+/* NF-1 aubergine: the panel's lower edge, the keyboard area and the scope strip share the tint */
+body[data-skin="classic"] .panel { background:
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.018) 0 1px, transparent 1px 2px),
+    linear-gradient(180deg, var(--panel-hi), var(--panel) 30%, var(--panel-lo)); border-top-color: #3a2b45; }
+body[data-skin="classic"] .keybed { background: linear-gradient(#0f0a13, #1a1220); }
+body[data-skin="classic"] .perf { background: linear-gradient(#22172b, #170f1d); }
+body[data-skin="classic"] .scope-unit { background:
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.012) 0 1px, transparent 1px 3px),
+    linear-gradient(#3a3040, #2a2230); }
