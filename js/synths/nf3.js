@@ -179,7 +179,7 @@ export const NF3 = {
   skin: 'vintage',
   module: 'js/worklet/va3-processor.js',
   processor: 'va3-processor',
-  lessons: false,
+  lessons: true,
   keyboard: [41, 84], // fixed 44 keys, F to C (3½ octaves); no octave shift
   narrowSwitches: true, // vertical rockers in narrow columns, as on the original
   card: {
