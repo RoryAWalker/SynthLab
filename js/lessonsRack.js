@@ -15,8 +15,14 @@ const share = (...bits) => bits.filter(Boolean).length / bits.length;
 const semis = (p, n) => p[`osc${n}.range`] * 12 + p[`osc${n}.tune`];
 const cable = (input, out) => ({ ['jack.' + input]: out });
 
-const ALL = ['vco1', 'vco2', 'noise', 'mix', 'filt', 'ring', 'vca', 'att', 'out', 'env1', 'env2', 'lfo', 'mfo', 'sh', 'kb'];
+const ALL = ['seq', 'vco1', 'vco2', 'noise', 'mix', 'filt', 'ring', 'vca', 'att', 'out', 'env1', 'env2', 'lfo', 'mfo', 'sh', 'kb'];
 const SCOPES = true;
+
+// the sequencer patched in place of the keyboard and running (for the sequencer challenges)
+const SEQ_PLAYING = {
+  ...cable('vco1.pitch', 'seq.pitch'), ...cable('vco2.pitch', 'seq.pitch'), ...cable('env1.gate', 'seq.gate'), ...cable('env2.gate', 'seq.gate'),
+  'seq.run': 'run', 'seq.s3': 7, 'seq.s5': 12,
+};
 
 // what every lesson starts from (on top of Init): a single VCO, so each step adds to something clear
 const ONE_VCO = { ...cable('mix.in2', '') };
@@ -439,9 +445,108 @@ export const RACK_LESSONS = [
   },
 
   // ---------------------------------------------------------------------------------------
+  {
+    id: 'rack-seq', number: 9, title: 'The Sequencer',
+    summary: 'A sequencer is a keyboard played by a clock. Patch it in place of the keyboard, write a tune with rests, change its length, clock it from other modules, and let it sequence things that are not pitch.',
+    doneText: 'You played a pattern, wrote a tune with rests and an odd length, clocked it from the LFO and from the keys, transposed it from the keyboard, and sequenced the filter.',
+    introUnlocked: [], scopes: SCOPES,
+    challenges: [
+      {
+        type: 'goal', title: 'Play a pattern',
+        text: 'The sequencer has the same outputs as the keyboard. Patch its Pitch into both VCOs\' Pitch inputs and its Gate into both envelopes\' Gate inputs, in place of the keyboard\'s cables. Then press Run.',
+        unlocked: ALL,
+        make: (c) => ({ start: { 'seq.s3': 7, 'seq.s5': 12 }, note: c.note }),
+        check: (s) => only(s.patch, 'vco1.pitch', 'seq.pitch') && only(s.patch, 'vco2.pitch', 'seq.pitch') && only(s.patch, 'env1.gate', 'seq.gate') && only(s.patch, 'env2.gate', 'seq.gate') && s.patch['seq.run'] === 'run',
+        progress: (s) => share(only(s.patch, 'vco1.pitch', 'seq.pitch'), only(s.patch, 'vco2.pitch', 'seq.pitch'), only(s.patch, 'env1.gate', 'seq.gate'), only(s.patch, 'env2.gate', 'seq.gate'), s.patch['seq.run'] === 'run'),
+        hint: 'Lift the Keyboard\'s cables out of both VCO PITCH inputs and both ENV GATE inputs. Patch Sequencer PITCH and GATE into them instead (an output can feed several inputs). Then press RUN.',
+      },
+      {
+        type: 'goal', title: 'Write a tune',
+        text: 'Turn the step knobs so the pattern uses at least four different notes, and keep it running.',
+        unlocked: ALL,
+        make: (c) => ({ start: SEQ_PLAYING, note: c.note }),
+        check: (s) => new Set([1, 2, 3, 4, 5, 6, 7, 8].map((n) => Math.round(s.patch[`seq.s${n}`]))).size >= 4 && s.patch['seq.run'] === 'run',
+        progress: (s) => Math.min(1, new Set([1, 2, 3, 4, 5, 6, 7, 8].map((n) => Math.round(s.patch[`seq.s${n}`]))).size / 4),
+        hint: 'Each step knob sets that step\'s note in semitones. Try 0, +3, +7 and +12 for a minor chord, broken up.',
+      },
+      {
+        type: 'goal', title: 'Rests',
+        text: 'Switch off at least two steps with their lights: they become rests, and the pattern gets a rhythm.',
+        unlocked: ALL,
+        make: (c) => ({ start: SEQ_PLAYING, note: c.note }),
+        check: (s) => [1, 2, 3, 4, 5, 6, 7, 8].filter((n) => s.patch[`seq.g${n}`] === 'off').length >= 2 && s.patch['seq.run'] === 'run',
+        progress: (s) => Math.min(1, [1, 2, 3, 4, 5, 6, 7, 8].filter((n) => s.patch[`seq.g${n}`] === 'off').length / 2),
+        hint: 'Click the small red light under a step\'s knob to switch that step off.',
+      },
+      {
+        type: 'goal', title: 'Odd length',
+        text: 'Set Length to 5 or 7: the pattern now repeats every 5 (or 7) steps instead of 8, which makes it feel lopsided and interesting.',
+        unlocked: ALL,
+        make: (c) => ({ start: SEQ_PLAYING, note: c.note }),
+        check: (s) => [5, 7].includes(s.patch['seq.len']) && s.patch['seq.run'] === 'run',
+        progress: (s) => ([5, 7].includes(s.patch['seq.len']) ? 1 : 0),
+        hint: 'Turn the Length knob to 5 or 7.',
+      },
+      {
+        type: 'goal', title: 'Clock it from the LFO',
+        text: 'Set the LFO\'s Shape to square and patch its Out into the Sequencer\'s Clock input. The LFO\'s Rate now sets the speed.',
+        unlocked: ALL,
+        make: (c) => ({ start: { ...SEQ_PLAYING, 'lfo.rate': 3 }, note: c.note }),
+        check: (s) => has(s.patch, 'seq.clock', 'lfo.out') && s.patch['lfo.shape'] === 'square' && s.patch['seq.run'] === 'run',
+        progress: (s) => share(has(s.patch, 'seq.clock', 'lfo.out'), s.patch['lfo.shape'] === 'square'),
+        hint: 'LFO Shape to the square wave. LFO OUT to Sequencer CLOCK.',
+      },
+      {
+        type: 'question', title: 'Who sets the speed?',
+        text: 'Keep the LFO patched into Clock and turn the Sequencer\'s own Rate knob.',
+        unlocked: ALL,
+        make: (c) => ({ start: { ...SEQ_PLAYING, ...cable('seq.clock', 'lfo.out'), 'lfo.shape': 'square', 'lfo.rate': 3 }, note: c.note }),
+        revealWhen: (s) => Math.abs(s.patch['seq.rate'] - 4) > 1.5,
+        progress: (s) => Math.min(1, Math.abs(s.patch['seq.rate'] - 4) / 1.5),
+        hint: 'Turn the Sequencer\'s Rate knob a long way.',
+        question: {
+          prompt: 'What did the Sequencer\'s Rate knob do?',
+          options: [
+            { text: 'Nothing: with something in Clock, the clock sets the speed', correct: true },
+            { text: 'It sped the pattern up and down', feedback: 'Listen again while turning it. Then try the LFO\'s Rate instead.' },
+          ],
+          explain: 'A patched Clock input takes over from the sequencer\'s own clock. That is how modules are kept in time: one clock (here the LFO) drives everything.',
+        },
+      },
+      {
+        type: 'goal', title: 'One step per key',
+        text: 'Patch the Keyboard\'s Trig into the Sequencer\'s Clock instead of the LFO: now each key you press moves the pattern on one step, whatever key it is. Play at least six notes.',
+        unlocked: ALL,
+        make: (c) => ({ start: SEQ_PLAYING, note: c.note }),
+        check: (s) => only(s.patch, 'seq.clock', 'kb.trig') && s.notes >= 6,
+        progress: (s) => share(only(s.patch, 'seq.clock', 'kb.trig'), Math.min(1, s.notes / 6) >= 1),
+        hint: 'Keyboard TRIG to Sequencer CLOCK. Then tap any key six times.',
+      },
+      {
+        type: 'goal', title: 'Transpose from the keyboard',
+        text: 'Patch the Keyboard\'s Pitch into both VCOs\' Pitch inputs as well as the Sequencer\'s Pitch (two cables in each, added together). Hold different keys while it runs: the whole pattern moves up and down with the key.',
+        unlocked: ALL,
+        make: (c) => ({ start: SEQ_PLAYING, note: c.note }),
+        check: (s) => ['vco1.pitch', 'vco2.pitch'].every((i) => has(s.patch, i, 'seq.pitch') && has(s.patch, i, 'kb.pitch')) && s.patch['seq.run'] === 'run' && s.held,
+        progress: (s) => share(has(s.patch, 'vco1.pitch', 'kb.pitch'), has(s.patch, 'vco2.pitch', 'kb.pitch'), s.held),
+        hint: 'Drag from the Keyboard\'s PITCH to each VCO\'s PITCH: the Sequencer\'s cables stay. Then hold a key.',
+      },
+      {
+        type: 'goal', title: 'Sequence the filter',
+        text: 'A sequencer can step anything, not just pitch. Put the keyboard back on the VCOs\' Pitch and the envelopes\' Gate, and patch the Sequencer\'s Pitch into the VCF\'s CV instead (Cutoff low, CV Amount 30%+). Hold a note while it runs: the tone steps through a pattern.',
+        unlocked: ALL,
+        make: (c) => ({ start: { 'seq.run': 'run', 'seq.s2': 6, 'seq.s3': 12, 'seq.s5': 3, 'seq.s7': 9, ...cable('filt.cv', ''), 'vcf.cutoff': 300, 'vcf.res': 0.5 }, note: c.note }),
+        check: (s) => has(s.patch, 'filt.cv', 'seq.pitch') && s.patch['vcf.cv'] >= 0.3 && has(s.patch, 'vco1.pitch', 'kb.pitch') && has(s.patch, 'env1.gate', 'kb.gate') && s.patch['seq.run'] === 'run' && s.held,
+        progress: (s) => share(has(s.patch, 'filt.cv', 'seq.pitch'), s.patch['vcf.cv'] >= 0.3, s.held),
+        hint: 'Sequencer PITCH to VCF CV; CV Amount up. Keep the Keyboard\'s cables on the VCOs and envelopes. Hold a key.',
+      },
+    ],
+  },
+
+  // ---------------------------------------------------------------------------------------
   // Fix the Patch: each challenge starts from a working patch with one fault (two in the last).
   {
-    id: 'rack-fix', number: 9, title: 'Fix the Patch',
+    id: 'rack-fix', number: 10, title: 'Fix the Patch',
     summary: 'Each patch here is broken. Listen, look at the cables and knobs, find the fault and fix it: the most useful skill on a real modular.',
     doneText: 'You found and fixed every fault. Tracing a signal from the Output back to its source, cable by cable, is how every modular player finds problems.',
     introUnlocked: [], scopes: SCOPES,
@@ -526,6 +631,15 @@ export const RACK_LESSONS = [
         check: (s) => has(s.patch, 'env2.gate', 'kb.gate') && played(s),
         progress: (s) => (has(s.patch, 'env2.gate', 'kb.gate') ? 1 : 0),
         hint: 'The filter is moved by ENV 2. Does ENV 2 ever start?',
+      },
+      {
+        type: 'goal', title: 'Silent sequence',
+        text: 'The sequencer is running and its Pitch reaches both VCOs, but nothing plays.',
+        unlocked: ALL,
+        make: (c) => ({ start: { ...SEQ_PLAYING, ...cable('env1.gate', ''), ...cable('env2.gate', '') }, note: c.note }),
+        check: (s) => has(s.patch, 'env1.gate', 'seq.gate'),
+        progress: (s) => (has(s.patch, 'env1.gate', 'seq.gate') ? 1 : 0),
+        hint: 'Pitch says which note; something else has to say when. Which output of the Sequencer is not patched?',
       },
       {
         type: 'goal', title: 'Two faults',

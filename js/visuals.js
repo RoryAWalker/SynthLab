@@ -76,6 +76,7 @@ export function overlayGroup(key, p = {}) {
   if (id.startsWith('vcf.')) return 'vcf';
   if (id.startsWith('lfo.') || id.startsWith('lfo2.')) return 'lfo';
   if (id.startsWith('sh.')) return 'sh';
+  if (id.startsWith('seq.')) return 'seq';
   if (id === 'noise.colour') return 'noise';
   if (/^mix\.(l[1-4]|mode)$/.test(id)) return 'shaper';
   if (id === 'ring.mix') return 'ring';
@@ -218,6 +219,7 @@ export class Overlay {
     else if (this.group === 'pw') this.drawPulseWidth(ctx, w, h, spectrum);
     else if (this.group === 'fm') this.drawFm(ctx, w, h, box);
     else if (this.group === 'sh') this.drawSh(ctx, w, h, box);
+    else if (this.group === 'seq') this.drawSeq(ctx, w, h, box);
     else if (this.group === 'noise') this.drawNoise(ctx, w, h, box);
     else if (this.group === 'shaper') this.drawShaper(ctx, w, h, box);
     else if (this.group === 'ring') this.drawRing(ctx, w, h, box);
@@ -1112,5 +1114,40 @@ export class Overlay {
     this.line(ctx, pts, HI, 2.8, null, true);
     label(ctx, title, PAD.l, 16, AMBER, 'left', 10.5, 800);
     label(ctx, note, w - PAD.r, h - 8, HI, 'right', 10.5, 700);
+  }
+
+  // ---- sequencer: the pattern as eight pitch bars -------------------------------------------------
+  drawSeq(ctx, w, h, box) {
+    const p = this.getPatch();
+    const len = p['seq.len'] || 8;
+    const live = this.engine.live;
+    const cur = live && live.seqRun ? live.seqStep : -1;
+    const slot = box.w / 8, mid = box.y + box.h / 2, scale = (box.h / 2 - 12) / 12;
+    this.line(ctx, [[box.x, mid], [box.x + box.w, mid]], AMBER_FAINT, 1, [3, 4]);
+    label(ctx, '+12', box.x - 6, mid - 12 * scale + 3, AMBER_DIM, 'right', 9);
+    label(ctx, '0', box.x - 6, mid + 3, AMBER_DIM, 'right', 9);
+    label(ctx, '−12', box.x - 6, mid + 12 * scale + 3, AMBER_DIM, 'right', 9);
+    for (let n = 1; n <= 8; n++) {
+      const st = Math.round(p[`seq.s${n}`] || 0), on = p[`seq.g${n}`] !== 'off', used = n <= len;
+      const x = box.x + (n - 0.5) * slot, y = mid - st * scale;
+      const hi = this.param === `seq.s${n}` || this.param === `seq.g${n}` || cur === n - 1;
+      const col = !used ? AMBER_FAINT : hi ? HI : on ? AMBER : AMBER_DIM;
+      ctx.save();
+      ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = 2;
+      if (on && used) ctx.fillRect(x - slot * 0.3, Math.min(y, mid) - (st === 0 ? 2 : 0), slot * 0.6, Math.max(4, Math.abs(y - mid)));
+      else ctx.strokeRect(x - slot * 0.3, Math.min(y, mid) - (st === 0 ? 2 : 0), slot * 0.6, Math.max(4, Math.abs(y - mid)));
+      ctx.restore();
+      label(ctx, used ? (on ? `${st > 0 ? '+' : ''}${st}` : 'rest') : '–', x, h - 8, col, 'center', 10, 700);
+      if (cur === n - 1) dot(ctx, x, box.y + 4);
+    }
+    if (len < 8) {
+      const x = box.x + len * slot;
+      this.line(ctx, [[x, box.y], [x, box.y + box.h]], HI, 1.5, [5, 4]);
+      label(ctx, `back to step 1 after ${len}`, x + 6, box.y + 12, HI, 'left', 10, 700);
+    }
+    const clocked = !!p['jack.seq.clock'];
+    const speed = clocked ? 'stepped by its Clock input' : `${(p['seq.rate'] || 4).toFixed(1)} steps a second`;
+    label(ctx, `SEQUENCER   ·   ${p['seq.run'] === 'run' ? 'running' : 'stopped'}   ·   ${speed}   ·   Length ${len}`, box.x, 16, AMBER, 'left', 10.5, 800);
+    label(ctx, 'bars: each step\'s pitch in semitones   ·   outline = rest', w - PAD.r, 16, AMBER_DIM, 'right', 9.5, 600);
   }
 }
