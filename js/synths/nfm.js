@@ -28,6 +28,7 @@ const pick = (id, extra = {}) => ({ ...NF1_PARAMS[id], ...extra });
 export const PARAMS = {
   // keyboard
   'kb.glide':    pick('ctrl.glide'),
+  'kb.mode':     pick('ctrl.mode'), // Mono: every new key restarts the Gate; Legato: overlapping keys keep it high
 
   // LFO
   'lfo.rate':    pick('lfo.rate', { def: 5 }),
@@ -82,7 +83,7 @@ export const LAYOUT = [
   [{ id: 'vca', title: 'VCA', rows: [['vca.level'], [null]], jacks: ['jack.vca.in', 'jack.vca.cv', 'out:vca.out'] }],
   [{ id: 'out', title: 'Output', rows: [['out.vol'], [null]], jacks: ['jack.out.in'] }],
 ];
-export const KEYBED_SECTIONS = [{ id: 'kb', title: 'Keyboard', rows: [['kb.glide']], jacks: ['out:kb.pitch', 'out:kb.gate'] }];
+export const KEYBED_SECTIONS = [{ id: 'kb', title: '', rows: [['kb.glide', 'kb.mode']], jacks: ['out:kb.pitch', 'out:kb.gate'] }];
 
 // ---- factory patches: what differs from the starting patch -------------------------------
 export const UNPATCHED = Object.fromEntries(Object.keys(PARAMS).filter((id) => id.startsWith('jack.')).map((id) => [id, '']));

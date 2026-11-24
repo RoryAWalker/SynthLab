@@ -840,17 +840,17 @@ body[data-skin="vintage"] .keybed { height: 262px; }
 body[data-skin="vintage"] .perf .wheel-slot { height: 150px; width: 38px; }
 /* win back height so the larger pots show larger on screen */
 /* NiniFoog: scopes are a slim strip (it is not the beginners' synth, so the displays can be compact) */
-body[data-skin="vintage"] .scope-unit { margin-bottom: 12px; padding: 8px 18px 6px; gap: 16px; align-items: center; }
-body[data-skin="vintage"] .bezel { height: 112px; padding: 6px; border-radius: 10px; }
-body[data-skin="vintage"] .screen-glass { inset: 6px; border-radius: 7px; }
-body[data-skin="vintage"] .bezel canvas { border-radius: 7px; }
-body[data-skin="vintage"] .scope-screen-wrap { gap: 4px; }
-body[data-skin="vintage"] .scope-controls { width: auto; padding-top: 0; gap: 6px; }
-body[data-skin="vintage"] .tb-group { gap: 6px; }
-body[data-skin="vintage"] .tb-buttons { grid-template-columns: repeat(6, 34px); gap: 5px; }
-body[data-skin="vintage"] .tb-btn { height: 24px; }
-body[data-skin="vintage"] .hold-btn { width: 100%; height: 24px; }
-body[data-skin="vintage"] .scope-brand { display: none; }
+body[data-skin="vintage"] .scope-unit, body[data-skin="modular"] .scope-unit { margin-bottom: 12px; padding: 8px 18px 6px; gap: 16px; align-items: center; }
+body[data-skin="vintage"] .bezel, body[data-skin="modular"] .bezel { height: 112px; padding: 6px; border-radius: 10px; }
+body[data-skin="vintage"] .screen-glass, body[data-skin="modular"] .screen-glass { inset: 6px; border-radius: 7px; }
+body[data-skin="vintage"] .bezel canvas, body[data-skin="modular"] .bezel canvas { border-radius: 7px; }
+body[data-skin="vintage"] .scope-screen-wrap, body[data-skin="modular"] .scope-screen-wrap { gap: 4px; }
+body[data-skin="vintage"] .scope-controls, body[data-skin="modular"] .scope-controls { width: auto; padding-top: 0; gap: 6px; }
+body[data-skin="vintage"] .tb-group, body[data-skin="modular"] .tb-group { gap: 6px; }
+body[data-skin="vintage"] .tb-buttons, body[data-skin="modular"] .tb-buttons { grid-template-columns: repeat(6, 34px); gap: 5px; }
+body[data-skin="vintage"] .tb-btn, body[data-skin="modular"] .tb-btn { height: 24px; }
+body[data-skin="vintage"] .hold-btn, body[data-skin="modular"] .hold-btn { width: 100%; height: 24px; }
+body[data-skin="vintage"] .scope-brand, body[data-skin="modular"] .scope-brand { display: none; }
 body[data-skin="vintage"] .panel { padding-top: 10px; }
 body[data-skin="vintage"] .panel-column.stacked, body[data-skin="vintage"] .panel-column { gap: 6px; }
 body[data-skin="vintage"] .perf .wheel-label { font-size: 12px; }
@@ -978,23 +978,23 @@ body.preview .fx-drawer { display: none !important; }
 /* ==========================================================================
    Maximised scopes: tall screens; the keyboard folds away unless KEYBOARD is on
    ========================================================================== */
-body.scopes-max .bezel, body[data-skin="vintage"].scopes-max .bezel { height: 420px; padding: 10px; }
+body.scopes-max .bezel, body[data-skin="vintage"].scopes-max .bezel, body[data-skin="modular"].scopes-max .bezel { height: 420px; padding: 10px; }
 body.scopes-max .scope-unit { align-items: stretch; }
-body[data-skin="vintage"].scopes-max .scope-controls { flex-direction: column; width: 150px; }
-body[data-skin="vintage"].scopes-max .tb-buttons { grid-template-columns: repeat(3, 40px); }
+body[data-skin="vintage"].scopes-max .scope-controls, body[data-skin="modular"].scopes-max .scope-controls { flex-direction: column; width: 150px; }
+body[data-skin="vintage"].scopes-max .tb-buttons, body[data-skin="modular"].scopes-max .tb-buttons { grid-template-columns: repeat(3, 40px); }
 body.scopes-max .keybed,
 body.scopes-max .wood-band { display: none; }
 .max-btn { margin-top: 2px; }
 .max-btn.on { background: linear-gradient(#ffcf7a, #f0a43a); }
-body[data-skin="vintage"] .max-btn { height: 24px; }
+body[data-skin="vintage"] .max-btn, body[data-skin="modular"] .max-btn { height: 24px; }
 
 /* The screens' pixel resolution must never widen the layout: they are redrawn sharper when
    zoomed or maximised, and the page would otherwise grow, then shrink to fit. So the canvas is
    positioned inside its bezel (out of the layout flow), sized from the bezel, not the other way. */
 .scope-screen-wrap, .bezel { min-width: 0; }
 .bezel { --bp: 10px; }
-body[data-skin="vintage"] .bezel { --bp: 6px; }
-body.scopes-max .bezel, body[data-skin="vintage"].scopes-max .bezel { --bp: 10px; }
+body[data-skin="vintage"] .bezel, body[data-skin="modular"] .bezel { --bp: 6px; }
+body.scopes-max .bezel, body[data-skin="vintage"].scopes-max .bezel, body[data-skin="modular"].scopes-max .bezel { --bp: 10px; }
 .bezel canvas { position: absolute; top: var(--bp); left: var(--bp); width: calc(100% - 2 * var(--bp)); height: calc(100% - 2 * var(--bp)); }
 .bezel .screen-glass { inset: var(--bp); }
 
@@ -1160,8 +1160,11 @@ body[data-skin="modular"] .panel .section.split .part .jack-strip { margin-top: 
 body[data-skin="modular"] .panel .section.split .parts { flex: 1; }
 body[data-skin="modular"] .section[data-section="mfo"] { --mod: #d99a2b; }   /* MFO: a deeper mustard than the LFO */
 /* NF-Modular: a shorter keyboard band (the rack above is what you work on) */
-body[data-synth="nfmod"] .keybed { height: 232px; padding-top: 8px; padding-bottom: 12px; }
+body[data-synth="nfmod"] .keybed { height: 204px; padding-top: 8px; padding-bottom: 10px; }
 body[data-synth="nfmod"] .perf .dial { zoom: 0.8; }
 body[data-synth="nfmod"] .perf { padding-top: 4px; padding-bottom: 4px; }
 /* rack rows: every module fills the full height of its row (no gaps under the shorter ones) */
 .rack-row > .section { height: auto !important; align-self: stretch; }
+/* modular synths: the keyboard section has no title (Glide and Mode sit side by side) */
+body[data-skin="modular"] .perf .section-title:empty, body[data-skin="modular"] .perf .section-title:has(span:empty) { display: none; }
+body[data-skin="modular"] .perf .section-grid { column-gap: 2px; }

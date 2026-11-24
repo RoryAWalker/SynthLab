@@ -73,6 +73,7 @@ const LFO_SHAPES = [
 
 export const PARAMS = {
   'kb.glide': pick('ctrl.glide'),
+  'kb.mode': pick('ctrl.mode'), // Mono: every new key restarts the Gate; Legato: overlapping keys keep it high
 
   'osc1.range': pick('osc1.range'), 'osc1.tune': { ...tune }, 'osc1.pw': { ...pw },
   'osc1.fm': { ...fmAmt }, 'osc1.pwm': level('PWM Amt', 0),
@@ -180,7 +181,8 @@ export const LAYOUT = [
     { id: 'sh', title: 'S&H', rows: [['sh.rate', 'sh.lag']], jacks: ['jack.sh.in', 'jack.sh.clock', 'out:sh.out'] },
   ],
 ];
-export const KEYBED_SECTIONS = [{ id: 'kb', title: 'Keyboard', rows: [['kb.glide']], jacks: [['out:kb.pitch', 'out:kb.gate', 'out:kb.trig']] }];
+// (no title: the keyboard section is plainly the keyboard's; it holds Glide, Mode and the keyboard's jacks)
+export const KEYBED_SECTIONS = [{ id: 'kb', title: '', rows: [['kb.glide', 'kb.mode']], jacks: [['out:kb.pitch', 'out:kb.gate', 'out:kb.trig']] }];
 
 // ---- factory patches: what differs from the starting patch --------------------------------
 const UNPATCHED = Object.fromEntries(Object.keys(PARAMS).filter((id) => id.startsWith('jack.')).map((id) => [id, '']));
@@ -222,6 +224,53 @@ export const PRESETS = {
     ...cable('vca2.in', 'vca1.out'), ...cable('vca2.cv', 'lfo.out'), ...cable('out.in', 'vca2.out'),
     'vca2.level': 0.6, 'vca2.cv': 0.4, 'lfo.rate': 5, 'lfo.shape': 'sine', 'env1.a': 0.3, 'env1.r': 0.6, 'vcf.cutoff': 1800,
   },
+  // two layers with their own envelopes (tone + noise), mixed: the classic analogue snare
+  'Snare': {
+    ...cable('vca1.in', 'vco1.tri'), ...cable('vca1.cv', 'env1.out'), ...cable('vca2.in', 'noise.col'), ...cable('vca2.cv', 'env2.out'),
+    ...cable('mix.in1', 'vca1.out'), ...cable('mix.in2', 'vca2.out'), ...cable('filt.cv', ''), ...cable('out.in', 'filt.out'),
+    ...cable('vco1.pitch', ''), ...cable('vco1.fm', 'env2.out'), 'osc1.fm': 0.35, 'osc1.range': -1, 'osc1.tune': 4,
+    'noise.colour': 0.35, 'mix.l1': 8, 'mix.l2': 9, 'vcf.cutoff': 9000, 'vcf.res': 0,
+    'env1.a': 0.001, 'env1.d': 0.16, 'env1.s': 0, 'env1.r': 0.12, 'env2.a': 0.001, 'env2.d': 0.2, 'env2.s': 0, 'env2.r': 0.15,
+  },
+  // a VCA working on a control signal: ENV 2 slowly opens the LFO's path to the pitch
+  'Delayed Vibrato': {
+    ...cable('vca2.in', 'lfo.out'), ...cable('vca2.cv', 'env2.out'), ...cable('vco1.fm', 'vca2.out'), ...cable('vco2.fm', 'vca2.out'),
+    ...cable('filt.cv', ''), 'osc1.fm': 0.1, 'osc2.fm': 0.1, 'lfo.rate': 5.5, 'lfo.shape': 'sine',
+    'env2.a': 1.2, 'env2.d': 0.5, 'env2.s': 1, 'env2.r': 0.5, 'vcf.cutoff': 2200, 'env1.r': 0.4,
+  },
+  // plays by itself: the LFO is the clock for the S&H and the gate for both envelopes; the
+  // attenuverter scales the random steps down to a small range of notes
+  'Random Melody': {
+    ...cable('sh.clock', 'lfo.out'), ...cable('att.in1', 'sh.out'), ...cable('vco1.pitch', 'att.out1'), ...cable('vco2.pitch', 'att.out1'),
+    ...cable('env1.gate', 'lfo.out'), ...cable('env2.gate', 'lfo.out'), 'att.a1': 0.3, 'lfo.shape': 'square', 'lfo.rate': 4,
+    'env1.a': 0.002, 'env1.d': 0.2, 'env1.s': 0.2, 'env1.r': 0.1, 'env2.d': 0.15, 'vcf.cutoff': 600, 'vcf.res': 0.4, 'vcf.cv': 0.5,
+  },
+  // an envelope controls how hard the wave is folded: bright, metallic at the start, smooth as it fades
+  'Fold Pluck': {
+    ...cable('vca2.in', 'vco1.tri'), ...cable('vca2.cv', 'env2.out'), ...cable('mix.in1', 'vca2.out'), ...cable('mix.in2', ''), ...cable('filt.cv', ''),
+    'mix.mode': 'fold', 'mix.l1': 11, 'env2.a': 0.001, 'env2.d': 0.6, 'env2.s': 0.15, 'osc1.range': -1,
+    'vcf.cutoff': 12000, 'env1.a': 0.001, 'env1.d': 1.2, 'env1.s': 0.3, 'env1.r': 0.4,
+  },
+  // the MFO at audio rate on the filter, its speed pushed around (through zero) by the LFO
+  'MFO Growl': {
+    ...cable('filt.cv', 'lfo2.out'), ...cable('lfo2.fm', 'lfo.out'), 'lfo2.rate': 55, 'lfo2.fm': 0.5, 'lfo2.fmmode': 'tz', 'lfo.rate': 0.4,
+    'osc1.range': -1, 'osc2.range': -1, 'vcf.cutoff': 350, 'vcf.res': 0.55, 'vcf.cv': 0.5,
+  },
+  // no oscillator at all: a self-oscillating filter, played in tune through its Key input
+  'Filter Whistle': {
+    ...cable('filt.in', ''), ...cable('filt.key', 'kb.pitch'), ...cable('filt.cv', ''), 'vcf.res': 1, 'vcf.cutoff': 262,
+    'env1.a': 0.08, 'env1.s': 1, 'env1.r': 0.5, 'kb.glide': 0.08, 'out.vol': 1, 'mix.l1': 0, 'mix.l2': 0,
+  },
+  // the inverted envelope: each note starts muffled and opens as it fades
+  'Inverted Swell': {
+    ...cable('filt.cv', 'env2.inv'), 'vcf.cutoff': 6000, 'vcf.cv': 0.7, 'vcf.res': 0.35,
+    'env2.a': 0.001, 'env2.d': 1.5, 'env2.s': 0, 'env1.a': 0.05, 'env1.d': 1.6, 'env1.s': 0.4, 'env1.r': 0.6,
+  },
+  // Legato: overlapping notes glide without restarting the envelopes
+  'Legato Lead': {
+    'kb.mode': 'legato', 'kb.glide': 0.12, 'osc2.range': 1, 'osc2.tune': 0.05, 'vcf.cutoff': 1800, 'vcf.res': 0.35, 'vcf.cv': 0.3,
+    'env1.a': 0.02, 'env1.s': 0.85, 'env1.r': 0.3, 'env2.d': 0.8, 'env2.s': 0.4,
+  },
   'Pitch Drop Drum': {
     ...cable('vco1.fm', 'env2.out'), ...cable('mix.in2', ''), ...cable('vco1.pitch', ''), 'osc1.range': -1, 'osc1.fm': 0.7,
     'env1.a': 0.001, 'env1.d': 0.35, 'env1.s': 0, 'env1.r': 0.3, 'env2.a': 0.001, 'env2.d': 0.12, 'env2.s': 0, 'vcf.cutoff': 3000, 'vcf.cv': 0,
@@ -238,6 +287,7 @@ export const NFMOD = {
   lessons: false,
   modular: true,
   rack: true, // LAYOUT is rows of modules, not columns
+  octaves: 3, // the wide rack leaves room for a 3-octave keyboard
   OUTPUTS,
   card: {
     tagline: 'The full rack',

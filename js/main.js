@@ -290,8 +290,10 @@ alignRows();
 buildToolbar();
 
 
+// keyboard size, remembered per synth (the NF-1 keeps its original setting's name)
+const octPref = SYNTH.id === 'nf1' ? 'nf1.octaves' : `${SYNTH.id}.octaves`;
 const keyboard = new Keyboard(document.getElementById('keys'), {
-  octaves: Number(loadPref('nf1.octaves', 2)),
+  octaves: Number(loadPref(octPref, SYNTH.octaves || 2)),
   fixed: SYNTH.keyboard, // NiniFoog: a fixed 44-key keyboard
   onNoteOn: (n) => {
     if (lesson && lesson.busy) return; // listening to a lesson target
@@ -314,7 +316,7 @@ for (let o = 2; o <= 4; o++) {
   b.title = `${o} octave${o > 1 ? 's' : ''}`;
   b.addEventListener('click', () => {
     keyboard.setOctaves(o);
-    savePref('nf1.octaves', o);
+    savePref(octPref, o);
     rangeBtns.querySelectorAll('.range-btn').forEach((x) => x.classList.toggle('on', x === b));
   });
   rangeBtns.appendChild(b);

@@ -138,7 +138,9 @@ class NFModProcessor extends AudioWorkletProcessor {
       case 'noteOn': {
         const i = this.notes.indexOf(m.note);
         if (i >= 0) this.notes.splice(i, 1);
-        if (this.notes.length) this.retrig = 64; // already held: a short gap in the gate restarts the envelopes
+        // already held: in Mono, a short gap in the gate restarts the envelopes; in Legato the gate stays
+        // high (only Trig marks the new note)
+        if (this.notes.length && this.p['kb.mode'] !== 'legato') this.retrig = 64;
         this.notes.push(m.note);
         this.target = m.note;
         this.trig = Math.round(TRIG_SECONDS * sampleRate);

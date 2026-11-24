@@ -97,7 +97,8 @@ class ModProcessor extends AudioWorkletProcessor {
       case 'noteOn': {
         const i = this.notes.indexOf(m.note);
         if (i >= 0) this.notes.splice(i, 1);
-        if (this.notes.length) this.retrig = 64; // already held: drop the gate briefly so the envelope restarts
+        // already held: in Mono, drop the gate briefly so the envelope restarts; in Legato, keep it high
+        if (this.notes.length && this.p['kb.mode'] !== 'legato') this.retrig = 64;
         this.notes.push(m.note);
         this.target = m.note;
         if (this.notes.length === 1 && !(this.p['kb.glide'] > 0.0005)) this.note = m.note;
