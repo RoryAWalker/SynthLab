@@ -1092,5 +1092,9 @@ body[data-skin="modular"] .panel-column.stacked > .section { height: auto; flex:
 body[data-skin="modular"] .panel .section .jack-rows { margin-top: auto; }
 .jack-rows .jack-strip { margin-top: 0; }
 .jack-rows .jack-strip:first-child { margin-top: 6px; }
-.jack-rows .jack-strip + .jack-strip { border-top: none; padding-top: 2px; }
+.jack-rows .jack-strip + .jack-strip { border-top: none; padding-top: 7px; }
 .section.locked .jack-rows { opacity: 0.22; filter: grayscale(1); pointer-events: none; }
+/* dual modules: a small number in front of each row of jacks */
+.jack-rowlabel { align-self: center; width: 16px; font-size: 11px; font-weight: 800; color: var(--ink-dim); text-align: center; margin-top: 14px; }
+/* the NF-Modular's Output: an Overload light beside its jack */
+.out-overload { position: static; display: flex; justify-content: center; margin: 4px 0 6px; }

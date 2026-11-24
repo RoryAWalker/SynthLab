@@ -425,11 +425,35 @@ document.getElementById('btn-synths').addEventListener('click', () => startMenu.
 const lessonWrap = document.getElementById('lesson-wrap');
 
 // ---- modular synths: cables over the panel, and lamps by the output jacks ----
+// The NF-Modular's Output has an Overload light: it glows while the output limiter is working
+// (a patch too hot, or feeding back). If a runaway loop ever forces the rack to reset, say so.
+const outSection = SYNTH.modular && sections.out;
+let overLamp = null, lastResets = 0;
+if (outSection && SYNTH.id === 'nfmod') {
+  const led = document.createElement('div');
+  led.className = 'overload-led out-overload';
+  led.dataset.help = 'outoverload';
+  led.innerHTML = '<span class="overload-lamp"></span><span class="beat-label">Overload</span>';
+  (outSection.querySelector('.jack-rows') || outSection).appendChild(led);
+  overLamp = led.querySelector('.overload-lamp');
+}
+let overShown = 0;
 if (cables) {
   requestAnimationFrame(() => cables.redraw());
   (function lamps() {
     requestAnimationFrame(lamps);
-    cables.showLevels(engine.running && engine.live ? engine.live.outs : null);
+    const live = engine.running && engine.live;
+    cables.showLevels(live ? live.outs : null);
+    if (overLamp) {
+      const level = live ? Math.min(1, Math.max(0, ((live.over || 0) - 0.7) / 1.3)) : 0;
+      overShown = Math.max(level, overShown * 0.93);
+      overLamp.style.setProperty('--glow', overShown.toFixed(3));
+      overLamp.style.setProperty('--hue', String(Math.round(52 - 52 * overShown)));
+      if (live && live.resets > lastResets) {
+        lastResets = live.resets;
+        patchMenu.toast('That feedback loop ran away, so the rack reset itself. Try turning a level down.');
+      }
+    }
   })();
 }
 

@@ -31,7 +31,11 @@ export const OUTPUTS = {
   'env1.inv': { label: 'Inv', module: 'ENV 1' },
   'env2.out': { label: 'Out', module: 'ENV 2' },
   'env2.inv': { label: 'Inv', module: 'ENV 2' },
-  'lfo.out': { label: 'Out', module: 'LFO' },
+  'lfo.out': { label: 'Out', module: 'LFO 1' },
+  'lfo2.out': { label: 'Out', module: 'LFO 2' },
+  'ring.out': { label: 'Out', module: 'Ring Mod' },
+  'att.out1': { label: 'Out', module: 'Attenuverter 1' },
+  'att.out2': { label: 'Out', module: 'Attenuverter 2' },
   'sh.out': { label: 'Out', module: 'S&H' },
   'vca1.out': { label: 'Out', module: 'VCA 1' },
   'vca2.out': { label: 'Out', module: 'VCA 2' },
@@ -47,6 +51,8 @@ const tune = { type: 'cont', label: 'Tune', min: -7, max: 7, def: 0, curve: 'lin
   fmt: (v) => (v > 0.005 ? '+' : '') + v.toFixed(2) + ' st', marks: [[-7, '−7'], [-5, '−5'], [0, '0'], [5, '+5'], [7, '+7']] };
 const pw = { type: 'cont', label: 'Pulse Width', min: 0.05, max: 0.95, def: 0.5, curve: 'lin', unit: '%',
   fmt: (v) => Math.round(v * 100) + '%', marks: [[0.05, '5'], [0.25, '25'], [0.5, '50'], [0.75, '75'], [0.95, '95']] };
+const mixLevel = (label, def) => ({ type: 'cont', label, min: 0, max: 1.5, def, curve: 'lin', fmt: (v) => (v * 10).toFixed(1),
+  marks: [[0, '0'], [0.2, '2'], [0.4, '4'], [0.6, '6'], [0.8, '8'], [1, '10'], [1.5, '11']] });
 const fmAmt = { type: 'cont', label: 'FM Amount', min: 0, max: 1, def: 0, curve: 'pow', k: 2, fmt: fmtPct };
 const env = (n, a, d, s, r) => ({
   [`env${n}.a`]: pick('aenv.a', { def: a }), [`env${n}.d`]: pick('aenv.d', { def: d }),
@@ -61,7 +67,10 @@ export const PARAMS = {
   'osc2.range': pick('osc1.range'), 'osc2.tune': { ...tune, def: 0.08 }, 'osc2.pw': { ...pw },
   'osc2.fm': { ...fmAmt }, 'osc2.pwm': level('PWM Amount', 0),
 
-  'mix.l1': level('Level 1', 0.7), 'mix.l2': level('Level 2', 0.6), 'mix.l3': level('Level 3', 0), 'mix.l4': level('Level 4', 0),
+  // mixer levels go to 11: 10 is full level, past that the mix is pushed into its Mode (Drive or Fold)
+  'mix.l1': mixLevel('Level 1', 0.7), 'mix.l2': mixLevel('Level 2', 0.6), 'mix.l3': mixLevel('Level 3', 0), 'mix.l4': mixLevel('Level 4', 0),
+  'mix.mode': { type: 'step', label: 'Mode', def: 'clean', span: 120,
+    options: [{ v: 'clean', label: 'Clean' }, { v: 'drive', label: 'Drive' }, { v: 'fold', label: 'Fold' }] },
 
   'filt.cutoff': pick('filt.cutoff', { def: 1200 }),
   'filt.res': pick('filt.res', { def: 0.2 }),
@@ -85,6 +94,11 @@ export const PARAMS = {
     { v: 'sine', label: 'sine', icon: 'sine' }, { v: 'tri', label: 'triangle', icon: 'tri' },
     { v: 'saw', label: 'ramp', icon: 'saw' }, { v: 'square', label: 'square', icon: 'square' }], def: 'tri' }),
   'lfo.rcv': level('Rate CV', 0),
+  'lfo2.rate': pick('lfo.rate', { def: 0.3 }),
+  'lfo2.shape': null, // filled in below (same shapes as LFO 1)
+
+  'att.a1': bipolar('Amount 1'),
+  'att.a2': bipolar('Amount 2'),
 
   'vca1.level': level('Level', 0), 'vca1.cv': level('CV Amount', 1),
   'vca2.level': level('Level', 0), 'vca2.cv': level('CV Amount', 1),
@@ -97,13 +111,16 @@ export const PARAMS = {
   'jack.mix.in1': jack('In 1', 'vco1.saw'), 'jack.mix.in2': jack('In 2', 'vco2.saw'), 'jack.mix.in3': jack('In 3'), 'jack.mix.in4': jack('In 4'),
   'jack.filt.in': jack('In', 'mix.out'), 'jack.filt.cv': jack('CV', 'env2.out'), 'jack.filt.key': jack('Key'), 'jack.filt.res': jack('Res'),
   'jack.env1.gate': jack('Gate', 'kb.gate'), 'jack.env2.gate': jack('Gate', 'kb.gate'),
-  'jack.lfo.gate': jack('Gate'), 'jack.lfo.rate': jack('Rate'),
+  'jack.lfo.gate': jack('Gate'), 'jack.lfo.rate': jack('Rate'), 'jack.lfo2.gate': jack('Gate'),
+  'jack.ring.a': jack('In A'), 'jack.ring.b': jack('In B'),
+  'jack.att.in1': jack('In'), 'jack.att.in2': jack('In'),
   'jack.sh.in': jack('In'), 'jack.sh.clock': jack('Clock'),
   'jack.vca1.in': jack('In', 'filt.out'), 'jack.vca1.cv': jack('CV', 'env1.out'),
   'jack.vca2.in': jack('In'), 'jack.vca2.cv': jack('CV'),
   'jack.out.in': jack('In', 'vca1.out'),
 };
 PARAMS['filt.cv'].def = 0.35; // ENV 2 opens the filter a little on each note
+PARAMS['lfo2.shape'] = { ...PARAMS['lfo.shape'] };
 
 // Panel: a two-row rack. Each column stacks one or two modules. 'jacks' can be one row of
 // sockets or several rows (inputs above outputs); 'out:<id>' is an output socket.
@@ -115,7 +132,7 @@ export const LAYOUT = [
       jacks: [['jack.vco2.pitch', 'jack.vco2.fm', 'jack.vco2.pwm', 'jack.vco2.sync'], ['out:vco2.saw', 'out:vco2.sq', 'out:vco2.tri']] },
   ],
   [
-    { id: 'mix', title: 'Mixer', rows: [['mix.l1', 'mix.l2'], ['mix.l3', 'mix.l4']],
+    { id: 'mix', title: 'Mixer', rows: [['mix.l1', 'mix.l2'], ['mix.l3', 'mix.l4'], ['mix.mode', null]],
       jacks: [['jack.mix.in1', 'jack.mix.in2', 'jack.mix.in3', 'jack.mix.in4'], ['out:mix.out']] },
     { id: 'noise', title: 'Noise', rows: [['noise.colour']], jacks: [['out:noise.white', 'out:noise.pink', 'out:noise.col']] },
   ],
@@ -129,12 +146,16 @@ export const LAYOUT = [
     { id: 'env2', title: 'ENV 2', rows: [['env2.a', 'env2.d'], ['env2.s', 'env2.r']], jacks: [['jack.env2.gate', 'out:env2.out', 'out:env2.inv']] },
   ],
   [
-    { id: 'lfo', title: 'LFO', rows: [['lfo.rate', 'lfo.shape'], ['lfo.rcv', null]], jacks: [['jack.lfo.gate', 'jack.lfo.rate', 'out:lfo.out']] },
-    { id: 'out', title: 'Output', rows: [['out.vol']], jacks: [['jack.out.in']] },
+    { id: 'lfo', title: 'Dual LFO', rowTitles: ['LFO 1', 'LFO 2'], rows: [['lfo.rate', 'lfo.shape', 'lfo.rcv'], ['lfo2.rate', 'lfo2.shape', null]],
+      jacks: [['#1', 'jack.lfo.gate', 'jack.lfo.rate', 'out:lfo.out'], ['#2', 'jack.lfo2.gate', 'out:lfo2.out']] },
+    { id: 'ring', title: 'Ring Mod', rows: [], jacks: [['jack.ring.a', 'jack.ring.b', 'out:ring.out']] },
   ],
   [
-    { id: 'vca1', title: 'VCA 1', rows: [['vca1.level', 'vca1.cv']], jacks: [['jack.vca1.in', 'jack.vca1.cv', 'out:vca1.out']] },
-    { id: 'vca2', title: 'VCA 2', rows: [['vca2.level', 'vca2.cv']], jacks: [['jack.vca2.in', 'jack.vca2.cv', 'out:vca2.out']] },
+    { id: 'vca', title: 'Dual VCA', rowTitles: ['VCA 1', 'VCA 2'], rows: [['vca1.level', 'vca1.cv'], ['vca2.level', 'vca2.cv']],
+      jacks: [['#1', 'jack.vca1.in', 'jack.vca1.cv', 'out:vca1.out'], ['#2', 'jack.vca2.in', 'jack.vca2.cv', 'out:vca2.out']] },
+    { id: 'att', title: 'Attenuverter', rows: [['att.a1', 'att.a2']], jacks: [['#1', 'jack.att.in1', 'out:att.out1'], ['#2', 'jack.att.in2', 'out:att.out2']] },
+    // the output is just a patch point (with a light that shows when it is being limited)
+    { id: 'out', title: 'Output', rows: [], jacks: [['jack.out.in']] },
   ],
 ];
 export const KEYBED_SECTIONS = [{ id: 'kb', title: 'Keyboard', rows: [['kb.glide']], jacks: [['out:kb.pitch', 'out:kb.gate', 'out:kb.trig']] }];

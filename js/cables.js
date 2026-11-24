@@ -72,6 +72,10 @@ export class Cables {
     }
     const strip = el('div', 'jack-strip');
     ids.forEach((id) => {
+      if (id.startsWith('#')) { // a row label in a dual module ('#1' = the first of the pair)
+        el('div', 'jack-rowlabel', strip).textContent = id.slice(1);
+        return;
+      }
       if (id.startsWith('out:')) {
         const out = id.slice(4);
         const cell = el('div', 'jack-cell out', strip);
