@@ -87,7 +87,7 @@ class VCO {
 
 const OUTPUTS = ['kb.pitch', 'kb.gate', 'kb.trig', 'vco1.saw', 'vco1.sq', 'vco1.tri', 'vco2.saw', 'vco2.sq', 'vco2.tri',
   'noise.white', 'noise.pink', 'noise.col', 'mix.out', 'filt.out', 'filt.bp', 'filt.hp', 'env1.out', 'env1.inv', 'env2.out', 'env2.inv',
-  'lfo.out', 'lfo2.out', 'sh.out', 'vca1.out', 'vca2.out', 'ring.out', 'att.out1', 'att.out2'];
+  'lfo.out', 'lfo2.out', 'sh.out', 'vca1.out', 'vca2.out', 'ring.out', 'att.out1', 'att.out2', 'att.inv'];
 
 function lfoWave(shape, ph) {
   return shape === 'saw' ? 2 * ph - 1 : shape === 'square' ? (ph < 0.5 ? 1 : -1)
@@ -116,7 +116,8 @@ class NFModProcessor extends AudioWorkletProcessor {
     this.over = 0; this.resets = 0; // how hard the output limiter is working; how often the rack reset itself
     this.shVal = 0; this.shOut = 0; this.shClockWas = 0; this.shPh = 0;
     this.colLp = 0; this.colHp = 0; this.colPrev = 0;
-    this.ic1 = 0; this.ic2 = 0; // the state-variable filter behind the BP and HP outputs
+    this.ic1 = 0; this.ic2 = 0; // state-variable filter A: the HP output
+    this.ic3 = 0; this.ic4 = 0; // state-variable filter B: low-passes the HP for the BP output
     this.pink = [0, 0, 0];
     this.s = [0, 0, 0, 0];
     this.o = {}; this.peak = {};
@@ -163,8 +164,8 @@ class NFModProcessor extends AudioWorkletProcessor {
     const J = {};
     ['vco1.pitch', 'vco1.fm', 'vco1.pwm', 'vco1.sync', 'vco2.pitch', 'vco2.fm', 'vco2.pwm', 'vco2.sync',
       'mix.in1', 'mix.in2', 'mix.in3', 'mix.in4', 'filt.in', 'filt.cv', 'filt.key', 'filt.res',
-      'env1.gate', 'env2.gate', 'lfo.gate', 'lfo.rate', 'lfo2.gate', 'sh.in', 'sh.clock',
-      'vca1.in', 'vca1.cv', 'vca2.in', 'vca2.cv', 'ring.a', 'ring.b', 'att.in1', 'att.in2', 'out.in'].forEach((k) => (J[k] = src(k)));
+      'env1.gate', 'env2.gate', 'lfo.gate', 'lfo.rate', 'lfo2.gate', 'lfo2.fm', 'sh.in', 'sh.clock',
+      'vca1.in', 'vca1.cv', 'vca2.in', 'vca2.cv', 'ring.a', 'ring.b', 'att.in1', 'att.in2', 'att.inv', 'out.in'].forEach((k) => (J[k] = src(k)));
     const read = (k) => (J[k] ? o[J[k]] : 0);
 
     this.env1.setTimes(p['env1.a'], p['env1.d'], p['env1.s'], p['env1.r'], sr);
@@ -173,12 +174,12 @@ class NFModProcessor extends AudioWorkletProcessor {
     const v1 = { oct: p['osc1.range'] + p['osc1.tune'] / 12, pw: p['osc1.pw'], fm: p['osc1.fm'] * FM_OCTAVES, pwm: p['osc1.pwm'] * 0.45 };
     const v2 = { oct: p['osc2.range'] + p['osc2.tune'] / 12, pw: p['osc2.pw'], fm: p['osc2.fm'] * FM_OCTAVES, pwm: p['osc2.pwm'] * 0.45 };
     const lv = [p['mix.l1'], p['mix.l2'], p['mix.l3'], p['mix.l4']];
-    const cut = Math.log2(p['filt.cutoff']), cvDepth = p['filt.cv'] * CUTOFF_CV_OCTAVES;
+    const cut = Math.log2(p['vcf.cutoff']), cvDepth = p['vcf.cv'] * CUTOFF_CV_OCTAVES, halfW = p['vcf.width'] / 2;
     const lfoShape = p['lfo.shape'], lfoRate = p['lfo.rate'], lfoRcv = p['lfo.rcv'] * LFO_RATE_CV_OCTAVES;
     const vcas = [[p['vca1.level'], p['vca1.cv']], [p['vca2.level'], p['vca2.cv']]];
     const vol = p['out.vol'];
-    const lfo2Shape = p['lfo2.shape'], lfo2Inc = p['lfo2.rate'] / sr;
-    const mixMode = p['mix.mode'], att1 = p['att.a1'], att2 = p['att.a2'];
+    const lfo2Shape = p['lfo2.shape'], lfo2Rate = p['lfo2.rate'], lfo2Fm = p['lfo2.fm'] * 4, lfo2Tz = p['lfo2.fmmode'] === 'tz', lfo2Uni = p['lfo2.pol'] === 'uni';
+    const mixMode = p['mix.mode'], att1 = p['att.a1'], att2 = p['att.a2'], ringMix = p['ring.mix'];
     // noise colour: below 0 a low-pass darkens it (down to ~150 Hz), above 0 a high-pass thins it (from 200 Hz up to ~10 kHz)
     const colour = p['noise.colour'];
     const colLpA = colour < 0 ? 1 - Math.exp(-TWO_PI * 20000 * Math.pow(2, colour * 7) / sr) : 1;
@@ -221,8 +222,13 @@ class NFModProcessor extends AudioWorkletProcessor {
       const lg2 = read('lfo2.gate') > 0.5 ? 1 : 0;
       if (lg2 && !this.lfo2GateWas) this.lfo2Ph = lfo2Shape === 'tri' || lfo2Shape === 'sine' ? 0.25 : 0;
       this.lfo2GateWas = lg2;
-      this.lfo2Ph += lfo2Inc; if (this.lfo2Ph >= 1) this.lfo2Ph -= Math.floor(this.lfo2Ph);
-      o['lfo2.out'] = lfoWave(lfo2Shape, this.lfo2Ph);
+      // linear FM: the rate moves up and down by (FM in x FM Amount x 4) times itself. Lin stops at 0 Hz;
+      // TZ (through zero) lets it go below zero, so the wave runs backwards
+      let f2 = lfo2Rate * (1 + read('lfo2.fm') * lfo2Fm);
+      if (!lfo2Tz && f2 < 0) f2 = 0;
+      this.lfo2Ph += f2 / sr; this.lfo2Ph -= Math.floor(this.lfo2Ph);
+      const w2 = lfoWave(lfo2Shape, this.lfo2Ph);
+      o['lfo2.out'] = lfo2Uni ? (w2 + 1) / 2 : w2;
 
       // ---- envelopes
       const e1 = this.env1.next(read('env1.gate'));
@@ -255,17 +261,25 @@ class NFModProcessor extends AudioWorkletProcessor {
       o['mix.out'] = lim(mixShape(mixMode, read('mix.in1') * lv[0] + read('mix.in2') * lv[1] + read('mix.in3') * lv[2] + read('mix.in4') * lv[3]));
 
       // ---- ring modulator: A times B
-      o['ring.out'] = lim(read('ring.a') * read('ring.b'));
+      const ra = read('ring.a');
+      o['ring.out'] = lim(ra * (1 - ringMix) + ra * read('ring.b') * ringMix); // Mix: from A alone to A x B
 
       // ---- attenuverters: In scaled (and flipped, below 0) by Amount; with nothing in In, a steady voltage
       o['att.out1'] = lim(J['att.in1'] ? o[J['att.in1']] * att1 : att1);
       o['att.out2'] = lim(J['att.in2'] ? o[J['att.in2']] * att2 : att2);
+      o['att.inv'] = lim(-read('att.inv')); // the inverter: turns its In upside down
 
-      // ---- VCF: 4-pole ladder low-pass. CV (scaled by CV Amount), Key (1 octave per octave) and Res CV.
+      // ---- VCF. Cutoff (moved by CV x CV Amount, and Key at one octave per octave) is the centre;
+      // Width puts the low-pass half its value above the centre and the high-pass half below.
+      //   LP: 4-pole ladder.  HP: 2-pole state-variable filter A.  BP: HP then a 2-pole low-pass
+      //   (state-variable filter B), so it keeps the band between the two cutoffs.
       const x = read('filt.in') + (Math.random() - 0.5) * 2e-5;
-      let fc = Math.pow(2, cut + read('filt.cv') * cvDepth + read('filt.key'));
+      const centre = cut + read('filt.cv') * cvDepth + read('filt.key');
+      let fc = Math.pow(2, centre + halfW);
       if (fc > nyq) fc = nyq; else if (fc < 8) fc = 8;
-      let res = p['filt.res'] + read('filt.res');
+      let fcH = Math.pow(2, centre - halfW);
+      if (fcH > nyq) fcH = nyq; else if (fcH < 8) fcH = 8;
+      let res = p['vcf.res'] + read('filt.res');
       res = res < 0 ? 0 : res > 1 ? 1 : res;
       const gg = Math.tan(Math.PI * fc / sr);
       const G = gg / (1 + gg), G2 = G * G, G4 = G2 * G2;
@@ -280,16 +294,24 @@ class NFModProcessor extends AudioWorkletProcessor {
         u = y;
       }
       o['filt.out'] = lim(u * (1 + fb * 0.45));
-      // BP and HP come from a 2-pole state-variable filter at the same cutoff and resonance
-      // (zero-delay-feedback form), so all three outputs move together
+      // the state-variable filters (zero-delay-feedback form), with the same resonance
       const k = 2 - 1.96 * res;
-      const a1 = 1 / (1 + gg * (gg + k)), a2 = gg * a1, a3 = gg * a2;
+      // A: high-pass at the lower cutoff
+      const gA = Math.tan(Math.PI * fcH / sr);
+      const a1 = 1 / (1 + gA * (gA + k)), a2 = gA * a1, a3 = gA * a2;
       const sv3 = x - this.ic2;
       const sv1 = a1 * this.ic1 + a2 * sv3;
       const sv2 = this.ic2 + a2 * this.ic1 + a3 * sv3;
       this.ic1 = 2 * sv1 - this.ic1; this.ic2 = 2 * sv2 - this.ic2;
-      o['filt.bp'] = lim(sv1 * (0.5 + k * 0.5));
-      o['filt.hp'] = lim(x - k * sv1 - sv2);
+      const hp = x - k * sv1 - sv2;
+      o['filt.hp'] = lim(hp);
+      // B: low-pass of that at the upper cutoff = the band between them
+      const b1 = 1 / (1 + gg * (gg + k)), b2 = gg * b1, b3 = gg * b2;
+      const sw3 = hp - this.ic4;
+      const sw1 = b1 * this.ic3 + b2 * sw3;
+      const sw2 = this.ic4 + b2 * this.ic3 + b3 * sw3;
+      this.ic3 = 2 * sw1 - this.ic3; this.ic4 = 2 * sw2 - this.ic4;
+      o['filt.bp'] = lim(sw2 * (0.6 + k * 0.4));
       if (i === n - 1) this.lastFc = fc;
 
       // ---- VCAs: Level opens it by hand; CV (scaled by CV Amount) opens it further
@@ -310,8 +332,8 @@ class NFModProcessor extends AudioWorkletProcessor {
       for (let k = 1; k < OUTPUTS.length; k++) { const a = Math.abs(o[OUTPUTS[k]]); if (a > pk2[OUTPUTS[k]]) pk2[OUTPUTS[k]] = a; }
     }
     // self-repair: if a runaway loop has broken the maths anywhere, reset the filters and carry on
-    if (!(Number.isFinite(s[0] + s[1] + s[2] + s[3] + this.ic1 + this.ic2 + this.shOut + this.colLp + this.colHp + this.note) && Number.isFinite(L[n - 1]))) {
-      s.fill(0); this.ic1 = this.ic2 = 0; this.shOut = this.shVal = 0; this.colLp = this.colHp = this.colPrev = 0;
+    if (!(Number.isFinite(s[0] + s[1] + s[2] + s[3] + this.ic1 + this.ic2 + this.ic3 + this.ic4 + this.shOut + this.colLp + this.colHp + this.note) && Number.isFinite(L[n - 1]))) {
+      s.fill(0); this.ic1 = this.ic2 = this.ic3 = this.ic4 = 0; this.shOut = this.shVal = 0; this.colLp = this.colHp = this.colPrev = 0;
       if (!Number.isFinite(this.note)) this.note = this.target;
       OUTPUTS.forEach((k) => (o[k] = 0));
       L.fill(0);

@@ -15,5 +15,5 @@ shot() { # synth, width, height
 shot nf1 1600 680
 shot nf3 1600 940
 shot nfm 1600 760
-shot nfmod 1700 1150
+shot nfmod 1720 1080
 rm -rf "$PROFILE"

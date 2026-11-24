@@ -1098,3 +1098,52 @@ body[data-skin="modular"] .panel .section .jack-rows { margin-top: auto; }
 .jack-rowlabel { align-self: center; width: 16px; font-size: 11px; font-weight: 800; color: var(--ink-dim); text-align: center; margin-top: 14px; }
 /* the NF-Modular's Output: an Overload light beside its jack */
 .out-overload { position: static; display: flex; justify-content: center; margin: 4px 0 6px; }
+
+/* ==========================================================================
+   NF-Modular rack: three full-width rows of modules, compact knobs
+   ========================================================================== */
+.panel-sections.rack { flex-direction: column; gap: 8px; }
+.rack-row { display: flex; gap: 8px; align-items: stretch; }
+.rack-row > .section { flex: 1 1 auto; }
+body[data-synth="nfmod"] { --cell-w: 84px; }
+body[data-synth="nfmod"] .panel .knob-cell { width: 84px; }
+body[data-synth="nfmod"] .panel .dial { zoom: 0.8; }
+body[data-synth="nfmod"] .panel .knob-label { font-size: 11px; }
+body[data-synth="nfmod"] .panel .knob-value { font-size: 11px; }
+body[data-synth="nfmod"] .panel .toggle-cell { width: 76px; }
+body[data-synth="nfmod"] .panel .section { padding: 8px 8px 4px; }
+body[data-synth="nfmod"] .panel .section-title { margin-bottom: 2px; }
+body[data-synth="nfmod"] .jack-strip { padding: 5px 4px 3px; margin-top: 4px; }
+body[data-synth="nfmod"] .jack-cell { width: 52px; }
+body[data-synth="nfmod"] .jack-strip { gap: 3px; }
+body[data-synth="nfmod"] .panel .knob-label { letter-spacing: 0.04em; }
+body[data-synth="nfmod"] .jack-rowlabel { margin-top: 12px; }
+
+/* ==========================================================================
+   Module colours (both modular synths): one hue per kind of module, shades for pairs.
+   The plate is a dark grey tinted with the module's colour, so the white print stays clear.
+   ========================================================================== */
+body[data-skin="modular"] .panel .section, body[data-skin="modular"] .perf .section { --mod: #6b6f76; }
+body[data-skin="modular"] .section[data-section="vco1"],
+body[data-skin="modular"] .section[data-section="osc"] { --mod: #3f6fb8; }   /* VCO: blue */
+body[data-skin="modular"] .section[data-section="vco2"] { --mod: #5a8fd6; }
+body[data-skin="modular"] .section[data-section="noise"] { --mod: #9aa1aa; } /* Noise: silver */
+body[data-skin="modular"] .section[data-section="mix"] { --mod: #2f9c94; }   /* Mixer: teal */
+body[data-skin="modular"] .section[data-section="filt"] { --mod: #d2832c; }  /* VCF: amber */
+body[data-skin="modular"] .section[data-section="ring"] { --mod: #8d5bc4; }  /* Ring Mod: violet */
+body[data-skin="modular"] .section[data-section="vca"] { --mod: #4f9e4a; }   /* VCA: green */
+body[data-skin="modular"] .section[data-section="att"] { --mod: #8f9a46; }   /* Attenuverter: olive */
+body[data-skin="modular"] .section[data-section="out"] { --mod: #4a4d52; }   /* Output: graphite */
+body[data-skin="modular"] .section[data-section="env1"],
+body[data-skin="modular"] .section[data-section="env"] { --mod: #c2423d; }   /* ENV: red */
+body[data-skin="modular"] .section[data-section="env2"] { --mod: #de6a5e; }
+body[data-skin="modular"] .section[data-section="lfo"] { --mod: #c7a434; }   /* LFO: mustard */
+body[data-skin="modular"] .section[data-section="sh"] { --mod: #c4508f; }    /* S&H: magenta */
+body[data-skin="modular"] .section[data-section="kb"] { --mod: #6b6f76; }    /* Keyboard: neutral */
+body[data-skin="modular"] .panel .section, body[data-skin="modular"] .perf .section {
+  background:
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.016) 0 1px, transparent 1px 3px),
+    linear-gradient(180deg, color-mix(in srgb, var(--mod) 30%, #2f3236), color-mix(in srgb, var(--mod) 18%, #1d1f22));
+  border-top: 3px solid color-mix(in srgb, var(--mod) 80%, #000);
+}
+body[data-skin="modular"] .panel .section-title { border-bottom-color: color-mix(in srgb, var(--mod) 55%, rgba(236,236,236,0.5)); }

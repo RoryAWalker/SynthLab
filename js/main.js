@@ -78,6 +78,21 @@ function buildSection(sec) {
 
 function buildPanel() {
   const root = document.getElementById('sections');
+  // A rack (NF-Modular): LAYOUT is rows of modules, each row stretched across the full width.
+  if (SYNTH.rack) {
+    root.classList.add('rack');
+    LAYOUT.forEach((row) => {
+      const r = document.createElement('div');
+      r.className = 'rack-row';
+      row.forEach((sec) => r.appendChild(buildSection(sec)));
+      root.appendChild(r);
+    });
+    const perf = document.getElementById('perf-sections');
+    KEYBED_SECTIONS.forEach((sec) => perf.appendChild(buildSection(sec)));
+    const fx = document.getElementById('fx-sections');
+    if (fx) FX_SECTIONS.forEach((sec) => fx.appendChild(buildSection(sec)));
+    return;
+  }
   // A 'bridge' column sits on the dividing line between two sections (switches that
   // belong to both), so it replaces the divider rather than adding two more.
   const isBridge = (column) => column.every((sec) => sec.bridge);
