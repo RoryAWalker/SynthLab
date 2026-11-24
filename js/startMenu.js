@@ -5,6 +5,10 @@
 
 import { SYNTHS, SYNTH, SYNTH_CHOSEN, nameHtml } from './params.js';
 
+// Changed by tools/make-previews.sh each time the pictures are re-captured, so browsers fetch
+// the new pictures instead of showing ones they have kept from before.
+const PREVIEW_VERSION = '202611242027';
+
 export class StartMenu {
   constructor({ skip = false } = {}) {
     this.el = document.getElementById('start-menu');
@@ -14,7 +18,7 @@ export class StartMenu {
       card.className = 'sm-card';
       card.dataset.synth = s.id;
       card.innerHTML = `
-        <div class="sm-preview" aria-hidden="true"><img src="img/preview-${s.id}.png" alt="" loading="eager"></div>
+        <div class="sm-preview" aria-hidden="true"><img src="img/preview-${s.id}.png?v=${PREVIEW_VERSION}" alt="" loading="eager"></div>
         <div class="sm-tag">${s.card.tagline}</div>
         <div class="sm-name">${nameHtml(s.name)}</div>
         <p class="sm-text">${s.card.text}</p>

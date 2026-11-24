@@ -17,3 +17,7 @@ shot nf3 1600 940
 shot nfm 1600 760
 shot nfmod 1720 1080
 rm -rf "$PROFILE"
+# new pictures: bump the version in the start menu so browsers do not keep showing the old ones
+V=$(date +%Y%m%d%H%M)
+sed -i '' "s/^const PREVIEW_VERSION = .*/const PREVIEW_VERSION = '$V';/" js/startMenu.js
+echo "start menu pictures: version $V"
