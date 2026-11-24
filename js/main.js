@@ -1,4 +1,4 @@
-import { PARAMS, LAYOUT, KEYBED_SECTIONS, FX_SECTIONS, ALL_SECTIONS, defaultPatch, updateAlts, SYNTH, nameHtml } from './params.js';
+import { PARAMS, LAYOUT, KEYBED_SECTIONS, FX_SECTIONS, ALL_SECTIONS, defaultPatch, updateAlts, SYNTH, SYNTHS, nameHtml } from './params.js';
 import { Knob } from './knob.js';
 import { Toggle } from './toggle.js';
 import { Wheel } from './wheel.js';
@@ -384,6 +384,8 @@ if (knobs['mix.feedback']) {
 // ---- start menu: choose a synth ----
 const startMenu = new StartMenu({ skip: PREVIEW });
 document.getElementById('btn-synths').addEventListener('click', () => startMenu.open());
+// only one synth on offer: no start menu to go back to
+if (SYNTHS.length === 1) document.getElementById('btn-synths').hidden = true;
 
 // ---- lesson bar: grows over the scopes rather than pushing the synth down ----
 // The page reserves the bar's resting height. When a question, hint or feedback makes it

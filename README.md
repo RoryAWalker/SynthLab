@@ -6,17 +6,12 @@
 
 ## What's inside
 
-Choose a synth from the start menu:
-
-- **NF-1**, the first synth students meet: a monophonic virtual-analogue synth in the classic one-knob-per-function style. Two oscillators (six waveforms, octave range, detune), mixer, 24 dB/octave ladder low-pass filter with resonance, filter envelope, loudness envelope, LFO with delay, glide and mono/legato modes. Comes with lessons.
-- **NiniFoog**, a three-oscillator monosynth laid out in the style of the classic 1970s three-oscillator synths: Oscillator 3 doubles as a modulation source, noise, a feedback loop with an overload light, a ladder filter with keyboard tracking, legato playing, pitch and mod wheels, and free-running, gently drifting oscillators. Its names and artwork are SynthLab's own.
-
-Both synths share:
-
-- **Oscilloscope and spectrum analyser** showing the sound in real time.
+- **NF-1**: a monophonic virtual-analogue synth in the classic one-knob-per-function style. Two oscillators (six waveforms, octave range, detune), mixer, 24 dB/octave ladder low-pass filter with resonance, filter envelope, loudness envelope, LFO with delay, glide and mono/legato modes.
+- **Oscilloscope and spectrum analyser** showing the sound in real time. **Maximise** makes the screens much bigger for a closer look.
 - **Teaching graphs**: turn a knob and its effect is drawn over the displays: envelope shapes with a live playhead, the filter's response curve, the LFO wave, expected waveform harmonics, octave ranges, glide, each oscillator in the mix, and detune beating (with a beat light).
 - **Hover help**: rest the mouse on any control for a second for a plain-English explanation and a "Try this" exercise.
-- **Lessons**: listen to a target sound, then use the synth to match it. Only the controls the lesson needs are unlocked, and the target is shown as a ghost trace on the displays. Lesson 1 (Oscillators) has 10 challenges.
+- **Lessons**: listen to a target sound, then use the synth to match it, with a Hint button and a hotter/colder meter. Only the controls the lesson needs are unlocked, and the target is shown as a ghost trace on the displays. Lesson 1 Oscillators, Lesson 2 Mixer, Lesson 3 Filter.
+- **Effects**: Chorus, Delay and Reverb, in a fold-out FX panel below the keyboard.
 - **Patches**: factory sounds, plus save, export and import your own.
 - **Zoom**: pinch to zoom into the panel, scroll to move around.
 

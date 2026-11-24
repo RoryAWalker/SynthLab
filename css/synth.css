@@ -757,6 +757,7 @@ body[data-skin="vintage"] .perf { padding: 8px 10px; }
    Start menu
    ========================================================================== */
 .btn-synths { margin-left: 12px; }
+.btn-synths[hidden] { display: none; }
 .start-menu {
   position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; overflow-y: auto;
   background: radial-gradient(ellipse at 50% 0%, #2a2d33, #121316 70%);
