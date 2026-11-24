@@ -405,12 +405,30 @@ const graphPop = (() => {
     overlay.draw(ctx, W, H, null);
   })();
   return {
-    // open on the side of the screen away from this control
+    // open beside the Help panel (which is on the side of the screen away from this control), above or
+    // below the control, whichever has more room, sized to fit there, so it covers neither
     from(id) {
       const k = knobs[id];
       const r = k && k.el ? k.el.getBoundingClientRect() : null;
-      el.classList.toggle('left', !!r && r.left + r.width / 2 > window.innerWidth / 2);
-      el.style.top = (document.querySelector('.appbar').offsetHeight + 12) + 'px';
+      const hp = document.getElementById('help-panel');
+      const helpW = hp && hp.offsetWidth ? hp.offsetWidth : 0;
+      const left = helpW ? hp.classList.contains('left') : (!!r && r.left + r.width / 2 > window.innerWidth / 2);
+      const gap = 12;
+      const topY = document.querySelector('.appbar').offsetHeight + gap;
+      // the larger space above or below the control (the whole height below the top bar if there is no control)
+      const above = r ? r.top - gap - topY : window.innerHeight - topY - gap;
+      const below = r ? window.innerHeight - gap - (r.bottom + gap) : 0;
+      const atBottom = below > above;
+      // as large as fits beside the Help panel and in that space, keeping the screen's shape
+      let w = Math.min(W, window.innerWidth - helpW - gap * 3 - 16);
+      w = Math.max(240, Math.min(w, (Math.max(above, below) - 16) * W / H));
+      const h = Math.round(w * H / W) + 16;
+      w += 16;
+      el.style.width = w + 'px';
+      el.style.height = h + 'px';
+      el.style.left = left ? (helpW + gap) + 'px' : 'auto';
+      el.style.right = left ? 'auto' : (helpW + gap) + 'px';
+      el.style.top = (atBottom ? window.innerHeight - gap - h : topY) + 'px';
     },
   };
 })();
