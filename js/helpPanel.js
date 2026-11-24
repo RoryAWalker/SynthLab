@@ -8,7 +8,7 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 
 // Every control id in a section: its rows, the rows of its parts (a split module), and stacked cells
 function idsIn(sec) {
-  const rows = [...(sec.rows || []), ...(sec.parts || []).flatMap((p) => p.rows || [])];
+  const rows = [...(sec.rows || []), ...(sec.parts || []).flatMap((p) => p.rows || []), sec.head || []];
   return rows.flat(2).filter(Boolean);
 }
 function sectionOf(paramId) {

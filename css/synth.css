@@ -1210,6 +1210,53 @@ body[data-skin="classic"] .perf { background: linear-gradient(#22172b, #170f1d);
   background: linear-gradient(#3a3c3f, #2b2d30);
   box-shadow: 0 18px 40px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.12);
 }
-.graph-pop.left { right: auto; left: 16px; }
 .graph-pop canvas { width: 100%; height: 100%; border-radius: 7px; display: block; }
 body.preview .graph-pop { display: none; }
+
+/* ==========================================================================
+   NF-Modular sequencer: a column beside the rack rows, full height; folds to a thin strip
+   ========================================================================== */
+.panel-sections.rack { flex-direction: row; align-items: stretch; }
+.rack-rows { display: flex; flex-direction: column; gap: 8px; flex: 1 1 auto; }
+.rack-side { flex: none; margin-right: 8px; display: flex; flex-direction: column; }
+body[data-skin="modular"] .section[data-section="seq"] { --mod: #2fa6c9; } /* Sequencer: cyan */
+.rack-side .section-grid { row-gap: 0; }
+.rack-side .jack-rows { margin-top: auto; }
+/* each step: a small pitch knob over its on/off light; the playing step glows */
+.rack-side .stack-cell { gap: 0; border-radius: 8px; padding: 0 0 3px; transition: background 0.08s; }
+.rack-side .stack-cell.current { background: rgba(47, 166, 201, 0.28); box-shadow: 0 0 0 1px rgba(120, 220, 255, 0.5); }
+body .rack-side .knob-cell.small { width: 84px; padding-top: 0; }
+body .rack-side .knob-cell.small .knob-label { font-size: 10px; height: 13px; }
+body .rack-side .knob-cell.small .dial { width: 74px; height: 74px; zoom: 1; margin-top: -4px; }
+body .rack-side .knob-cell.small .knob { width: 34px; height: 34px; margin: -17px 0 0 -17px; }
+body .rack-side .knob-cell.small .knob-cap { inset: 6px; }
+body .rack-side .knob-cell.small .knob-pointer { height: 9px; top: 2px; width: 2px; margin-left: -1px; }
+body .rack-side .knob-cell.small .knob-value { font-size: 10.5px; height: 14px; margin-top: -6px; }
+.led-cell { display: flex; justify-content: center; }
+.led-btn {
+  width: 30px; height: 18px; border-radius: 4px; cursor: pointer; padding: 0;
+  border: 1px solid #0b0b0c; background: linear-gradient(#3a3d42, #25272b);
+  display: grid; place-items: center; box-shadow: 0 1px 0 rgba(255,255,255,0.08);
+}
+.led-lamp { width: 10px; height: 5px; border-radius: 2px; background: #3a1c18; }
+.led-btn.on .led-lamp { background: #ff5a3a; box-shadow: 0 0 8px rgba(255, 90, 58, 0.9); }
+/* the fold button, in the module's title bar */
+.fold-btn {
+  float: left; width: 20px; height: 18px; margin: -2px 4px 0 -2px; padding: 0; border-radius: 4px; cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.18); background: rgba(0,0,0,0.25); color: var(--ink); font-size: 11px; line-height: 16px;
+}
+.fold-btn:hover { background: rgba(255,255,255,0.12); }
+/* folded: a thin strip with the name running down it */
+.section.folded { width: 40px; padding-left: 4px !important; padding-right: 4px !important; }
+.section.folded .section-grid, .section.folded .jack-rows, .section.folded .jack-strip { display: none; }
+.section.folded .section-title { border-bottom: none; writing-mode: vertical-rl; margin: 4px auto 0; padding: 0; }
+.section.folded .fold-btn { float: none; margin: 0 0 8px; writing-mode: horizontal-tb; }
+/* sequencer v2: two columns, a wide Run button on top, small step lights tucked under each knob */
+.section-head { display: flex; justify-content: center; margin: 2px 0 4px; }
+.led-cell.wide .led-btn { width: 132px; height: 26px; gap: 8px; display: flex; align-items: center; justify-content: center; }
+.led-cell.wide .led-lamp { width: 9px; height: 9px; border-radius: 50%; }
+.led-word { font: 800 11px var(--font); letter-spacing: 0.2em; color: var(--ink); }
+.led-btn.on .led-word { color: #ffd2c6; }
+.rack-side .stack-cell .led-cell { margin-top: -9px; position: relative; z-index: 1; }
+.rack-side .stack-cell .led-btn { width: 22px; height: 12px; border-radius: 3px; }
+.rack-side .stack-cell .led-lamp { width: 8px; height: 4px; }

@@ -4,10 +4,12 @@
 
 import { LESSONS as NF1_LESSONS, patchMatches, soundMatches, closeness, osc1Hz } from './lessons.js';
 import { MOD_LESSONS } from './lessonsModular.js';
+import { NF3_LESSONS } from './lessonsNiniFoog.js';
+import { RACK_LESSONS } from './lessonsRack.js';
 import { defaultPatch, ALL_SECTIONS, SYNTH } from './params.js';
 
 // each synth with lessons has its own set
-const LESSONS = SYNTH.id === 'nfm' ? MOD_LESSONS : NF1_LESSONS;
+const LESSONS = { nfm: MOD_LESSONS, nf3: NF3_LESSONS, nfmod: RACK_LESSONS }[SYNTH.id] || NF1_LESSONS;
 const INDEX_KEY = SYNTH.id === 'nf1' ? 'sl.lessonIndex' : `sl.lessonIndex.${SYNTH.id}`;
 import { Fireworks, Smiley, finale } from './fireworks.js';
 
@@ -281,7 +283,7 @@ export class LessonController {
 
   state() {
     const patch = this.d.getPatch();
-    return { patch, note: this.lastNote, held: this.held > 0, f0: osc1Hz(patch, this.lastNote), lowNote: this.lowNote, highNote: this.highNote };
+    return { patch, note: this.lastNote, held: this.held > 0, heldCount: this.held, notes: this.notesPlayed || 0, f0: osc1Hz(patch, this.lastNote), lowNote: this.lowNote, highNote: this.highNote };
   }
 
   check() {

@@ -43,6 +43,9 @@ export const OUTPUTS = {
   'ring.out': { label: 'Out', module: 'Ring Mod' },
   'att.out1': { label: 'Out', module: 'Attenuverter 1' },
   'att.out2': { label: 'Out', module: 'Attenuverter 2' },
+  'seq.pitch': { label: 'Pitch', module: 'Sequencer' },
+  'seq.gate': { label: 'Gate', module: 'Sequencer' },
+  'seq.trig': { label: 'Trig', module: 'Sequencer' },
 };
 const fullName = (out) => (OUTPUTS[out] ? `${OUTPUTS[out].module} ${OUTPUTS[out].label}` : 'nothing');
 // an input can hold several cables (a comma-separated list): their signals are added together
@@ -130,6 +133,20 @@ export const PARAMS = {
 
   'out.vol': level('Volume', 0.8),
 
+  // sequencer: 8 steps of pitch (semitones, snapped to whole notes) and on/off, its own clock
+  // (Rate) unless something is patched into Clock, and a Length of 1-8 steps
+  // Run is a lit push button: lit while the sequence plays
+  'seq.run': { type: 'step', ui: 'led', button: 'Run', label: 'Run / Stop', def: 'stop', options: [{ v: 'stop', label: 'Stop' }, { v: 'run', label: 'Run' }] },
+  'seq.rate': { type: 'cont', label: 'Rate', min: 0.5, max: 20, def: 4, curve: 'log', unit: 'Hz',
+    fmt: (v) => v.toFixed(v < 10 ? 1 : 0) + ' steps/s', marks: [[0.5, '.5'], [2, '2'], [5, '5'], [20, '20']] },
+  'seq.len': { type: 'step', label: 'Length', def: 8, span: 240,
+    options: [1, 2, 3, 4, 5, 6, 7, 8].map((n) => ({ v: n, label: String(n) })) },
+  ...Object.fromEntries([1, 2, 3, 4, 5, 6, 7, 8].flatMap((n) => [
+    [`seq.s${n}`, { type: 'cont', label: `Step ${n}`, min: -12, max: 12, def: 0, curve: 'lin', unit: 'semi', small: true,
+      fmt: (v) => { const r = Math.round(v); return (r > 0 ? '+' : '') + r + ' st'; }, marks: [[-12, '−12'], [0, '0'], [12, '+12']] }],
+    [`seq.g${n}`, { type: 'step', ui: 'led', label: `Step ${n} on`, def: 'on', options: [{ v: 'off', label: 'Off' }, { v: 'on', label: 'On' }] }],
+  ])),
+
   // ---- input jacks, with the starting patch: two detuned saws, mixed, filtered, with an
   // envelope on the VCA and a second envelope opening the filter
   'jack.vco1.pitch': jack('Pitch', 'kb.pitch'), 'jack.vco1.fm': jack('FM'), 'jack.vco1.pwm': jack('PWM'), 'jack.vco1.sync': jack('Sync'),
@@ -145,6 +162,7 @@ export const PARAMS = {
   'jack.env1.gate': jack('Gate', 'kb.gate'), 'jack.env2.gate': jack('Gate', 'kb.gate'),
   'jack.lfo.gate': jack('Gate'), 'jack.lfo.rate': jack('Rate'), 'jack.lfo2.gate': jack('Gate'), 'jack.lfo2.fm': jack('FM'),
   'jack.sh.in': jack('In'), 'jack.sh.clock': jack('Clock'),
+  'jack.seq.clock': jack('Clock'), 'jack.seq.reset': jack('Reset'),
 };
 
 // Panel: a rack of three rows (sources, shaping, modulation). Each module has one row of knobs
@@ -185,6 +203,18 @@ export const LAYOUT = [
 ];
 // (no title: the keyboard section is plainly the keyboard's; it holds Glide and the keyboard's jacks.
 // Mono/Legato (kb.mode) is placed by main.js where the Keyboard Range switch would be.)
+// The sequencer stands in its own column to the left of the rack (it is a source of notes, like the keyboard), the height of all three rows
+// (the rack is wider than tall screens need, so this uses spare width). It can fold away.
+// Steps run down the left column (1-4) then the right (5-8); each is a pitch knob over an on/off light.
+export const SIDE_SECTIONS = [{
+  id: 'seq', title: 'Sequencer', foldable: true,
+  head: ['seq.run'], // a wide Run button across the top
+  rows: [['seq.rate', 'seq.len'],
+    [['seq.s1', 'seq.g1'], ['seq.s5', 'seq.g5']], [['seq.s2', 'seq.g2'], ['seq.s6', 'seq.g6']],
+    [['seq.s3', 'seq.g3'], ['seq.s7', 'seq.g7']], [['seq.s4', 'seq.g4'], ['seq.s8', 'seq.g8']]],
+  jacks: [['jack.seq.clock', 'jack.seq.reset'], ['out:seq.pitch', 'out:seq.gate', 'out:seq.trig']],
+}];
+
 export const KEYBED_SECTIONS = [{ id: 'kb', title: '', rows: [['kb.glide']], jacks: [['out:kb.pitch', 'out:kb.gate', 'out:kb.trig']] }];
 
 // ---- factory patches: what differs from the starting patch --------------------------------
@@ -274,6 +304,13 @@ export const PRESETS = {
     'kb.mode': 'legato', 'kb.glide': 0.12, 'osc2.range': 1, 'osc2.tune': 0.05, 'vcf.cutoff': 1800, 'vcf.res': 0.35, 'vcf.cv': 0.3,
     'env1.a': 0.02, 'env1.s': 0.85, 'env1.r': 0.3, 'env2.d': 0.8, 'env2.s': 0.4,
   },
+  // the sequencer plays both VCOs and both envelopes: no keyboard needed
+  'Sequence': {
+    ...cable('vco1.pitch', 'seq.pitch'), ...cable('vco2.pitch', 'seq.pitch'), ...cable('env1.gate', 'seq.gate'), ...cable('env2.gate', 'seq.gate'),
+    'seq.run': 'run', 'seq.rate': 5, 'osc1.range': -1, 'osc2.range': -1,
+    'seq.s1': 0, 'seq.s2': 0, 'seq.s3': 12, 'seq.s4': 0, 'seq.s5': 3, 'seq.s6': 0, 'seq.s7': 7, 'seq.s8': 10, 'seq.g4': 'off',
+    'vcf.cutoff': 300, 'vcf.res': 0.55, 'vcf.cv': 0.6, 'env2.d': 0.18, 'env2.s': 0, 'env1.d': 0.25, 'env1.s': 0.2, 'env1.r': 0.1,
+  },
   'Pitch Drop Drum': {
     ...cable('vco1.fm', 'env2.out'), ...cable('mix.in2', ''), ...cable('vco1.pitch', ''), 'osc1.range': -1, 'osc1.fm': 0.7,
     'env1.a': 0.001, 'env1.d': 0.35, 'env1.s': 0, 'env1.r': 0.3, 'env2.a': 0.001, 'env2.d': 0.12, 'env2.s': 0, 'vcf.cutoff': 3000, 'vcf.cv': 0,
@@ -287,7 +324,7 @@ export const NFMOD = {
   skin: 'modular',
   module: 'js/worklet/nfmod-processor.js',
   processor: 'nfmod-processor',
-  lessons: false,
+  lessons: true,
   modular: true,
   rack: true, // LAYOUT is rows of modules, not columns
   multiInput: true, // an input can take several cables, added together
@@ -297,5 +334,5 @@ export const NFMOD = {
     tagline: 'The full rack',
     text: 'A full virtual analog rack: fifteen modules for advanced patching.',
   },
-  PARAMS, LAYOUT, KEYBED_SECTIONS, PRESETS,
+  PARAMS, LAYOUT, KEYBED_SECTIONS, SIDE_SECTIONS, PRESETS,
 };

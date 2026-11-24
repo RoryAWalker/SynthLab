@@ -674,6 +674,25 @@ export const HELP_NFMOD = {
   'jack.lfo2.fm': { title: 'MFO: FM input', body: ['Pushes the MFO\'s speed up and down by the signal here, scaled by FM Amount.'] },
   'out:lfo2.out': { title: 'MFO: Out', body: ['The MFO\'s wave: −1 to 1, or 0 to 1 with the Output switch on Uni.'] },
 
+  // ---- sequencer
+  'section:seq': { title: 'Sequencer', body: [
+    'Plays a repeating pattern of up to 8 notes by itself. Each step has a pitch (its knob, in semitones) and can be switched on or off (its light). It sends out Pitch, Gate and Trig, just like the keyboard: patch them where you would patch the keyboard\'s.',
+    'The Run button starts and stops it. Rate sets its speed, unless something is patched into Clock: then it moves one step for every rise there. Length sets how many of the 8 steps it uses; Reset sends it back to step 1. The step playing now lights up.'],
+    tip: 'Patch Sequencer Pitch into both VCOs\' Pitch inputs and Sequencer Gate into both envelopes\' Gate inputs, then press Run. (The Sequence preset does exactly this.)' },
+  'seq.run': { title: 'Run', body: ['Press to start the sequencer (the button lights up); press again to stop it. Stopped, it holds its place with the Gate low.'] },
+  'seq.rate': { title: 'Rate', body: ['How many steps it plays each second, when nothing is patched into Clock. At 4 steps a second, 8 steps take two seconds; 8 steps a second is quick.'] },
+  'seq.len': { title: 'Length', body: ['How many of the 8 steps it plays before starting again. Odd lengths (3, 5, 7) against an even rhythm elsewhere make patterns that drift in and out of line.'] },
+  ...Object.fromEntries([1, 2, 3, 4, 5, 6, 7, 8].flatMap((n) => [
+    [`seq.s${n}`, { title: `Step ${n}: pitch`, body: ['The note this step plays, in semitones up or down from the VCOs\' own pitch (snapped to whole semitones, so it is always in tune). +12 is an octave up.'] }],
+    [`seq.g${n}`, { title: `Step ${n}: on / off`, body: ['Lit: this step plays a note. Dark: it is a rest (the Gate stays low), which is how you make rhythms.'] }],
+  ])),
+  'jack.seq.clock': { title: 'Sequencer: Clock input', body: ['Each rise here moves the sequencer on one step, instead of its Rate knob. A square LFO gives a steady clock; the Keyboard\'s Trig moves it one step per key you press.'] },
+  'jack.seq.reset': { title: 'Sequencer: Reset input', body: ['A rise here sends it back to step 1.'] },
+  'out:seq.pitch': { title: 'Sequencer: Pitch output', body: ['The current step\'s note, at 1 volt per octave: patch it into a VCO\'s Pitch input.'] },
+  'out:seq.gate': { title: 'Sequencer: Gate output', body: ['High for the first half of each step that is switched on: patch it into an envelope\'s Gate input.'] },
+  'out:seq.trig': { title: 'Sequencer: Trig output', body: ['A short pulse at the start of every step that is on: good for clocking the S&H, or restarting an LFO.'] },
+  foldmodule: { title: 'Fold away', body: ['Folds this module to a thin strip to give the rest of the rack more room (its cables are hidden while it is folded). Click again to open it.'] },
+
   // ---- S&H
   'section:sh': { title: 'S&H (Sample and Hold)', body: [
     'On each clock, it measures (samples) whatever is at its In and holds that value steady until the next clock, turning a moving signal into a staircase of steps. With nothing in In it samples noise, so every step is a new random value.',

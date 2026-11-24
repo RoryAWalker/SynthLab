@@ -100,7 +100,7 @@ class VCO {
 
 const OUTPUTS = ['kb.pitch', 'kb.gate', 'kb.trig', 'vco1.saw', 'vco1.sq', 'vco1.tri', 'vco2.saw', 'vco2.sq', 'vco2.tri',
   'noise.white', 'noise.pink', 'noise.col', 'mix.out', 'filt.out', 'filt.bp', 'filt.hp', 'env1.out', 'env1.inv', 'env2.out', 'env2.inv',
-  'lfo.out', 'lfo2.out', 'sh.out', 'vca1.out', 'vca2.out', 'ring.out', 'att.out1', 'att.out2'];
+  'lfo.out', 'lfo2.out', 'sh.out', 'vca1.out', 'vca2.out', 'ring.out', 'att.out1', 'att.out2', 'seq.pitch', 'seq.gate', 'seq.trig'];
 
 function lfoWave(shape, ph) {
   return shape === 'saw' ? 2 * ph - 1 : shape === 'square' ? (ph < 0.5 ? 1 : -1)
@@ -136,6 +136,7 @@ class NFModProcessor extends AudioWorkletProcessor {
     this.tolTune = [(Math.random() * 2 - 1) * TUNE_TOL, (Math.random() * 2 - 1) * TUNE_TOL];
     this.tolCut = Math.log2(tol(0.02)); this.tolLfo = tol(0.01); this.tolLfo2 = tol(0.01); this.tolSh = tol(0.01);
     this.drift = [0, 1].map(() => ({ v: (Math.random() * 2 - 1) * DRIFT_OCT, t: (Math.random() * 2 - 1) * DRIFT_OCT }));
+    this.seqStep = 0; this.seqPh = 0; this.seqClkWas = 0; this.seqRstWas = 0; this.seqTrig = 0; // sequencer
     this.over = 0; this.resets = 0; // how hard the output limiter is working; how often the rack reset itself
     this.shVal = 0; this.shOut = 0; this.shClockWas = 0; this.shPh = Math.random();
     this.colLp = 0; this.colHp = 0; this.colPrev = 0;
@@ -191,7 +192,7 @@ class NFModProcessor extends AudioWorkletProcessor {
     ['vco1.pitch', 'vco1.fm', 'vco1.pwm', 'vco1.sync', 'vco2.pitch', 'vco2.fm', 'vco2.pwm', 'vco2.sync',
       'mix.in1', 'mix.in2', 'mix.in3', 'mix.in4', 'filt.in', 'filt.cv', 'filt.key', 'filt.res',
       'env1.gate', 'env2.gate', 'lfo.gate', 'lfo.rate', 'lfo2.gate', 'lfo2.fm', 'sh.in', 'sh.clock',
-      'vca1.in', 'vca1.cv', 'vca2.in', 'vca2.cv', 'ring.a', 'ring.b', 'att.in1', 'att.in2', 'noise.cv', 'out.in'].forEach((k) => (J[k] = src(k)));
+      'vca1.in', 'vca1.cv', 'vca2.in', 'vca2.cv', 'ring.a', 'ring.b', 'att.in1', 'att.in2', 'noise.cv', 'seq.clock', 'seq.reset', 'out.in'].forEach((k) => (J[k] = src(k)));
     const read = (k) => {
       const a = J[k];
       if (a.length === 1) return o[a[0]];
@@ -217,6 +218,14 @@ class NFModProcessor extends AudioWorkletProcessor {
     const lfoShape = p['lfo.shape'], lfoRate = p['lfo.rate'] * this.tolLfo, lfoRcv = p['lfo.rcv'] * LFO_RATE_CV_OCTAVES;
     const vcas = [[p['vca1.level'], p['vca1.cv']], [p['vca2.level'], p['vca2.cv']]];
     const vol = p['out.vol'];
+    // sequencer: 8 steps, each a pitch (semitones, snapped) and on/off; Length steps are used
+    const seqRun = p['seq.run'] === 'run';
+    const seqLen = p['seq.len'] || 8;
+    const seqInc = (p['seq.rate'] || 4) / sr;
+    const seqPitch = [], seqOn = [];
+    for (let k = 1; k <= 8; k++) { seqPitch.push(Math.round(p[`seq.s${k}`] || 0) / 12); seqOn.push(p[`seq.g${k}`] !== 'off'); }
+    const seqExt = J['seq.clock'].length > 0;
+    const TRIG_N = Math.round(TRIG_SECONDS * sr);
     const lfo2Shape = p['lfo2.shape'], lfo2Rate = p['lfo2.rate'] * this.tolLfo2, lfo2Fm = p['lfo2.fm'] * 4, lfo2Tz = p['lfo2.fmmode'] === 'tz', lfo2Uni = p['lfo2.pol'] === 'uni';
     const mixMode = p['mix.mode'], att1 = p['att.a1'], att2 = p['att.a2'], ringMix = p['ring.mix'];
     // noise colour: below 0 a low-pass darkens it (down to ~150 Hz), above 0 a high-pass thins it (from 200 Hz up to ~10 kHz)
@@ -241,6 +250,34 @@ class NFModProcessor extends AudioWorkletProcessor {
       o['kb.gate'] = gate;
       o['kb.trig'] = this.trig > 0 ? 1 : 0;
       if (this.trig > 0) this.trig--;
+
+      // ---- sequencer. Its own clock (Rate) or, if something is patched into Clock, one step for
+      // each rise there. Reset sends it back to step 1. Stopped, it holds its step with the gate low.
+      let seqAdvance = false, seqHigh = false;
+      if (seqRun) {
+        if (seqExt) {
+          const clk = read('seq.clock');
+          seqAdvance = clk > 0.5 && this.seqClkWas <= 0.5;
+          this.seqClkWas = clk;
+          seqHigh = clk > 0.5;
+        } else {
+          this.seqPh += seqInc;
+          if (this.seqPh >= 1) { this.seqPh -= Math.floor(this.seqPh); seqAdvance = true; }
+          seqHigh = this.seqPh < 0.5; // the gate is high for the first half of each step
+        }
+      }
+      const rst = read('seq.reset');
+      if (rst > 0.5 && this.seqRstWas <= 0.5) { this.seqStep = -1; seqAdvance = true; this.seqPh = 0; }
+      this.seqRstWas = rst;
+      if (seqAdvance) {
+        this.seqStep = (this.seqStep + 1) % seqLen;
+        if (seqOn[this.seqStep]) this.seqTrig = TRIG_N;
+      }
+      if (this.seqStep >= seqLen) this.seqStep = 0;
+      o['seq.pitch'] = seqPitch[this.seqStep];
+      o['seq.gate'] = seqRun && seqHigh && seqOn[this.seqStep] ? 1 : 0;
+      o['seq.trig'] = this.seqTrig > 0 ? 1 : 0;
+      if (this.seqTrig > 0) this.seqTrig--;
 
       // ---- noise (white, and pink through a three-pole filter)
       const white = Math.random() * 2 - 1;
@@ -396,6 +433,7 @@ class NFModProcessor extends AudioWorkletProcessor {
         type: 'state', gate: this.notes.length > 0, note: this.note, target: this.target, fc: this.lastFc,
         a: this.env1.report(), f: this.env2.report(), lfo: o['lfo.out'], lfoT: this.lfoT, beat: 0,
         outs: { ...pk2, 'kb.pitch': pk2['kb.gate'] },
+        seqStep: this.seqStep, seqRun: seqRun,
         over: this.over, resets: this.resets, // for the Overload light, and a warning after a reset
       });
       this.over = 0;

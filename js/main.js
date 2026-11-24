@@ -1,7 +1,8 @@
-import { PARAMS, LAYOUT, KEYBED_SECTIONS, FX_SECTIONS, ALL_SECTIONS, defaultPatch, updateAlts, SYNTH, nameHtml } from './params.js';
+import { PARAMS, LAYOUT, KEYBED_SECTIONS, FX_SECTIONS, SIDE_SECTIONS, ALL_SECTIONS, defaultPatch, updateAlts, SYNTH, nameHtml } from './params.js';
 import { Knob } from './knob.js';
 import { Toggle } from './toggle.js';
 import { Wheel } from './wheel.js';
+import { LedButton } from './ledbutton.js';
 import { StartMenu } from './startMenu.js';
 import { Engine } from './engine.js';
 import { Scope, TIMEBASES } from './scope.js';
@@ -38,6 +39,25 @@ function buildSection(sec) {
   el.innerHTML = `<div class="section-title"${titleHelp}><span>${sec.title}</span></div><div class="section-grid"></div><div class="lock-veil"><span>LOCKED</span></div>`;
   const grid = el.querySelector('.section-grid');
   sections[sec.id] = el;
+  // a module that can fold away to a thin strip (the sequencer): a button in its title bar
+  if (sec.foldable) {
+    const fb = document.createElement('button');
+    fb.className = 'fold-btn';
+    fb.dataset.help = 'foldmodule';
+    el.querySelector('.section-title').prepend(fb);
+    const key = `${SYNTH.id}.fold.${sec.id}`;
+    const setFold = (on) => {
+      el.classList.toggle('folded', on);
+      fb.textContent = on ? '▸' : '◂'; // it sits on the left: folds leftwards
+      fb.setAttribute('aria-label', on ? `Open the ${sec.title}` : `Fold the ${sec.title} away`);
+      try { localStorage.setItem(key, on ? '1' : '0'); } catch { /* storage unavailable */ }
+      requestAnimationFrame(() => { if (typeof fit === 'function') fit(); });
+    };
+    fb.addEventListener('click', (e) => { e.stopPropagation(); setFold(!el.classList.contains('folded')); });
+    let folded = false;
+    try { folded = localStorage.getItem(key) === '1'; } catch { /* storage unavailable */ }
+    setFold(folded);
+  }
   // A module split into side-by-side halves with a line between them (the NF-Modular's Dual
   // VCA): each part has its own knobs and jacks.
   if (sec.parts) {
@@ -56,6 +76,13 @@ function buildSection(sec) {
     });
     return el;
   }
+  // controls across the top of a module, before its grid (the sequencer's Run button)
+  if (sec.head) {
+    const hd = document.createElement('div');
+    hd.className = 'section-head';
+    sec.head.forEach((id) => hd.appendChild(makeControl(id, sec)));
+    grid.before(hd);
+  }
   if (sec.jacks && cables) el.appendChild(cables.buildStrip(sec.jacks)); // modular synths: sockets along the module's foot
   if (!sec.rows.length) { grid.remove(); return el; } // a module with only jacks
   fillGrid(grid, sec.rows, sec);
@@ -65,6 +92,7 @@ function buildSection(sec) {
 function makeControl(id, sec) {
   const spec = PARAMS[id];
   const k = spec.ui === 'toggle' ? new Toggle(id, patch[id], onKnob)
+    : spec.ui === 'led' ? new LedButton(id, patch[id], onKnob)
     : spec.type === 'wheel' ? new Wheel(id, patch[id], onKnob)
     : new Knob(id, patch[id], onKnob);
   knobs[id] = k;
@@ -116,12 +144,19 @@ function buildPanel() {
   // A rack (NF-Modular): LAYOUT is rows of modules, each row stretched across the full width.
   if (SYNTH.rack) {
     root.classList.add('rack');
+    // rows of modules, with any side column (the sequencer) beside them, full height
+    const rowsBox = document.createElement('div');
+    rowsBox.className = 'rack-rows';
     LAYOUT.forEach((row) => {
       const r = document.createElement('div');
       r.className = 'rack-row';
       row.forEach((sec) => r.appendChild(buildSection(sec)));
-      root.appendChild(r);
+      rowsBox.appendChild(r);
     });
+    // the side column (the sequencer) stands on the left: it is a source of notes, like the
+    // keyboard, and signals in the rack flow from left to right
+    SIDE_SECTIONS.forEach((sec) => { const el = buildSection(sec); el.classList.add('rack-side'); root.appendChild(el); });
+    root.appendChild(rowsBox);
     const perf = document.getElementById('perf-sections');
     KEYBED_SECTIONS.forEach((sec) => perf.appendChild(buildSection(sec)));
     const fx = document.getElementById('fx-sections');
@@ -370,12 +405,30 @@ const graphPop = (() => {
     overlay.draw(ctx, W, H, null);
   })();
   return {
-    // open on the side of the screen away from this control
+    // open beside the Help panel (which is on the side of the screen away from this control), above or
+    // below the control, whichever has more room, sized to fit there, so it covers neither
     from(id) {
       const k = knobs[id];
       const r = k && k.el ? k.el.getBoundingClientRect() : null;
-      el.classList.toggle('left', !!r && r.left + r.width / 2 > window.innerWidth / 2);
-      el.style.top = (document.querySelector('.appbar').offsetHeight + 12) + 'px';
+      const hp = document.getElementById('help-panel');
+      const helpW = hp && hp.offsetWidth ? hp.offsetWidth : 0;
+      const left = helpW ? hp.classList.contains('left') : (!!r && r.left + r.width / 2 > window.innerWidth / 2);
+      const gap = 12;
+      const topY = document.querySelector('.appbar').offsetHeight + gap;
+      // the larger space above or below the control (the whole height below the top bar if there is no control)
+      const above = r ? r.top - gap - topY : window.innerHeight - topY - gap;
+      const below = r ? window.innerHeight - gap - (r.bottom + gap) : 0;
+      const atBottom = below > above;
+      // as large as fits beside the Help panel and in that space, keeping the screen's shape
+      let w = Math.min(W, window.innerWidth - helpW - gap * 3 - 16);
+      w = Math.max(240, Math.min(w, (Math.max(above, below) - 16) * W / H));
+      const h = Math.round(w * H / W) + 16;
+      w += 16;
+      el.style.width = w + 'px';
+      el.style.height = h + 'px';
+      el.style.left = left ? (helpW + gap) + 'px' : 'auto';
+      el.style.right = left ? 'auto' : (helpW + gap) + 'px';
+      el.style.top = (atBottom ? window.innerHeight - gap - h : topY) + 'px';
     },
   };
 })();
@@ -547,6 +600,14 @@ if (cables) {
     requestAnimationFrame(lamps);
     const live = engine.running && engine.live;
     cables.showLevels(live ? live.outs : null);
+    // the sequencer's current step lights up while it runs
+    if (sections.seq) {
+      const cur = live && live.seqRun ? live.seqStep + 1 : 0;
+      for (let n = 1; n <= 8; n++) {
+        const cell = knobs[`seq.s${n}`] && knobs[`seq.s${n}`].el.parentNode;
+        if (cell) cell.classList.toggle('current', n === cur);
+      }
+    }
     if (overLamp) {
       const level = live ? Math.min(1, Math.max(0, ((live.over || 0) - 0.7) / 1.3)) : 0;
       overShown = Math.max(level, overShown * 0.93);
