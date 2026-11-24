@@ -772,7 +772,8 @@ body[data-skin="vintage"] .perf { padding: 8px 10px; }
 .sm-close[hidden] { display: none; }
 .sm-eyebrow { font-size: 12px; font-weight: 800; letter-spacing: 0.22em; text-transform: uppercase; color: var(--accent); }
 .sm-title { margin: 6px 0 28px; font-size: 34px; color: #fff; }
-.sm-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 22px; }
+.sm-cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 22px; } /* always 2 x 2, however wide the window */
+@media (max-width: 640px) { .sm-cards { grid-template-columns: 1fr; } } /* one column on a phone */
 .sm-card {
   text-align: left; padding: 0 0 20px; border-radius: 16px; cursor: pointer; overflow: hidden;
   background: #1c1e23; border: 1px solid #34373e; color: inherit; font: inherit;
