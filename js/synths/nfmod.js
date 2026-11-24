@@ -324,7 +324,7 @@ export const NFMOD = {
   skin: 'modular',
   module: 'js/worklet/nfmod-processor.js',
   processor: 'nfmod-processor',
-  lessons: false,
+  lessons: true,
   modular: true,
   rack: true, // LAYOUT is rows of modules, not columns
   multiInput: true, // an input can take several cables, added together

@@ -19,6 +19,7 @@ All the synths share:
 - **Teaching graphs**: turn a knob and its effect is drawn over the displays: envelope shapes with a live playhead, the filter's response curve, the LFO wave, expected waveform harmonics, octave ranges, glide, each oscillator in the mix, and detune beating (with a beat light).
 - **Hover help**: rest the mouse on any control for a second for a plain-English explanation and a "Try this" exercise.
 - **Lessons**: listen to a target sound, then use the synth to match it. Only the controls the lesson needs are unlocked, and the target is shown as a ghost trace on the displays. Lesson 1 (Oscillators) has 10 challenges.
+  The NiniFoog has six lessons (three oscillators, Osc 3 as a modulator, contours, feedback, the filter as an instrument, classic recipes), and the NF-Modular nine, ending with **Fix the Patch**: broken patches to diagnose and repair.
 - **Patches**: factory sounds, plus save, export and import your own.
 - **Zoom**: pinch to zoom into the panel, scroll to move around.
 
