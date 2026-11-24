@@ -94,11 +94,19 @@ export class Keyboard {
   press(src, note) {
     const prev = this.held.get(src);
     if (prev === note) return;
-    if (prev !== undefined) this.release(src);
     this.held.set(src, note);
     const k = this.keys.get(note);
     if (k) k.classList.add('down');
     this.onNoteOn(note);
+    // Sliding from one key to the next (mouse held down): start the new note before letting
+    // go of the old one, so the notes overlap like a player's fingers and legato works.
+    if (prev !== undefined) {
+      if (![...this.held.values()].includes(prev)) {
+        const pk = this.keys.get(prev);
+        if (pk) pk.classList.remove('down');
+      }
+      this.onNoteOff(prev);
+    }
   }
 
   release(src) {
