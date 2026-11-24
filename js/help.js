@@ -467,3 +467,43 @@ export const HELP_NF3 = {
   'wave:wide': { title: 'Wide pulse', body: ['A pulse wave that is high for about 30% of each cycle: hollow but a little brighter and more nasal than a square wave.'] },
 };
 
+
+// Entries for the NF-Modular (nfm): its modules, jacks and the controls that differ from the NF-1.
+export const HELP_NFM = {
+  'section:lfo': { title: 'LFO', body: ['A low-frequency oscillator: a wave too slow to hear, used to move other things up and down. Patch its Out into the Oscillator\'s FM for vibrato, the Filter\'s CV for a wah, or the VCA\'s CV for tremolo.'] },
+  'section:osc': { title: 'Oscillator', body: ['Makes the raw sound. Its Pitch input sets the note: patch the Keyboard\'s Pitch into it to play tunes. With nothing in Pitch it drones on middle C (moved by Range and Tune).', 'FM bends the pitch with whatever is patched in, by as much as FM Amount allows.'] },
+  'section:filt': { title: 'Filter', body: ['A low-pass filter: it lets the low frequencies through and cuts the high ones, making the sound darker or brighter. Patch audio into In and take the filtered sound from Out.', 'Anything patched into CV moves the cutoff, by as much as CV Amount allows.'] },
+  'section:env': { title: 'Envelope', body: ['Makes a shape over time each time its Gate input goes high (a key is pressed): it rises (Attack), falls to a level (Decay, Sustain) and, when the key is let go, falls to zero (Release).', 'Patch its Out into the VCA\'s CV to shape the volume, or into the Filter\'s CV to shape the tone.'] },
+  'section:vca': { title: 'VCA', body: ['A voltage-controlled amplifier: a volume control worked by a signal instead of a hand. Sound goes into In; whatever is patched into CV opens it.', 'With nothing opening it the VCA is shut and you hear nothing. That is why the Envelope\'s Out goes into its CV: the sound starts and stops with the keys.'] },
+  'section:out': { title: 'Output', body: ['What you hear. Patch the end of your signal chain (usually the VCA\'s Out) into In.'] },
+  'section:kb': { title: 'Keyboard', body: ['The keyboard sends two signals. Pitch says which note is played (patch it into the Oscillator\'s Pitch). Gate is high while a key is held (patch it into the Envelope\'s Gate).', 'Glide slides the Pitch from one note to the next.'] },
+
+  'kb.glide': { title: 'Glide', body: ['How long the keyboard\'s Pitch takes to slide to a new note. 0 jumps straight there.'] },
+  'osc1.range': { title: 'Range', body: ['Shifts the oscillator up or down in whole octaves.'] },
+  'osc1.tune': { title: 'Tune', body: ['Tunes the oscillator up or down by up to 7 semitones.'] },
+  'osc.fm': { title: 'FM Amount', body: ['How far a signal in the FM input bends the pitch. With the LFO patched in, a little gives vibrato and a lot gives a siren.', 'Patch audio (like the Oscillator\'s own Out) into FM for harsh, metallic frequency-modulation tones.'] },
+  'filt.cv': { title: 'CV Amount', body: ['How far, and which way, a signal in the CV input moves the cutoff. Positive opens the filter as the signal rises; negative closes it.', 'Try the Envelope\'s Out into CV with a low Cutoff: each note starts bright and gets darker.'] },
+  'vca.level': { title: 'Level', body: ['Opens the VCA by hand, on top of anything patched into CV. At 0 only the CV opens it; turned up, sound passes all the time (a drone).'] },
+  'out.vol': { title: 'Volume', body: ['The overall loudness.'] },
+  'aenv.a': { title: 'Attack', body: ['Time for the envelope to rise to full when the Gate goes high.'] },
+  'aenv.d': { title: 'Decay', body: ['Time to fall from full to the Sustain level.'] },
+  'aenv.s': { title: 'Sustain', body: ['The level held while the Gate stays high (the key is held).'] },
+  'aenv.r': { title: 'Release', body: ['Time to fall to zero after the Gate goes low (the key is let go).'] },
+
+  'jack.osc.pitch': { title: 'Oscillator: Pitch input', body: ['Sets the note. Patch the Keyboard\'s Pitch here to play tunes. An LFO here makes the pitch wobble; nothing here, and it holds one note.'], tip: 'Pull this cable out and play: every key gives the same note.' },
+  'jack.osc.fm': { title: 'Oscillator: FM input', body: ['Bends the pitch by the signal patched here, scaled by FM Amount.'], tip: 'Patch the LFO\'s Out here and turn FM Amount up a little: vibrato.' },
+  'jack.filt.in': { title: 'Filter: In', body: ['The sound to be filtered, usually the Oscillator\'s Out.'] },
+  'jack.filt.cv': { title: 'Filter: CV input', body: ['Moves the cutoff with the signal patched here, scaled by CV Amount.'], tip: 'Patch the Envelope\'s Out here, set Cutoff low and CV Amount to about +60%.' },
+  'jack.env.gate': { title: 'Envelope: Gate input', body: ['Starts the envelope when the signal here goes high, and releases it when it goes low. Usually the Keyboard\'s Gate.'], tip: 'Pull this cable out: the envelope never starts, so the VCA stays shut and you hear nothing.' },
+  'jack.vca.in': { title: 'VCA: In', body: ['The sound whose volume the VCA controls, usually the Filter\'s Out.'] },
+  'jack.vca.cv': { title: 'VCA: CV input', body: ['Opens the VCA: the higher the signal here, the louder. Usually the Envelope\'s Out.'], tip: 'Patch the LFO\'s Out here instead and turn Level up to half: tremolo. It plays all the time, because the keys no longer open the VCA.' },
+  'jack.out.in': { title: 'Output: In', body: ['What you hear. Patch any Out here to listen to it on its own, such as the Oscillator\'s Out for the raw, unfiltered sound.'] },
+
+  'out:kb.pitch': { title: 'Keyboard: Pitch output', body: ['Which note is played, as a control signal: up one octave on the keyboard, up one step of signal. Drag from here to the Oscillator\'s Pitch input.'] },
+  'out:kb.gate': { title: 'Keyboard: Gate output', body: ['High while a key is held, low when it is let go. Drag from here to the Envelope\'s Gate input.'] },
+  'out:lfo.out': { title: 'LFO: Out', body: ['The slow LFO wave. Drag it to an input (FM, Filter CV, VCA CV) to make that move. The light shows it swinging.'] },
+  'out:osc.out': { title: 'Oscillator: Out', body: ['The raw oscillator sound. Usually patched into the Filter\'s In.'] },
+  'out:filt.out': { title: 'Filter: Out', body: ['The filtered sound. Usually patched into the VCA\'s In.'] },
+  'out:env.out': { title: 'Envelope: Out', body: ['The envelope\'s shape over time. Drag it to the VCA\'s CV to shape volume, or the Filter\'s CV to shape tone.'] },
+  'out:vca.out': { title: 'VCA: Out', body: ['The sound after the VCA. Usually patched into the Output.'] },
+};

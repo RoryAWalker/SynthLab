@@ -4,9 +4,10 @@
 
 import { NF1 } from './synths/nf1.js';
 import { NF3 } from './synths/nf3.js';
+import { NFM } from './synths/nfm.js';
 import { FX_PARAMS, FX_SECTIONS } from './fx.js';
 
-export const SYNTHS = [NF1, NF3];
+export const SYNTHS = [NF1, NF3, NFM];
 const wanted = new URLSearchParams(location.search).get('synth');
 export const SYNTH = SYNTHS.find((s) => s.id === wanted) || NF1;
 export const SYNTH_CHOSEN = SYNTHS.some((s) => s.id === wanted); // false: show the start menu

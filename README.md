@@ -10,8 +10,9 @@ Choose a synth from the start menu:
 
 - **NF-1**, the first synth students meet: a monophonic virtual-analogue synth in the classic one-knob-per-function style. Two oscillators (six waveforms, octave range, detune), mixer, 24 dB/octave ladder low-pass filter with resonance, filter envelope, loudness envelope, LFO with delay, glide and mono/legato modes. Comes with lessons.
 - **NiniFoog**, a three-oscillator monosynth laid out in the style of the classic 1970s three-oscillator synths: Oscillator 3 doubles as a modulation source, noise, a feedback loop with an overload light, a ladder filter with keyboard tracking, legato playing, pitch and mod wheels, and free-running, gently drifting oscillators. Its names and artwork are SynthLab's own.
+- **NF-Modular**, a first modular synth: one LFO, oscillator, filter, envelope and VCA, plus the keyboard's Pitch and Gate, all joined by patch cables you drag between the jacks. It opens with a simple patch already in place, so it plays straight away; pull cables out and re-patch to hear what each connection does.
 
-Both synths share:
+All the synths share:
 
 - **Oscilloscope and spectrum analyser** showing the sound in real time.
 - **Teaching graphs**: turn a knob and its effect is drawn over the displays: envelope shapes with a live playhead, the filter's response curve, the LFO wave, expected waveform harmonics, octave ranges, glide, each oscillator in the mix, and detune beating (with a beat light).

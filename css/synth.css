@@ -994,3 +994,82 @@ body[data-skin="vintage"] .bezel { --bp: 6px; }
 body.scopes-max .bezel, body[data-skin="vintage"].scopes-max .bezel { --bp: 10px; }
 .bezel canvas { position: absolute; top: var(--bp); left: var(--bp); width: calc(100% - 2 * var(--bp)); height: calc(100% - 2 * var(--bp)); }
 .bezel .screen-glass { inset: var(--bp); }
+
+/* ==========================================================================
+   NF-Modular (nfm): separate module plates in a dark rack, jack sockets, patch cables
+   ========================================================================== */
+body[data-skin="modular"] {
+  --desk: #141517; --desk-2: #1d1f23;
+  --panel: #202226; --panel-hi: #2a2d31;
+  --ink: #ececec; --ink-dim: #a9abae; --rule: rgba(236,236,236,0.5);
+  --accent: #ffb547; --led: #ff3b2f;
+  --wood-1: #2a2c30; --wood-2: #1b1c1f; --wood-3: #34363a; /* rack rails instead of wood */
+}
+body[data-skin="modular"] .cheek { width: 30px; background-image: linear-gradient(90deg, #1b1c1f, #3a3c40 45%, #26282b 70%, #18191b); }
+body[data-skin="modular"] .panel { background: #111214; padding: 14px 14px 10px; }
+body[data-skin="modular"] .panel-sections { gap: 8px; }
+body[data-skin="modular"] .section-divider { display: none; }
+/* each module is its own plate, with screws at its corners */
+body[data-skin="modular"] .panel .section {
+  padding: 10px 10px 8px; border-radius: 4px; height: 100%;
+  display: flex; flex-direction: column;
+  background:
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.016) 0 1px, transparent 1px 3px),
+    linear-gradient(180deg, #34373c, #26282c 40%, #212327);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), inset 0 0 0 1px rgba(0,0,0,0.5), 0 2px 4px rgba(0,0,0,0.6);
+}
+body[data-skin="modular"] .panel .section::before, body[data-skin="modular"] .panel .section::after {
+  content: ""; position: absolute; left: 50%; width: 7px; height: 7px; margin-left: -3.5px; border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #c9cbcd, #5d6164 70%);
+  box-shadow: 0 1px 1px rgba(0,0,0,0.8);
+}
+body[data-skin="modular"] .panel .section::before { top: 3px; }
+body[data-skin="modular"] .panel .section::after { bottom: 3px; }
+body[data-skin="modular"] .panel .section .jack-strip { margin-top: auto; }
+body[data-skin="modular"] .panel-footer { margin-top: 8px; }
+
+/* ---- jack sockets ---- */
+.jack-strip {
+  display: flex; justify-content: center; gap: 4px; padding: 8px 4px 6px; margin-top: 6px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+}
+.jack-cell { position: relative; width: 62px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.jack-label { font-size: 10.5px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink); }
+/* outputs sit on a dark plate, the usual way modules tell outputs from inputs */
+.jack-cell.out { background: #0c0d0e; border-radius: 6px; padding: 3px 0 5px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1); }
+.jack-cell.out .jack-label { color: #f2f2f2; }
+.socket {
+  width: 30px; height: 30px; border-radius: 50%; cursor: grab; touch-action: none;
+  background: radial-gradient(circle, #050505 0 34%, #3b3e42 36%, #c4c7ca 52%, #7d8184 70%, #4a4d50 100%);
+  box-shadow: 0 2px 3px rgba(0,0,0,0.6);
+  transition: box-shadow 0.12s, transform 0.12s;
+}
+.socket:hover { box-shadow: 0 0 0 3px rgba(255,181,71,0.55), 0 2px 3px rgba(0,0,0,0.6); }
+body.patching { cursor: grabbing; user-select: none; }
+body.patching .socket { cursor: grabbing; }
+/* while dragging, the sockets that can take the cable glow */
+body.patching-in .socket[data-jack], body.patching-out .socket[data-out] { box-shadow: 0 0 0 3px rgba(255,181,71,0.35), 0 2px 3px rgba(0,0,0,0.6); }
+.socket.hover { box-shadow: 0 0 0 4px #ffb547, 0 0 14px rgba(255,181,71,0.8) !important; transform: scale(1.08); }
+/* lamp by each output: lights with the signal leaving it */
+.jack-lamp {
+  position: absolute; top: 5px; right: 5px; width: 7px; height: 7px; border-radius: 50%;
+  --glow: 0;
+  background: rgb(calc(70 + 185 * var(--glow)), calc(20 + 40 * var(--glow)), 20);
+  box-shadow: 0 0 calc(10px * var(--glow)) rgba(255,60,30,calc(var(--glow)));
+}
+.section.locked .jack-strip { opacity: 0.22; filter: grayscale(1); pointer-events: none; }
+
+/* ---- cables: drawn over the whole instrument, letting clicks through to the knobs ---- */
+.cable-layer { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; z-index: 40; }
+.cable path { fill: none; stroke-linecap: round; }
+.cable-shadow { stroke: rgba(0,0,0,0.45); stroke-width: 9; transform: translate(2px, 4px); }
+.cable-body { stroke-width: 6.5; opacity: 0.92; }
+.cable-shine { stroke: rgba(255,255,255,0.25); stroke-width: 1.6; transform: translate(-1px, -1.5px); }
+.cable .plug { stroke: rgba(0,0,0,0.6); stroke-width: 1.5; }
+.cable .plug-tip { fill: #d8dadc; }
+.cable.live { opacity: 0.85; }
+body.preview .cable-layer { display: block; }
+/* the keyboard's jacks sit with its Glide knob, left of the keys */
+body[data-skin="modular"] .perf .jack-strip { border-top-color: rgba(255,255,255,0.12); }
+/* NF-Modular: the keyboard section holds more than Glide, so the knob keeps its label */
+body[data-skin="modular"] .perf .knob-label { visibility: visible; height: 15px; }

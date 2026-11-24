@@ -11,6 +11,7 @@ import { Overlay } from './visuals.js';
 import { ZoomPan } from './zoom.js';
 import { LessonController } from './lessonUI.js';
 import { PatchMenu } from './patches.js';
+import { Cables } from './cables.js';
 
 const engine = new Engine({ module: SYNTH.module, processor: SYNTH.processor });
 document.body.dataset.skin = SYNTH.skin;
@@ -23,6 +24,8 @@ const knobs = {};
 const sections = {};
 let help = null; // HelpPanel, created at boot
 let lesson = null; // LessonController, created at boot
+// NF-Modular: jack sockets and patch cables (cables.js)
+const cables = SYNTH.modular ? new Cables(document.getElementById('stage'), { getPatch: () => patch, onChange: (id, v) => onKnob(id, v), controls: knobs }) : null;
 const overlay = new Overlay(() => patch, engine); // teaching graphs on the spectrum display
 
 // ---- panel ---------------------------------------------------------------------------
@@ -32,6 +35,7 @@ function buildSection(sec) {
   el.dataset.section = sec.id;
   el.innerHTML = `<div class="section-title" data-help="section:${sec.id}"><span>${sec.title}</span></div><div class="section-grid"></div><div class="lock-veil"><span>LOCKED</span></div>`;
   const grid = el.querySelector('.section-grid');
+  if (sec.jacks && cables) el.appendChild(cables.buildStrip(sec.jacks)); // NF-Modular: sockets along the module's foot
   const cols = Math.max(...sec.rows.map((r) => r.length));
   // Columns holding only switches or wheels can be narrow (NiniFoog), freeing panel space.
   const narrowCol = (c) => {
@@ -142,6 +146,7 @@ function setPatch(p) {
   for (const id in knobs) knobs[id].set(patch[id]);
   engine.setPatch(patch);
   if (help) help.refresh();
+  if (cables) cables.redraw();
 }
 
 function lockSection(id, locked = true) {
@@ -400,6 +405,15 @@ new ResizeObserver(() => {
   if (expanded) return; // keep the reserved height; the bar overlays the scopes
   if (Math.abs(lessonWrap.offsetHeight - resting) > 1) { lessonWrap.style.height = resting + 'px'; fit(); }
 }).observe(lessonBar);
+
+// ---- NF-Modular: cables over the panel, and lamps by the output jacks ----
+if (cables) {
+  requestAnimationFrame(() => cables.redraw());
+  (function lamps() {
+    requestAnimationFrame(lamps);
+    cables.showLevels(engine.running && engine.live ? engine.live.outs : null);
+  })();
+}
 
 fit();
 window.addEventListener('resize', fit);
