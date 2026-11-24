@@ -18,6 +18,16 @@ const FM_OCTAVES = 2;          // FM Amount fully up: an input of 1 bends the pi
 const CUTOFF_CV_OCTAVES = 6;   // VCF CV Amount fully up: an input of 1 moves the cutoff 6 octaves
 const LFO_RATE_CV_OCTAVES = 4; // LFO Rate CV Amount fully up: an input of 1 changes the rate 4 octaves
 const TRIG_SECONDS = 0.005;
+// Virtual analogue: like real circuits, nothing is perfectly exact. Each time the rack starts,
+// every part gets a tiny fixed error ("component tolerance"); the oscillators drift slowly; each
+// new note varies the envelope times a little; and every oscillator starts at a random point
+// in its cycle. All of it is far too small to put a patch out of tune, but enough that the
+// sound is never quite the same twice. (The MiniModular, built for learning, has none of this.)
+const tol = (spread) => 1 + (Math.random() * 2 - 1) * spread;  // e.g. tol(0.01): 0.99..1.01
+const TUNE_TOL = 0.0012;    // octaves: each VCO up to about +-1.5 cents out
+const DRIFT_OCT = 0.0017;   // octaves: slow wander of up to about +-2 cents
+const DRIFT_SECONDS = 1.6;  // roughly how often a VCO picks a new drift target
+const ENV_NOTE_VAR = 0.03;  // each note's envelope times vary by up to +-3%
 // Feedback safety. Any output can be patched back into an input, so a loop could otherwise grow
 // without end, overflow and silence the whole rack. Every module output is held within ±LIMIT,
 // the final output is softly limited below full scale, and if anything still goes wrong the
@@ -34,7 +44,10 @@ function polyBlep(t, dt) {
 
 class Envelope {
   constructor() { this.v = 0; this.stage = 0; this.tOn = 0; this.tOff = 0; this.was = 0; }
+  // k: this envelope's fixed tolerance times this note's variation (virtual analogue)
   setTimes(a, d, s, r, sr) {
+    const k = (this.tol || 1) * (this.jit || 1);
+    a *= k; d *= k; r *= k;
     this.aCoef = 1 - Math.exp(-1.466 / (a * sr));
     this.dCoef = 1 - Math.exp(-4.6 / (d * sr));
     this.rCoef = 1 - Math.exp(-4.6 / (r * sr));
@@ -43,7 +56,7 @@ class Envelope {
   // gate: the level at the Gate input this sample
   next(gate) {
     const g = gate > 0.5 ? 1 : 0;
-    if (g && !this.was) { this.stage = 1; this.tOn = 0; }
+    if (g && !this.was) { this.stage = 1; this.tOn = 0; this.jit = tol(ENV_NOTE_VAR); }
     else if (!g && this.was && this.stage !== 0) { this.stage = 3; this.tOff = 0; }
     this.was = g;
     switch (this.stage) {
@@ -116,10 +129,15 @@ class NFModProcessor extends AudioWorkletProcessor {
     this.retrig = 0; this.trig = 0;
     this.vco1 = new VCO(); this.vco2 = new VCO();
     this.env1 = new Envelope(); this.env2 = new Envelope();
-    this.lfoPh = 0; this.lfoT = 0; this.lfoGateWas = 0;
-    this.lfo2Ph = 0; this.lfo2GateWas = 0;
+    // virtual analogue: random starting points, and fixed tolerances for this run
+    this.lfoPh = Math.random(); this.lfoT = 0; this.lfoGateWas = 0;
+    this.lfo2Ph = Math.random(); this.lfo2GateWas = 0;
+    this.env1.tol = tol(0.02); this.env2.tol = tol(0.02);
+    this.tolTune = [(Math.random() * 2 - 1) * TUNE_TOL, (Math.random() * 2 - 1) * TUNE_TOL];
+    this.tolCut = Math.log2(tol(0.02)); this.tolLfo = tol(0.01); this.tolLfo2 = tol(0.01); this.tolSh = tol(0.01);
+    this.drift = [0, 1].map(() => ({ v: (Math.random() * 2 - 1) * DRIFT_OCT, t: (Math.random() * 2 - 1) * DRIFT_OCT }));
     this.over = 0; this.resets = 0; // how hard the output limiter is working; how often the rack reset itself
-    this.shVal = 0; this.shOut = 0; this.shClockWas = 0; this.shPh = 0;
+    this.shVal = 0; this.shOut = 0; this.shClockWas = 0; this.shPh = Math.random();
     this.colLp = 0; this.colHp = 0; this.colPrev = 0;
     this.ic1 = 0; this.ic2 = 0; // state-variable filter A: the HP output
     this.ic3 = 0; this.ic4 = 0; // state-variable filter B: low-passes the HP for the BP output
@@ -167,26 +185,39 @@ class NFModProcessor extends AudioWorkletProcessor {
     if (p['osc1.range'] === undefined) return true; // no patch yet
     const sr = sampleRate, n = L.length, o = this.o, s = this.s, pk = this.pink, nyq = sr * 0.45;
 
-    const src = (jack) => p['jack.' + jack] || '';
+    // each input lists the outputs plugged into it (several cables are added together)
+    const src = (jack) => (p['jack.' + jack] ? String(p['jack.' + jack]).split(',').filter(Boolean) : []);
     const J = {};
     ['vco1.pitch', 'vco1.fm', 'vco1.pwm', 'vco1.sync', 'vco2.pitch', 'vco2.fm', 'vco2.pwm', 'vco2.sync',
       'mix.in1', 'mix.in2', 'mix.in3', 'mix.in4', 'filt.in', 'filt.cv', 'filt.key', 'filt.res',
       'env1.gate', 'env2.gate', 'lfo.gate', 'lfo.rate', 'lfo2.gate', 'lfo2.fm', 'sh.in', 'sh.clock',
       'vca1.in', 'vca1.cv', 'vca2.in', 'vca2.cv', 'ring.a', 'ring.b', 'att.in1', 'att.in2', 'noise.cv', 'out.in'].forEach((k) => (J[k] = src(k)));
-    const read = (k) => (J[k] ? o[J[k]] : 0);
+    const read = (k) => {
+      const a = J[k];
+      if (a.length === 1) return o[a[0]];
+      let sum = 0;
+      for (let q = 0; q < a.length; q++) sum += o[a[q]];
+      return sum;
+    };
+    const has = (k) => J[k].length > 0;
 
     this.env1.setTimes(p['env1.a'], p['env1.d'], p['env1.s'], p['env1.r'], sr);
     this.env2.setTimes(p['env2.a'], p['env2.d'], p['env2.s'], p['env2.r'], sr);
     const glideCoef = p['kb.glide'] > 0.0005 ? 1 - Math.exp(-4.6 / (p['kb.glide'] * sr)) : 1;
-    const v1 = { oct: p['osc1.range'] + p['osc1.tune'] / 12, pw: p['osc1.pw'], fm: p['osc1.fm'] * FM_OCTAVES, pwm: p['osc1.pwm'] * 0.45 };
-    const v2 = { oct: p['osc2.range'] + p['osc2.tune'] / 12, pw: p['osc2.pw'], fm: p['osc2.fm'] * FM_OCTAVES, pwm: p['osc2.pwm'] * 0.45 };
+    // drift: each VCO wanders slowly towards a new random offset now and then
+    this.drift.forEach((d) => {
+      if (Math.random() < (n / sr) / DRIFT_SECONDS) d.t = (Math.random() * 2 - 1) * DRIFT_OCT;
+      d.v += (d.t - d.v) * 0.004;
+    });
+    const v1 = { oct: p['osc1.range'] + p['osc1.tune'] / 12 + this.tolTune[0] + this.drift[0].v, pw: p['osc1.pw'], fm: p['osc1.fm'] * FM_OCTAVES, pwm: p['osc1.pwm'] * 0.45 };
+    const v2 = { oct: p['osc2.range'] + p['osc2.tune'] / 12 + this.tolTune[1] + this.drift[1].v, pw: p['osc2.pw'], fm: p['osc2.fm'] * FM_OCTAVES, pwm: p['osc2.pwm'] * 0.45 };
     const lv = [p['mix.l1'], p['mix.l2'], p['mix.l3'], p['mix.l4']].map(mixGain);
     const boost = Math.max(1, ...lv); // Clean: turn a boosted mix back down
-    const cut = Math.log2(p['vcf.cutoff']), cvDepth = p['vcf.cv'] * CUTOFF_CV_OCTAVES, halfW = p['vcf.width'] / 2;
-    const lfoShape = p['lfo.shape'], lfoRate = p['lfo.rate'], lfoRcv = p['lfo.rcv'] * LFO_RATE_CV_OCTAVES;
+    const cut = Math.log2(p['vcf.cutoff']) + this.tolCut, cvDepth = p['vcf.cv'] * CUTOFF_CV_OCTAVES, halfW = p['vcf.width'] / 2;
+    const lfoShape = p['lfo.shape'], lfoRate = p['lfo.rate'] * this.tolLfo, lfoRcv = p['lfo.rcv'] * LFO_RATE_CV_OCTAVES;
     const vcas = [[p['vca1.level'], p['vca1.cv']], [p['vca2.level'], p['vca2.cv']]];
     const vol = p['out.vol'];
-    const lfo2Shape = p['lfo2.shape'], lfo2Rate = p['lfo2.rate'], lfo2Fm = p['lfo2.fm'] * 4, lfo2Tz = p['lfo2.fmmode'] === 'tz', lfo2Uni = p['lfo2.pol'] === 'uni';
+    const lfo2Shape = p['lfo2.shape'], lfo2Rate = p['lfo2.rate'] * this.tolLfo2, lfo2Fm = p['lfo2.fm'] * 4, lfo2Tz = p['lfo2.fmmode'] === 'tz', lfo2Uni = p['lfo2.pol'] === 'uni';
     const mixMode = p['mix.mode'], att1 = p['att.a1'], att2 = p['att.a2'], ringMix = p['ring.mix'];
     // noise colour: below 0 a low-pass darkens it (down to ~150 Hz), above 0 a high-pass thins it (from 200 Hz up to ~10 kHz)
     const colour = p['noise.colour'];
@@ -197,7 +228,7 @@ class NFModProcessor extends AudioWorkletProcessor {
     ];
     let [colLpA, colHpA, colGain] = colourCoefs(colour);
     let col = colour;
-    const shInc = p['sh.rate'] / sr;
+    const shInc = p['sh.rate'] * this.tolSh / sr;
     const shLag = p['sh.lag'] > 0.001 ? 1 - Math.exp(-4.6 / (p['sh.lag'] * sr)) : 1;
     const pk2 = this.peak;
 
@@ -218,8 +249,8 @@ class NFModProcessor extends AudioWorkletProcessor {
       pk[2] = 0.57 * pk[2] + white * 1.0526913;
       o['noise.white'] = white * 0.7;
       o['noise.pink'] = (pk[0] + pk[1] + pk[2] + white * 0.1848) * 0.16;
-      if (J['noise.cv'] && (i & 15) === 0) { // Colour CV: re-tune the colour every 16 samples
-        col = colour + o[J['noise.cv']];
+      if (has('noise.cv') && (i & 15) === 0) { // Colour CV: re-tune the colour every 16 samples
+        col = colour + read('noise.cv');
         col = col < -1 ? -1 : col > 1 ? 1 : col;
         [colLpA, colHpA, colGain] = colourCoefs(col);
       }
@@ -256,15 +287,15 @@ class NFModProcessor extends AudioWorkletProcessor {
       // ---- sample & hold: on each rising Clock (or its own Speed clock when nothing is in Clock),
       // grab the In (or white noise if nothing is patched). Lag glides to each new value.
       let tick = false;
-      if (J['sh.clock']) {
-        const clk = o[J['sh.clock']];
+      if (has('sh.clock')) {
+        const clk = read('sh.clock');
         tick = clk > 0.2 && this.shClockWas <= 0.2;
         this.shClockWas = clk;
       } else {
         this.shPh += shInc;
         if (this.shPh >= 1) { this.shPh -= 1; tick = true; }
       }
-      if (tick) this.shVal = J['sh.in'] ? o[J['sh.in']] : white;
+      if (tick) this.shVal = has('sh.in') ? read('sh.in') : white;
       this.shOut += (this.shVal - this.shOut) * shLag;
       o['sh.out'] = this.shOut;
 
@@ -282,8 +313,8 @@ class NFModProcessor extends AudioWorkletProcessor {
       o['ring.out'] = lim(ra * (1 - ringMix) + ra * read('ring.b') * ringMix); // Mix: from A alone to A x B
 
       // ---- attenuverters: In scaled (and flipped, below 0) by Amount; with nothing in In, a steady voltage
-      o['att.out1'] = lim(J['att.in1'] ? o[J['att.in1']] * att1 : att1);
-      o['att.out2'] = lim(J['att.in2'] ? o[J['att.in2']] * att2 : att2);
+      o['att.out1'] = lim(has('att.in1') ? read('att.in1') * att1 : att1);
+      o['att.out2'] = lim(has('att.in2') ? read('att.in2') * att2 : att2);
 
       // ---- VCF. Cutoff (moved by CV x CV Amount, and Key at one octave per octave) is the centre;
       // Width puts the low-pass half its value above the centre and the high-pass half below.

@@ -519,7 +519,8 @@ const vcoHelp = (n) => {
   return {
     [`section:vco${n}`]: { title: `VCO ${n} (Voltage-Controlled Oscillator)`, body: [
       'The sound source. Unlike the NF-1\'s oscillators, it gives all three waveforms at once, each from its own output: Saw (bright: every harmonic), Pulse (hollow: odd harmonics, its shape set by PW) and Tri (soft and round). Patch one, or several, into the Mixer.',
-      'Pitch sets the note at 1 volt per octave, so the Keyboard\'s Pitch plays it in tune. FM and PWM let other modules bend its pitch and reshape its pulse; Sync lets another oscillator restart it.'],
+      'Pitch sets the note at 1 volt per octave, so the Keyboard\'s Pitch plays it in tune. FM and PWM let other modules bend its pitch and reshape its pulse; Sync lets another oscillator restart it.',
+      'This is a virtual analogue rack: like a real analogue oscillator, each VCO starts at a random point in its wave, is very slightly out of tune with the other, and drifts by a cent or two over time. That is part of why two VCOs together sound alive rather than sterile.'],
       tip: `Patch VCO ${n}\'s Saw and Pulse into two Mixer inputs at once and play: the harmonics of both waves add together.` },
     [`osc${n}.range`]: { title: 'Range', body: ['Shifts the VCO up or down in whole octaves.'], tip: `Set VCO ${other} one octave lower for a solid bass under VCO ${n}.` },
     [`osc${n}.tune`]: { title: 'Tune', body: ['Tunes the VCO up or down by up to 7 semitones.'], tip: n === 2 ? 'Leave VCO 2 a few hundredths of a semitone off VCO 1 for a slow, thick beating; set it to +7.00 for a fifth, a big "power chord" sound.' : 'Set VCO 2 to +7 against this one for a fifth.' },
@@ -558,6 +559,9 @@ const vcaHelp = (n) => ({
 export const HELP_NFMOD = {
   ...vcoHelp(1), ...vcoHelp(2), ...envHelp(1), ...envHelp(2), ...vcaHelp(1), ...vcaHelp(2),
 
+  // ---- patching on this synth
+  fadedcables: { title: 'Patch cables', body: ['See-through cables makes every cable faint so the knobs underneath are easy to see; cables near the mouse fade by themselves anyway, and the plugs at each end always stay visible.', 'Drag from an output (on a dark plate) to an input to connect them. An output can feed many inputs. On the NF-Modular an input can also take several cables (up to four): their signals are simply added together, like a small built-in mixer. Pick a cable up from an input to move it; the most recent one comes out first.', 'Adding signals is usually what you want: two VCAs into the Output, an envelope plus an LFO into a filter\'s CV, or the Keyboard\'s Pitch plus a steady voltage from the Attenuverter into a VCO (which transposes it). Several hot signals added together can get loud: the Output\'s Overload light and limiter keep it safe.'] },
+
   // ---- keyboard
   'section:kb': { title: 'Keyboard', body: ['The keyboard sends three signals. Pitch: which note (1 volt per octave). Gate: high while a key is held. Trig: a short pulse at the start of every note.'] },
   'kb.glide': { title: 'Glide', body: ['How long the keyboard\'s Pitch takes to slide to a new note (portamento). 0 jumps straight there.'] },
@@ -579,7 +583,7 @@ export const HELP_NFMOD = {
 
   // ---- mixer
   'section:mix': { title: 'Mixer', body: [
-    'Adds up to four signals into one, each with its own level: the two VCOs, noise, or control signals (an envelope plus an LFO, mixed before they go into one CV input).',
+    'Adds up to four signals into one, each with its own level (any input on this synth can also take several cables, but only the Mixer lets you set how much of each): the two VCOs, noise, or control signals (an envelope plus an LFO, mixed before they go into one CV input).',
     'The Levels go to 11. Up to 10 the mix is clean. The Mode adds distortion: Drive squashes the wave, Fold is a wavefolder. The louder the mix, the stronger the effect, and 10 to 11 boosts steeply (up to 8 times) for the extreme end. The level is turned back down automatically, so it does not just get louder.'] },
   'mix.l1': { title: 'Level 1', body: ['How much of In 1 goes into the mix. 10 is full level; 10 to 11 boosts it hard into the Mode.'] },
   'mix.l2': { title: 'Level 2', body: ['How much of In 2 goes into the mix. 10 is full level; 10 to 11 boosts it hard into the Mode.'] },
@@ -641,9 +645,9 @@ export const HELP_NFMOD = {
   'out:att.out2': { title: 'Attenuverter: Out 2', body: ['In 2 scaled by Amount 2, or a steady voltage when In 2 is empty.'] },
 
   // ---- output
-  'section:out': { title: 'Output', body: ['What you hear: patch the end of your chain into In, and set the loudness with Volume. Its Overload light glows when the signal is so hot that the output is limiting it, to protect your ears and speakers.'] },
+  'section:out': { title: 'Output', body: ['What you hear: patch the end of your chain into In, and set the loudness with Volume. Like every input on the NF-Modular, In can take more than one cable: VCA 1 and VCA 2 both patched here are added together. Its Overload light glows when the signal is so hot that the output is limiting it, to protect your ears and speakers.'] },
   'out.vol': { title: 'Volume', body: ['The overall loudness.'] },
-  'jack.out.in': { title: 'Output: In', body: ['What you hear. Patch any output here to listen to it on its own.'], tip: 'Listening to each stage on its own (a VCO, then the Mixer, then the VCF) is the quickest way to find where a patch goes wrong.' },
+  'jack.out.in': { title: 'Output: In', body: ['What you hear. Patch any output here to listen to it on its own, or patch several (both VCAs, say): they are added together.'], tip: 'Listening to each stage on its own (a VCO, then the Mixer, then the VCF) is the quickest way to find where a patch goes wrong.' },
   outoverload: { title: 'Overload', body: ['Glows yellow, then red, when the signal arriving at the Output is too hot and is being limited. Feedback loops (an output patched back into its own chain) often do this.', 'The output can never go past a safe level, and if a loop runs away completely the rack resets itself. Turn a Mixer or VCA level down to calm it.'] },
 
   // ---- LFO

@@ -45,7 +45,9 @@ export const OUTPUTS = {
   'att.out2': { label: 'Out', module: 'Attenuverter 2' },
 };
 const fullName = (out) => (OUTPUTS[out] ? `${OUTPUTS[out].module} ${OUTPUTS[out].label}` : 'nothing');
-const jack = (label, def = '') => ({ type: 'jack', label, def, fmt: (v) => (v ? 'from ' + fullName(v) : 'not patched') });
+// an input can hold several cables (a comma-separated list): their signals are added together
+const jack = (label, def = '') => ({ type: 'jack', label, def,
+  fmt: (v) => (v ? 'from ' + String(v).split(',').filter(Boolean).map(fullName).join(' + ') : 'not patched') });
 const pick = (id, extra = {}) => ({ ...NF1_PARAMS[id], ...extra });
 const level = (label, def) => ({ type: 'cont', label, min: 0, max: 1, def, curve: 'lin', fmt: fmtPct });
 const bipolar = (label, def = 0) => ({ type: 'cont', label, min: -1, max: 1, def, curve: 'lin', unit: '%',
@@ -181,8 +183,9 @@ export const LAYOUT = [
     { id: 'sh', title: 'S&H', rows: [['sh.rate', 'sh.lag']], jacks: ['jack.sh.in', 'jack.sh.clock', 'out:sh.out'] },
   ],
 ];
-// (no title: the keyboard section is plainly the keyboard's; it holds Glide, Mode and the keyboard's jacks)
-export const KEYBED_SECTIONS = [{ id: 'kb', title: '', rows: [['kb.glide', 'kb.mode']], jacks: [['out:kb.pitch', 'out:kb.gate', 'out:kb.trig']] }];
+// (no title: the keyboard section is plainly the keyboard's; it holds Glide and the keyboard's jacks.
+// Mono/Legato (kb.mode) is placed by main.js where the Keyboard Range switch would be.)
+export const KEYBED_SECTIONS = [{ id: 'kb', title: '', rows: [['kb.glide']], jacks: [['out:kb.pitch', 'out:kb.gate', 'out:kb.trig']] }];
 
 // ---- factory patches: what differs from the starting patch --------------------------------
 const UNPATCHED = Object.fromEntries(Object.keys(PARAMS).filter((id) => id.startsWith('jack.')).map((id) => [id, '']));
@@ -280,18 +283,19 @@ export const PRESETS = {
 export const NFMOD = {
   id: 'nfmod',
   name: 'NF-Modular',
-  brandSub: 'MODULAR SYNTHESIZER',
+  brandSub: 'VIRTUAL ANALOG MODULAR SYNTH',
   skin: 'modular',
   module: 'js/worklet/nfmod-processor.js',
   processor: 'nfmod-processor',
   lessons: false,
   modular: true,
   rack: true, // LAYOUT is rows of modules, not columns
+  multiInput: true, // an input can take several cables, added together
   octaves: 3, // the wide rack leaves room for a 3-octave keyboard
   OUTPUTS,
   card: {
     tagline: 'The full rack',
-    text: 'Two VCOs, noise, a mixer, a multimode filter, ring mod, two VCAs, an attenuverter, two envelopes, an LFO, an MFO and sample & hold, all patched with cables. For when the MiniModular feels small.',
+    text: 'A virtual analog modular: two VCOs, noise, a mixer, a multimode filter, ring mod, two VCAs, an attenuverter, two envelopes, an LFO, an MFO and sample & hold, all patched with cables. For when the MiniModular feels small.',
   },
   PARAMS, LAYOUT, KEYBED_SECTIONS, PRESETS,
 };

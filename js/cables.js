@@ -21,6 +21,11 @@ const svg = (tag, attrs, parent) => {
   return e;
 };
 
+// On a synth with multiInput (the NF-Modular), an input can take several cables: its value is a
+// comma-separated list of outputs, and the engine adds their signals together.
+const MAX_PER_INPUT = 4;
+const listOf = (v) => (v ? String(v).split(',').filter(Boolean) : []);
+
 // An input socket: behaves like a control (set / commit) so setPatch updates it.
 class JackIn {
   constructor(id, value, onChange) {
@@ -110,9 +115,9 @@ export class Cables {
     return [(x - s.left) / k, (y - s.top) / k];
   }
 
-  colourFor(inputId) {
+  colourFor(inputId, k = 0) {
     const i = Object.keys(this.ins).indexOf(inputId);
-    return COLOURS[(i < 0 ? 0 : i) % COLOURS.length];
+    return COLOURS[((i < 0 ? 0 : i) + k * 3) % COLOURS.length];
   }
 
   // a hanging cable: sags more the further apart its ends are
@@ -141,12 +146,13 @@ export class Cables {
     L.replaceChildren();
     const p = this.getPatch();
     for (const id in this.ins) {
-      const from = p[id];
-      if (!from || !this.outs[from]) continue;
-      if (this.drag && this.drag.lifted === id) continue; // being carried
-      const a = this.outs[from], b = this.ins[id].socket;
-      if (!a.offsetParent || !b.offsetParent) continue; // e.g. the keyboard folded away under maximised scopes
-      this.drawCable(this.pos(a), this.pos(b), this.colourFor(id), L);
+      listOf(p[id]).forEach((from, k) => {
+        if (!this.outs[from]) return;
+        if (this.drag && this.drag.lifted === id && this.drag.from === from) return; // being carried
+        const a = this.outs[from], b = this.ins[id].socket;
+        if (!a.offsetParent || !b.offsetParent) return; // e.g. the keyboard folded away under maximised scopes
+        this.drawCable(this.pos(a), this.pos(b), this.colourFor(id, k), L);
+      });
     }
     if (this.drag) {
       const d = this.drag;
@@ -177,10 +183,11 @@ export class Cables {
 
   startFromIn(e, id) {
     e.preventDefault(); e.stopPropagation();
-    const from = this.getPatch()[id];
+    const list = listOf(this.getPatch()[id]);
+    const from = list[list.length - 1]; // the most recently plugged-in cable comes out first
     if (from && this.outs[from]) {
       // pick up the cable from this input; it stays attached at its output end
-      this.drag = { want: 'in', from, anchor: this.outs[from], colour: this.colourFor(id), at: this.toStage(e.clientX, e.clientY), lifted: id };
+      this.drag = { want: 'in', from, anchor: this.outs[from], colour: this.colourFor(id, list.length - 1), at: this.toStage(e.clientX, e.clientY), lifted: id };
       document.body.classList.add('patching', 'patching-in');
     } else {
       this.drag = { want: 'out', to: id, anchor: this.ins[id].socket, colour: this.colourFor(id), at: this.toStage(e.clientX, e.clientY) };
@@ -215,12 +222,24 @@ export class Cables {
     document.querySelectorAll('.socket.hover').forEach((s) => s.classList.remove('hover'));
     if (d.want === 'in') {
       const to = sock ? sock.dataset.jack : null;
-      if (d.lifted && d.lifted !== to) this.ins[d.lifted].commit(''); // pulled out of where it was
-      if (to) this.ins[to].commit(d.from);
+      if (d.lifted && d.lifted !== to) this.remove(d.lifted, d.from); // pulled out of where it was
+      if (to && !(d.lifted === to)) this.plug(to, d.from);
     } else if (sock) {
-      this.ins[d.to].commit(sock.dataset.out);
+      this.plug(d.to, sock.dataset.out);
     }
     this.redraw();
+  }
+
+  // Plug an output into an input: added alongside any cables already there (multiInput),
+  // or replacing the one there
+  plug(input, out) {
+    const list = listOf(this.getPatch()[input]).filter((x) => x !== out);
+    const next = SYNTH.multiInput ? [...list, out].slice(-MAX_PER_INPUT) : [out];
+    this.ins[input].commit(next.join(','));
+  }
+
+  remove(input, out) {
+    this.ins[input].commit(listOf(this.getPatch()[input]).filter((x) => x !== out).join(','));
   }
 
   cancel() {

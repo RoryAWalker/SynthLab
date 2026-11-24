@@ -1168,3 +1168,6 @@ body[data-synth="nfmod"] .perf { padding-top: 4px; padding-bottom: 4px; }
 /* modular synths: the keyboard section has no title (Glide and Mode sit side by side) */
 body[data-skin="modular"] .perf .section-title:empty, body[data-skin="modular"] .perf .section-title:has(span:empty) { display: none; }
 body[data-skin="modular"] .perf .section-grid { column-gap: 2px; }
+/* modular synths: the Mono/Legato switch in the keyboard's controls column */
+.perf-mode { width: auto; margin-top: 2px; }
+.perf-mode .toggle-title { font-size: 11px; letter-spacing: 0.12em; }
