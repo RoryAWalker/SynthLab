@@ -50,13 +50,14 @@ export const PARAMS = {
                    fmt: (v) => (v < 0.02 ? 'Osc 3' : v > 0.98 ? 'Noise' : `${Math.round((1 - v) * 100)}% Osc 3`), marks: [[0, 'Osc 3'], [1, 'Noise']] },
 
   // oscillator bank
-  'osc.mod':     sw('Oscillator Modulation', 'off'),
-  'osc3.ctrl':   sw('Osc. 3 Control', 'on', { vertical: true }),
+  // By default Osc 3 is a slow LFO routed to pitch: push the mod wheel and you get vibrato.
+  'osc.mod':     sw('Oscillator Modulation', 'on'),
+  'osc3.ctrl':   sw('Osc. 3 Control', 'off', { vertical: true }),
   'osc1.range':  { type: 'step', label: 'Range', options: RANGES, def: 0, span: 180 },
   'osc2.range':  { type: 'step', label: 'Range', options: RANGES, def: 0, span: 180 },
-  'osc3.range':  { type: 'step', label: 'Range', options: RANGES, def: 0, span: 180 },
+  'osc3.range':  { type: 'step', label: 'Range', options: RANGES, def: -7, span: 180 },
   'osc2.freq':   { type: 'cont', label: 'Frequency', min: -7, max: 7, def: 0, curve: 'lin', fmt: fmtSt, unit: 'semi', marks: FREQ_MARKS },
-  'osc3.freq':   { type: 'cont', label: 'Frequency', min: -7, max: 7, def: 0, curve: 'lin', fmt: fmtSt, unit: 'semi', marks: FREQ_MARKS },
+  'osc3.freq':   { type: 'cont', label: 'Frequency', min: -7, max: 7, def: 7, curve: 'lin', fmt: fmtSt, unit: 'semi', marks: FREQ_MARKS },
   'osc1.wave':   { type: 'step', label: 'Waveform', options: WAVES_12, def: 'saw', span: 180 },
   'osc2.wave':   { type: 'step', label: 'Waveform', options: WAVES_12, def: 'saw', span: 180 },
   'osc3.wave':   { type: 'step', label: 'Waveform', options: WAVES_3, def: 'tri', span: 180 },
@@ -124,13 +125,13 @@ export const KEYBED_SECTIONS = [{ id: 'perf', title: 'Controllers', rows: [['per
 export const PRESETS = {
   'Init': {},
   'Three-Oscillator Bass': {
-    'osc1.range': -2, 'osc2.range': -2, 'osc2.freq': 0.08, 'osc3.range': -1, 'osc3.wave': 'square',
+    'osc1.range': -2, 'osc2.range': -2, 'osc2.freq': 0.08, 'osc3.range': -1, 'osc3.ctrl': 'on', 'osc3.freq': 0, 'osc3.wave': 'square', 'osc.mod': 'off',
     'mix.osc1': 0.9, 'mix.osc2': 0.8, 'mix.osc3': 0.55,
     'filt.cutoff': 230, 'filt.res': 0.25, 'filt.env': 0.55, 'filt.kb1': 'on',
     'fenv.a': 0.002, 'fenv.d': 0.35, 'fenv.s': 0.1, 'aenv.d': 0.6, 'aenv.s': 0.8,
   },
   'Gliding Lead': {
-    'osc2.freq': 0.1, 'osc3.wave': 'saw', 'osc3.freq': -0.08, 'mix.osc1': 0.8, 'mix.osc2': 0.7, 'mix.osc3': 0.6,
+    'osc2.freq': 0.1, 'osc3.range': 0, 'osc3.ctrl': 'on', 'osc3.wave': 'saw', 'osc3.freq': -0.08, 'osc.mod': 'off', 'mix.osc1': 0.8, 'mix.osc2': 0.7, 'mix.osc3': 0.6,
     'filt.cutoff': 1500, 'filt.res': 0.45, 'filt.env': 0.3, 'filt.kb1': 'on', 'filt.kb2': 'on',
     'perf.glideon': 'on', 'ctrl.glide': 0.08, 'perf.decay': 'on', 'aenv.d': 0.5, 'aenv.s': 0.9,
   },
@@ -140,11 +141,11 @@ export const PRESETS = {
   },
   'Osc 3 Filter Wobble': {
     'osc1.range': -1, 'osc2.range': -1, 'osc2.freq': 0.12, 'mix.osc2': 0.7,
-    'osc3.range': -7, 'osc3.ctrl': 'off', 'osc3.freq': 7, 'mix.osc3': 0,
+    'osc3.range': -7, 'osc3.ctrl': 'off', 'osc3.freq': 7, 'mix.osc3': 0, 'osc.mod': 'off',
     'filt.mod': 'on', 'perf.mod': 0.65, 'filt.cutoff': 320, 'filt.res': 0.6,
   },
   'Fifth Stack': {
-    'osc2.freq': 7, 'osc3.range': -1, 'osc3.wave': 'saw', 'mix.osc2': 0.7, 'mix.osc3': 0.5,
+    'osc2.freq': 7, 'osc3.range': -1, 'osc3.ctrl': 'on', 'osc3.freq': 0, 'osc3.wave': 'saw', 'osc.mod': 'off', 'mix.osc2': 0.7, 'mix.osc3': 0.5,
     'filt.cutoff': 900, 'filt.res': 0.3, 'filt.env': 0.35, 'fenv.d': 0.5, 'fenv.s': 0.2,
   },
   'Pluck': {
@@ -153,7 +154,7 @@ export const PRESETS = {
   },
   'Wind': {
     'mix.osc1': 0, 'mix.noise': 0.9, 'mix.noisetype': 'pink',
-    'osc3.range': -7, 'osc3.ctrl': 'off', 'osc3.freq': -7, 'mix.osc3': 0, 'filt.mod': 'on', 'perf.mod': 0.7,
+    'osc3.range': -7, 'osc3.ctrl': 'off', 'osc3.freq': -7, 'mix.osc3': 0, 'osc.mod': 'off', 'filt.mod': 'on', 'perf.mod': 0.7,
     'filt.cutoff': 700, 'filt.res': 0.8, 'aenv.a': 1.2, 'aenv.d': 2.5, 'perf.decay': 'on',
   },
   'Feedback Growl': {
