@@ -91,12 +91,6 @@
       </section>
 
       <!-- The synthesizer -->
-      <!-- Effects: a separate small unit, shared by every synth -->
-      <section class="fx-unit" id="fx-unit">
-        <div class="fx-label">EFFECTS</div>
-        <div class="fx-sections" id="fx-sections"></div>
-      </section>
-
       <section class="synth">
         <div class="cheek left"></div>
         <div class="synth-body">
@@ -135,6 +129,14 @@
         </div>
         <div class="cheek right"></div>
       </section>
+
+      <!-- Effects: a small separate unit shared by every synth, folded away below the keyboard -->
+      <div class="fx-drawer" id="fx-drawer">
+        <button class="fx-tab" id="fx-tab" data-help="fxtab" aria-expanded="false" aria-controls="fx-unit">FX <span class="fx-arrow">▾</span></button>
+        <section class="fx-unit" id="fx-unit" data-no-fit hidden>
+          <div class="fx-sections" id="fx-sections"></div>
+        </section>
+      </div>
     </div>
   </main>
 

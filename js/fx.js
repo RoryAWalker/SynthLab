@@ -10,7 +10,9 @@ export const FX_PARAMS = {
   'fx.dtime':  { type: 'cont', label: 'Time', min: 0.05, max: 1.2, def: 0.35, curve: 'log', fmt: fmtTime, unit: 'sec', small: true,
                  marks: [[0.05, '.05'], [0.1, '.1'], [0.2, '.2'], [0.5, '.5'], [1.2, '1.2']] },
   'fx.delay':  { type: 'cont', label: 'Amount', min: 0, max: 1, def: 0, curve: 'lin', fmt: fmtPct, evens: true, small: true },
-  'fx.rsize':  { type: 'cont', label: 'Size', min: 0, max: 1, def: 0.5, curve: 'lin', fmt: (v) => (0.6 + v * 4.4).toFixed(1) + ' s', evens: true, small: true },
+  // reverb length in seconds; log curve puts 1.5 s at 12 o'clock
+  'fx.rsize':  { type: 'cont', label: 'Size', min: 0.75, max: 3, def: 1.5, curve: 'log', fmt: (v) => v.toFixed(1) + ' s', unit: 'sec', small: true,
+                 marks: [[0.75, '.75'], [1.5, '1.5'], [3, '3']] },
   'fx.reverb': { type: 'cont', label: 'Amount', min: 0, max: 1, def: 0, curve: 'lin', fmt: fmtPct, evens: true, small: true },
 };
 
@@ -21,6 +23,8 @@ export const FX_SECTIONS = [
 ];
 
 const T = 0.03; // smoothing time for control changes (seconds)
+const DELAY_LP = 7000;  // Hz: tone of the echoes
+const REVERB_LP = 7000; // Hz: tone of the reverb tail
 
 export class FXChain {
   constructor(ctx) {
@@ -48,30 +52,33 @@ export class FXChain {
     });
     merger.connect(this.cWet).connect(chorusOut);
 
-    // ---- delay: echoes with feedback, each repeat a little darker
+    // ---- delay: echoes with feedback; a low-pass in the loop makes each repeat a little darker
     const delayOut = g();
-    this.dDry = g(1); this.dWet = g(0); this.dFb = g(0.3);
+    this.dDry = g(1); this.dWet = g(0); this.dFb = g(0.25);
     this.dNode = ctx.createDelay(2);
     this.dNode.delayTime.value = 0.35;
     const tone = ctx.createBiquadFilter();
-    tone.type = 'lowpass'; tone.frequency.value = 3800;
+    tone.type = 'lowpass'; tone.frequency.value = DELAY_LP; tone.Q.value = 0.5;
+    this.dTone = tone;
     chorusOut.connect(this.dDry).connect(delayOut);
     chorusOut.connect(this.dNode);
     this.dNode.connect(tone).connect(this.dFb).connect(this.dNode);
     tone.connect(this.dWet).connect(delayOut);
 
-    // ---- reverb: a convolution with a generated room-like impulse response
+    // ---- reverb: a convolution with a generated room-like impulse response, darkened by a
+    // low-pass on the wet signal so the tail is warm rather than hissy
     this.rDry = g(1); this.rWet = g(0);
     this.conv = ctx.createConvolver();
+    this.rTone = ctx.createBiquadFilter();
+    this.rTone.type = 'lowpass'; this.rTone.frequency.value = REVERB_LP; this.rTone.Q.value = 0.5;
     delayOut.connect(this.rDry).connect(this.output);
-    delayOut.connect(this.conv).connect(this.rWet).connect(this.output);
-    this.makeImpulse(0.5);
+    delayOut.connect(this.conv).connect(this.rTone).connect(this.rWet).connect(this.output);
+    this.makeImpulse(FX_PARAMS['fx.rsize'].def);
   }
 
   // Exponentially decaying stereo noise: a simple, smooth-sounding artificial room.
-  makeImpulse(size) {
+  makeImpulse(seconds) {
     const ctx = this.ctx;
-    const seconds = 0.6 + size * 4.4;
     const len = Math.floor(seconds * ctx.sampleRate);
     const buf = ctx.createBuffer(2, len, ctx.sampleRate);
     const pre = Math.floor(0.012 * ctx.sampleRate); // a short gap before the reflections start
@@ -96,7 +103,7 @@ export class FXChain {
       case 'fx.dtime': to(this.dNode.delayTime, v); break;
       case 'fx.delay':
         to(this.dWet.gain, v * 0.65);
-        to(this.dFb.gain, 0.2 + v * 0.5); // more Amount: louder echoes that last longer
+        to(this.dFb.gain, 0.15 + v * 0.35); // more Amount: louder echoes that last a little longer
         break;
       case 'fx.rsize':
         clearTimeout(this.sizeTimer); // rebuilding the room is costly: wait until the knob settles

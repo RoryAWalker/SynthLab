@@ -370,12 +370,13 @@ export const HELP = {
     title: 'Reverb',
     body: ['Places the sound in a space by adding thousands of tiny reflections that fade away, like the echo of a room or a hall.'],
   },
-  'fx.rsize': { title: 'Reverb size', body: ['How big the space is: small settings sound like a room, large ones like a hall or cathedral, with a longer tail.'] },
+  'fx.rsize': { title: 'Reverb size', body: ['How big the space is, as the length of its tail: from about ¾ second (a room) to 3 seconds (a hall).'] },
   'fx.reverb': { title: 'Reverb amount', body: ['How much of the reverberant space you hear. At 0 the reverb is off.'] },
   maximise: {
     title: 'Maximise',
     body: ['Makes the oscilloscope and spectrum much bigger, for looking closely at the sound. The keyboard folds away so the synth\'s controls stay in view; the KEYBOARD button brings it back, and your computer keyboard always plays. Press RESTORE to return to normal.'],
   },
+  fxtab: { title: 'Effects', body: ['Opens or closes the effects: Chorus, Delay and Reverb. They come after the synth, so the scopes still show the synth\'s own sound.'] },
   keysbtn: { title: 'Keyboard', body: ['Shows or hides the on-screen keyboard while the scopes are maximised.'] },
   zoom: {
     title: 'Zoom',

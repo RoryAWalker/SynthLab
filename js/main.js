@@ -328,6 +328,26 @@ keysBtn.addEventListener('click', () => {
 });
 setScopes(!PREVIEW && loadPref(scopesPref, '0') === '1', false);
 
+// ---- effects drawer: a thin FX line below the keyboard that folds open ----
+const fxDrawer = document.getElementById('fx-drawer');
+const fxTab = document.getElementById('fx-tab');
+const fxUnit = document.getElementById('fx-unit');
+function setFxOpen(open, scroll = true) {
+  if (!fxDrawer) return;
+  fxDrawer.classList.toggle('open', open);
+  fxUnit.hidden = !open;
+  fxTab.setAttribute('aria-expanded', open);
+  savePref('sl.fx', open ? '1' : '0');
+  fit();
+  // the open drawer extends the page rather than shrinking the synth: bring it into view
+  if (open && scroll) requestAnimationFrame(() => {
+    const over = fxUnit.getBoundingClientRect().bottom + 16 - window.innerHeight;
+    if (over > 0) window.scrollBy({ top: over, behavior: 'smooth' });
+  });
+}
+if (fxTab) fxTab.addEventListener('click', () => setFxOpen(!fxDrawer.classList.contains('open')));
+setFxOpen(!PREVIEW && loadPref('sl.fx', '0') === '1', false);
+
 // ---- lessons ----
 lesson = new LessonController({
   getPatch: () => ({ ...patch }), setPatch, engine, scope, keyboard, lockSection, ensureAudio,
