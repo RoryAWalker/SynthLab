@@ -12,6 +12,7 @@
 
 import { faderDb, sendDb, preampDb, fmtDb, biquad, biquadDb, EQ_LOW, EQ_HIGH, EQ_MID_Q } from './consoleMath.js';
 import { SONG_STEMS } from './sources.js';
+import { fmtDbu } from './meters.js';
 
 const PHOS = '#8dffb0';
 const GRID = 'rgba(120, 255, 170, 0.12)';
@@ -38,8 +39,9 @@ function setupCanvas(canvas, pixelScale = 1) {
   return { ctx, w, h };
 }
 // a level's colour: quiet green, hot amber, clipping red; nothing at all is dim
-const levelColour = (db) => (db < -70 ? DIM : db >= -0.5 ? RED : db > -6 ? AMBER : PHOS);
-const fmtLevel = (db) => (db < -70 ? '—' : Math.round(db) + ' dB');
+const levelColour = (db) => (db < -90 ? DIM : db >= -0.5 ? RED : db > -6 ? AMBER : PHOS); // (dBFS: amber above +16 dBu)
+// levels are shown in console units, dBu (0 VU = +4 dBu = -18 dBFS), like the desk's meters
+const fmtLevel = (db) => (db < -90 ? '—' : fmtDbu(db));
 
 // which block of the diagram each channel control belongs to
 const BLOCK_OF = { in: 'in', p48: 'in', gain: 'pre', pol: 'pre', hpf: 'hpf', hf: 'eq', mg: 'eq', mf: 'eq', lf: 'eq', eq: 'eq',

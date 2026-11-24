@@ -826,14 +826,14 @@ function nf4Channel(n) {
 export const HELP_NF4 = {
   ...nf4Channel(1), ...nf4Channel(2), ...nf4Channel(3), ...nf4Channel(4),
   scope: { title: 'Signal flow', body: [
-    'The path through the desk for the selected channel (the one you touched last), block by block in the same order as the strip, with the live level at each stage. Green is a healthy level, amber is hot, red is clipping.',
+    'The path through the desk for the selected channel (the one you touched last), block by block in the same order as the strip, with the live peak level at each stage in dBu (the desk\'s units: +4 dBu is 0 VU, +22 dBu is digital clipping). Green is a healthy level, amber is hot, red is clipping.',
     'The two aux sends branch off underneath: Aux 1 before the mute and fader, Aux 2 after them. Aux 2 feeds the reverb, whose return goes back into the main bus. Along the bottom is the master section: bus compressor, main fader, and what the monitor is playing.',
     'Anything muted, switched off or not routed goes dark, so you can see where a signal stops.'] },
   spectrum: { title: 'EQ and bus compressor', body: [
     'The selected channel\'s high-pass filter and EQ as a curve: across is frequency (20 Hz to 20 kHz), up and down is boost or cut. The dots mark the bands: HPF, Low, Mid and High.',
     'Underneath, the bus compressor\'s gain reduction over the last few seconds.'] },
   scribble: { title: 'Scribble strip', body: ['What is plugged into the channel, written on tape the way engineers label a desk. Drums: a pair of condenser overhead microphones. Bass: a DI box. Keys: a keyboard at line level. Lead: a condenser vocal microphone.'] },
-  chmeter: { title: 'Channel meter', body: ['The channel\'s level before the fader (after the gain and EQ). Each light is 3 dB; the top three are amber; the red lamp above lights if the preamp clips. Aim for peaks around −12 to −6 dB.'] },
+  chmeter: { title: 'Channel meter', body: ['The channel\'s level before the fader (after the gain and EQ), in dBu. Green lights are below the working level, the white light is 0 VU (+4 dBu), amber is above it and the two red lights are close to clipping. The red lamp at the top lights if the preamp clips. A single light above the rest is the peak hold: the highest peak of the last moment, whichever way the meter reads.', 'It reads VU or PPM, as set by the switch above the main meters. Set gain by the peaks: on PPM, peaks reaching the first amber light (+6 to +8 dBu, PPM 5½ to 6). A VU reads much lower on short, peaky sounds like drums: that is the point of having both.'] },
   'section:tape': { title: 'Song', body: ['The multitrack being mixed: four tracks of one song, one per channel, playing in time. Play starts and stops it (the space bar does too).'] },
   'tape.play': { title: 'Play / Stop', body: ['Starts and stops the song, looping. The space bar does the same.'] },
   'section:aux': { title: 'Aux masters', body: ['The overall level of each aux bus, and the reverb that Aux 2 feeds. The meters show Aux 1, Aux 2 and the reverb\'s return.'] },
@@ -841,7 +841,7 @@ export const HELP_NF4 = {
   'aux2.master': { title: 'Aux 2 master', body: ['The overall level of the Aux 2 bus going to the reverb.'] },
   'rev.time': { title: 'Reverb time', body: ['How long the reverb takes to die away (by 60 dB): short for a small room, long for a hall.'] },
   'rev.ret': { title: 'Reverb return', body: ['How loud the reverb comes back into the main mix. Aux 2 sends set how much of each channel goes in; the return sets how much reverb you hear overall.'] },
-  auxmeter: { title: 'Aux meters', body: ['The level of the Aux 1 bus, the Aux 2 bus (going into the reverb), and the reverb coming back.'] },
+  auxmeter: { title: 'Aux meters', body: ['The level of the Aux 1 bus, the Aux 2 bus (going into the reverb), and the reverb coming back, in dBu (the white light is 0 VU), reading VU or PPM like the rest of the desk.'] },
   'section:bc': { title: 'Bus compressor', body: ['A compressor across the whole main mix, after the channels are added together. Used gently (a low ratio, 1 to 3 dB of gain reduction) it "glues" the mix: the parts sit together and move as one. It works exactly like the NF-C1, with a soft knee fixed at 6 dB.'], tip: 'Load "Glued with the bus comp" and switch it in and out, matching the loudness with Makeup first.' },
   'bc.on': { title: 'Bus compressor in', body: ['Switches the bus compressor in and out. The GR meter keeps showing what it would do even when it is out.'] },
   'bc.thresh': { title: 'Threshold', body: ['The level of the main mix where the compression starts.'] },
@@ -854,5 +854,18 @@ export const HELP_NF4 = {
   'main.fader': { title: 'Main fader', body: ['The level of the whole stereo mix, after the bus compressor. Keep it near 0 dB and balance the mix on the channel faders.'] },
   'mon.src': { title: 'Monitor', body: ['What you hear: the Main mix, the Aux 1 bus (a performer\'s headphone mix) or the Aux 2 bus (what is being sent to the reverb). While any channel is soloed, you hear the solo instead.'] },
   'mon.vol': { title: 'Listen', body: ['Your listening level. It does not change the mix or any meter.'] },
-  mainmeter: { title: 'Main meters', body: ['The left and right levels of the main mix, after the main fader. The red lamps light if the mix reaches 0 dB, the most a digital recording can hold.'] },
+  'section:mtr': { title: 'Main meters', body: [
+    'A pair of moving-needle meters for the main mix (left and right), and the switch that sets how every meter on the desk reads: VU or PPM.',
+    'While any channel is soloed, these meters (and the main LED meters) read the solo instead of the mix, and the PFL light flashes. That is how engineers set gain: solo the channel, switch to PPM, and turn its gain until the peaks reach about 6.'] },
+  'meter.mode': { title: 'Meters: VU or PPM', body: [
+    'VU (volume unit) meters show the AVERAGE level. They take about 300 ms to rise, so they ignore short peaks and show how loud the music feels. 0 VU is the desk\'s working level (+4 dBu). Normal music reads around 0 VU, with the needle swinging a few dB either side.',
+    'A PPM (peak programme meter) shows the PEAKS. It rises almost instantly and falls back slowly, so you can read even the shortest hit. This is the British broadcast style: marks 1 to 7, 4 dB apart; 4 is 0 dBu and 6 (+8 dBu) is the usual highest peak.',
+    'The same music reads very differently on the two. Drums, all short hits, look much louder on a PPM than on a VU; a sustained pad reads about the same on both. That gap is the music\'s peak-to-average ratio (its crest factor), which is what compressors and limiters reduce.'],
+    tip: 'Solo the Drums (PFL) and switch between VU and PPM. The PPM\'s needle kicks up to about 6 on every hit; the VU\'s hardly leaves the left-hand end, around −15 VU, because the drums are short hits with little in between. Solo the Keys or the Lead: the VU sits noticeably higher, because the notes ring on.' },
+  needlemeter: { title: 'Needle meter', body: ['A moving-coil meter for the main mix: left or right. Its face changes with the VU/PPM switch. The red part of the scale is above the working level (VU) or above the usual peak limit (PPM).'] },
+  pfllamp: { title: 'PFL light', body: ['Flashes while any channel is soloed: you are hearing, and the main meters are showing, the solo (pre-fade listen) instead of the main mix. A flashing light is hard to miss, so nobody mixes by accident while listening to a solo.'] },
+  alignment: { title: 'Alignment: 0 VU = +4 dBu = −18 dBFS', body: [
+    'Analogue desks work at a nominal level of +4 dBu, shown as 0 on a VU meter. They can go about 20 dB above that before distorting: that space is headroom, there for the peaks.',
+    'A digital recorder clips at 0 dBFS, so the two are lined up with 0 VU at −18 dBFS: a +4 dBu signal records at −18 dBFS, leaving 18 dB above it for peaks, and 0 dBFS is +22 dBu. All levels on this desk and its screens are in dBu.'] },
+  mainmeter: { title: 'Main LED meters', body: ['The left and right levels of the main mix, after the main fader, in dBu, reading VU or PPM like the rest of the desk (the white light is 0 VU). The red lamps at the top light if the mix reaches 0 dBFS (+22 dBu), the most a digital recording can hold. While anything is soloed they read the solo instead (PFL).'] },
 };

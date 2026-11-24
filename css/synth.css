@@ -1419,7 +1419,6 @@ body.show-values .fader-value, .fader-cell.active .fader-value { visibility: vis
 .meter-group:not(.beside-fader) .meter-ladder { height: 110px; flex: none; }
 .meter-group .meter-label { font-size: 8.5px; }
 .meter-group .meter-clip { width: 9px; height: 5px; }
-.meter-group .meter-ladder i:nth-child(-n+3).on { background: #ffc23a; box-shadow: 0 0 4px rgba(255,194,58,0.6); }
 .meter-group .meter-gr .meter-ladder i.on { background: #ff5a4a; }
 .scribble {
   margin: 8px 2px 0; padding: 4px 6px; border-radius: 3px; text-align: center;
@@ -1458,3 +1457,34 @@ body[data-synth="nf4"] .scope-unit .scope-screen-wrap:last-child .bezel { height
 body[data-synth="nf4"] .scope-controls { flex-direction: row; justify-content: center; width: auto; gap: 10px; padding: 0; }
 body[data-synth="nf4"] .scope-controls .hold-btn { width: 110px; height: 26px; }
 body[data-synth="nf4"] .max-btn, body[data-synth="nf4"] .scope-brand { display: none; }
+
+/* ---- NF-4 meters: lights coloured by level (in dBu): green below the working level, a white
+   light at 0 VU (+4 dBu), amber above it, red near clipping ---- */
+.meter-ladder i.green { background: #17301f; }
+.meter-ladder i.ref { background: #2c2e2c; }
+.meter-ladder i.amber { background: #34290f; }
+.meter-ladder i.red { background: #3a1512; }
+.meter-ladder i.green.on { background: #49e07a; box-shadow: 0 0 4px rgba(73,224,122,0.6); }
+.meter-ladder i.ref.on { background: #f4f1e6; box-shadow: 0 0 5px rgba(255,250,230,0.8); }
+.meter-ladder i.amber.on { background: #ffc23a; box-shadow: 0 0 4px rgba(255,194,58,0.6); }
+.meter-ladder i.red.on { background: #ff3b2f; box-shadow: 0 0 5px rgba(255,59,47,0.8); }
+/* the needle meters */
+.needle-pair { display: flex; flex-direction: column; gap: 10px; align-items: center; margin-top: 8px; }
+.needle-meter { position: relative; width: 156px; padding: 5px; border-radius: 6px; background: linear-gradient(#17181a, #0b0c0d); box-shadow: inset 0 1px 3px rgba(0,0,0,0.9), 0 1px 0 rgba(255,255,255,0.08); }
+.needle-meter canvas { display: block; width: 146px; height: 92px; border-radius: 3px; }
+.needle-label { position: absolute; left: 10px; bottom: 9px; font: 800 11px var(--font); color: rgba(0,0,0,0.55); }
+body[data-synth="nf4"] .needle-meter canvas + .needle-label { color: rgba(120,120,120,0.9); }
+.needle-foot { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 10px; }
+.pfl-lamp { display: flex; align-items: center; gap: 6px; font: 800 11px var(--font); letter-spacing: 0.15em; color: var(--ink-dim); }
+.pfl-dot { width: 10px; height: 10px; border-radius: 50%; background: #3a2a10; box-shadow: inset 0 1px 2px rgba(0,0,0,0.8); }
+.pfl-lamp.on { color: #ffc23a; }
+.pfl-lamp.on .pfl-dot { background: #ffb000; box-shadow: 0 0 10px #ffb000; animation: pfl-blink 0.8s steps(2) infinite; }
+@keyframes pfl-blink { 50% { opacity: 0.35; } }
+.align-note { font-size: 9.5px; color: var(--ink-dim); letter-spacing: 0.04em; white-space: nowrap; }
+body[data-synth="nf4"] .section[data-section="mtr"] .section-head { display: flex; justify-content: center; }
+body[data-synth="nf4"] .section[data-section="mtr"] .toggle-cell { width: 120px; }
+/* the peak-hold light: the highest light reached, held for a moment */
+.meter-ladder i.hold.green { background: #49e07a; opacity: 0.75; }
+.meter-ladder i.hold.ref { background: #f4f1e6; opacity: 0.75; }
+.meter-ladder i.hold.amber { background: #ffc23a; opacity: 0.8; }
+.meter-ladder i.hold.red { background: #ff3b2f; opacity: 0.9; }

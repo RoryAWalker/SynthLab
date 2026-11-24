@@ -102,8 +102,10 @@ class ConsoleProcessor extends AudioWorkletProcessor {
   resetMeters() {
     // per channel: in (as it arrives), pre (after the preamp), eq (after HPF/EQ: the pre-fader
     // signal), post (after mute and fader), l / r (after pan); and a clip flag
-    this.m = { ch: [0, 1, 2, 3].map(() => ({ in: 0, pre: 0, eq: 0, post: 0, l: 0, r: 0, clip: 0 })),
-      aux1: 0, aux2: 0, ret: 0, bus: 0, mainL: 0, mainR: 0, mon: 0, gr: 0 };
+    this.m = { ch: [0, 1, 2, 3].map(() => ({ in: 0, pre: 0, eq: 0, post: 0, l: 0, r: 0, clip: 0, sq: 0 })),
+      aux1: 0, aux2: 0, ret: 0, bus: 0, mainL: 0, mainR: 0, mon: 0, gr: 0, solo: 0,
+      // sums of squares, for the VU meters' average level
+      sq: { aux1: 0, aux2: 0, ret: 0, mainL: 0, mainR: 0, solo: 0 }, n: 0 };
   }
 
   noise() { // fast white noise, -1..1
@@ -175,6 +177,7 @@ class ConsoleProcessor extends AudioWorkletProcessor {
         if (c.hpOn) y = c.hp.run(y);
         if (s.eq) y = c.hi.run(c.mid.run(c.lo.run(y)));
         if (Math.abs(y) > mc.eq) mc.eq = Math.abs(y);
+        mc.sq += y * y;
         if (s.solo) solo += y;
         const on = s.mute ? 0 : 1;
         aux1 += y * s.a1 * on; // pre-fader: the fader does not change it
@@ -193,6 +196,12 @@ class ConsoleProcessor extends AudioWorkletProcessor {
       this.rev.run(a2, this.revOut);
       const rl = this.revOut[0] * ret, rr = this.revOut[1] * ret;
       mainL += rl; mainR += rr;
+      m.n++;
+      const sq = m.sq;
+      sq.aux1 += a1 * a1; sq.aux2 += a2 * a2; sq.ret += Math.max(rl * rl, rr * rr);
+      const sl = solo; // the PFL bus, as heard and metered: the channel at its own level
+      sq.solo += sl * sl;
+      if (Math.abs(sl) > m.solo) m.solo = Math.abs(sl);
       if (Math.abs(a1) > m.aux1) m.aux1 = Math.abs(a1);
       if (Math.abs(a2) > m.aux2) m.aux2 = Math.abs(a2);
       if (Math.max(Math.abs(rl), Math.abs(rr)) > m.ret) m.ret = Math.max(Math.abs(rl), Math.abs(rr));
@@ -214,10 +223,11 @@ class ConsoleProcessor extends AudioWorkletProcessor {
       const oL = mainL * g * mainF, oR = mainR * g * mainF;
       if (Math.abs(oL) > m.mainL) m.mainL = Math.abs(oL);
       if (Math.abs(oR) > m.mainR) m.mainR = Math.abs(oR);
+      sq.mainL += oL * oL; sq.mainR += oR * oR;
 
       // the monitor: solo overrides everything while any channel is soloed
       let ml, mr;
-      if (anySolo) ml = mr = solo * 0.707;
+      if (anySolo) ml = mr = solo;
       else if (mon === 'aux1') ml = mr = a1;
       else if (mon === 'aux2') ml = mr = a2;
       else { ml = oL; mr = oR; }
@@ -229,9 +239,12 @@ class ConsoleProcessor extends AudioWorkletProcessor {
     if (++this.blocks >= 8) {
       this.blocks = 0;
       const d = (v) => linToDb(v);
+      const rms = (s) => linToDb(Math.sqrt(s / Math.max(1, m.n))); // average (RMS) level, dBFS
       this.port.postMessage({ type: 'state', console: true, playing, anySolo, gr: this.gr, pos: song ? this.pos / song[0].length : 0,
-        ch: m.ch.map((c) => ({ in: d(c.in), pre: d(c.pre), eq: d(c.eq), post: d(c.post), l: d(c.l), r: d(c.r), clip: c.clip })),
-        aux1: d(m.aux1), aux2: d(m.aux2), ret: d(m.ret), bus: d(m.bus), mainL: d(m.mainL), mainR: d(m.mainR), mon: d(m.mon), grMax: m.gr });
+        ch: m.ch.map((c) => ({ in: d(c.in), pre: d(c.pre), eq: d(c.eq), post: d(c.post), l: d(c.l), r: d(c.r), clip: c.clip, rms: rms(c.sq) })),
+        aux1: d(m.aux1), aux2: d(m.aux2), ret: d(m.ret), bus: d(m.bus), mainL: d(m.mainL), mainR: d(m.mainR), mon: d(m.mon), grMax: m.gr,
+        solo: d(m.solo),
+        rms: { aux1: rms(m.sq.aux1), aux2: rms(m.sq.aux2), ret: rms(m.sq.ret), mainL: rms(m.sq.mainL), mainR: rms(m.sq.mainR), solo: rms(m.sq.solo) } });
       this.resetMeters();
     }
     return true;

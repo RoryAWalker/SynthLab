@@ -16,6 +16,7 @@ import { Cables } from './cables.js';
 import { CompScope } from './compScope.js';
 import { ConsoleScope } from './consoleScope.js';
 import { Fader } from './fader.js';
+import { ConsoleMeters } from './meters.js';
 import { loadSource, loadUserFile, userFileName, loadSong } from './sources.js';
 
 const engine = new Engine({ module: SYNTH.module, processor: SYNTH.processor });
@@ -30,7 +31,6 @@ document.body.classList.toggle('processor', PROC);
 let patch = defaultPatch();
 const sentSources = new Set(); // processors: sounds already handed to the engine
 const meters = []; // processors: the level meters
-const consoleMeters = []; // the console's meters (makeMeter)
 const knobs = {};
 const sections = {};
 let help = null; // HelpPanel, created at boot
@@ -38,6 +38,8 @@ let lesson = null; // LessonController, created at boot
 // Modular synths: jack sockets and patch cables (cables.js)
 const cables = SYNTH.modular ? new Cables(document.getElementById('stage'), { getPatch: () => patch, onChange: (id, v) => onKnob(id, v), controls: knobs }) : null;
 const overlay = new Overlay(() => patch, engine); // teaching graphs on the spectrum display
+// the console's meters (VU or PPM), see meters.js
+const consoleMeters = SYNTH.kind === 'console' ? new ConsoleMeters(engine, () => patch) : null;
 
 // ---- panel ---------------------------------------------------------------------------
 function buildSection(sec) {
@@ -95,6 +97,20 @@ function buildSection(sec) {
   }
   if (sec.meters === true) { grid.replaceWith(buildMeters()); return el; } // the NF-C1's level meters
   // the console: a fader with its meters beside it, meters on their own, a scribble strip
+  // the console's needle meters, with the PFL light
+  if (sec.needles) {
+    grid.remove();
+    const box = document.createElement('div');
+    box.className = 'needle-pair';
+    sec.needles.forEach(([key, text]) => box.appendChild(consoleMeters.needle(key, text)));
+    el.appendChild(box);
+    const foot = document.createElement('div');
+    foot.className = 'needle-foot';
+    foot.appendChild(consoleMeters.pflLamp());
+    foot.insertAdjacentHTML('beforeend', '<span class="align-note" data-help="alignment">0 VU = +4 dBu = −18 dBFS</span>');
+    el.appendChild(foot);
+    return el;
+  }
   if (sec.fader || Array.isArray(sec.meters) || sec.scribble) {
     if (sec.rows.length) fillGrid(grid, sec.rows, sec); else grid.remove();
     if (sec.strip) el.classList.add('strip');
@@ -108,7 +124,7 @@ function buildSection(sec) {
     if (Array.isArray(sec.meters)) {
       const mb = document.createElement('div');
       mb.className = 'meter-group' + (sec.fader ? ' beside-fader' : '');
-      sec.meters.forEach(([key, text, help]) => mb.appendChild(makeMeter(key, text, help)));
+      sec.meters.forEach(([key, text, help]) => mb.appendChild(consoleMeters.ladder(key, text, help)));
       if (sec.fader) foot.appendChild(mb); else foot.appendChild(mb);
     }
     if (sec.fader) foot.prepend(makeControl(sec.fader, sec));
@@ -739,43 +755,6 @@ function buildMeters() {
   scale.innerHTML = '<span>0</span><span>−12</span><span>−24</span><span>−36</span><span>−48</span>';
   box.insertBefore(scale, box.children[1]);
   return box;
-}
-// The console's meters: segmented ladders fed from the engine's level reports, falling slowly.
-// Each is named by a key: ch1..ch4 (a channel before its fader), aux1, aux2, ret, gr, mainL, mainR.
-function makeMeter(key, text, help) {
-  const m = document.createElement('div');
-  m.className = `meter meter-${help}` + (key === 'gr' ? ' meter-gr' : '');
-  m.dataset.help = help;
-  const segs = key === 'gr' ? 12 : 16;
-  m.innerHTML = `<div class="meter-clip"></div><div class="meter-ladder">${'<i></i>'.repeat(segs)}</div>${text ? `<div class="meter-label">${text}</div>` : ''}`;
-  consoleMeters.push({ key, segs: [...m.querySelectorAll('i')].reverse(), clip: m.querySelector('.meter-clip'), shown: key === 'gr' ? 0 : -120, clipAt: 0 });
-  return m;
-}
-if (SYNTH.kind === 'console') {
-  let last = performance.now();
-  (function consoleMeterLoop() {
-    requestAnimationFrame(consoleMeterLoop);
-    const now = performance.now(), dt = (now - last) / 1000;
-    last = now;
-    const l = engine.running && engine.live && engine.live.console ? engine.live : null;
-    consoleMeters.forEach((m) => {
-      if (m.key === 'gr') {
-        const g = l ? l.grMax : 0;
-        m.shown = Math.max(g, m.shown - 30 * dt);
-        m.segs.forEach((s, i) => s.classList.toggle('on', m.shown > 0.3 && (m.segs.length - 1 - i) < m.shown / 12 * m.segs.length));
-        if (m.clip) m.clip.classList.toggle('on', false);
-        return;
-      }
-      const ch = /^ch(\d)$/.exec(m.key);
-      const v = !l ? -120 : ch ? l.ch[ch[1] - 1].eq : l[m.key];
-      m.shown = Math.max(v, m.shown - 24 * dt);
-      // 16 lights, 3 dB apart, the top one at 0 dB; the top three amber
-      m.segs.forEach((s, i) => s.classList.toggle('on', m.shown >= -45 + i * 3));
-      const clipped = l && (ch ? l.ch[ch[1] - 1].clip : v >= -0.1);
-      if (clipped) m.clipAt = now;
-      if (m.clip) m.clip.classList.toggle('on', now - m.clipAt < 1200);
-    });
-  })();
 }
 if (PROC && SYNTH.kind !== 'console') {
   let last = performance.now();

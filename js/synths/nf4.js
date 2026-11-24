@@ -67,6 +67,8 @@ export const PARAMS = {
   'bc.attack': { type: 'cont', label: 'Attack', min: 0.1, max: 30, def: 10, curve: 'log', unit: 'ms', small: true, fmt: (v) => (v < 10 ? v.toFixed(1) : Math.round(v)) + ' ms', marks: [[0.1, '.1'], [1, '1'], [10, '10'], [30, '30']] },
   'bc.release': { type: 'cont', label: 'Release', min: 50, max: 1200, def: 300, curve: 'log', unit: 'ms', small: true, fmt: (v) => Math.round(v) + ' ms', marks: [[50, '50'], [300, '300'], [1200, '1.2k']] },
   'bc.makeup': { type: 'cont', label: 'Makeup', min: 0, max: 15, def: 0, curve: 'lin', unit: 'dB', small: true, fmt: fmtDb, marks: [[0, '0'], [6, '6'], [15, '15']] },
+  // meters: how every meter on the desk reads
+  'meter.mode': { type: 'step', ui: 'toggle', label: 'Meters', def: 'vu', options: [{ v: 'vu', label: 'VU' }, { v: 'ppm', label: 'PPM' }] },
   // main and monitor
   'main.fader': fader('Main'),
   'mon.src': { type: 'step', label: 'Monitor', def: 'main', small: true, options: [{ v: 'main', label: 'Main' }, { v: 'aux1', label: 'Aux 1' }, { v: 'aux2', label: 'Aux 2' }] },
@@ -95,7 +97,8 @@ export const LAYOUT = [
       meters: [['aux1', 'Aux 1', 'auxmeter'], ['aux2', 'Aux 2', 'auxmeter'], ['ret', 'Rev', 'auxmeter']] },
   ],
   [{ id: 'bc', title: 'Bus Comp', head: ['bc.on'], rows: [['bc.thresh', 'bc.ratio'], ['bc.attack', 'bc.release'], ['bc.makeup', null]],
-    meters: [['gr', 'GR', 'grmeter']] }],
+    meters: [['gr', 'GR', 'grmeter']] },
+   { id: 'mtr', title: 'Main Meters', head: ['meter.mode'], rows: [], needles: [['mainL', 'L'], ['mainR', 'R']] }],
   [{ id: 'main', title: 'Main', rows: [['mon.src', 'mon.vol']], fader: 'main.fader', meters: [['mainL', 'L', 'mainmeter'], ['mainR', 'R', 'mainmeter']] }],
 ];
 
