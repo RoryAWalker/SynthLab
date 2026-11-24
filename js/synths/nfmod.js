@@ -35,15 +35,14 @@ export const OUTPUTS = {
   'env1.inv': { label: 'Inv', module: 'ENV 1' },
   'env2.out': { label: 'Out', module: 'ENV 2' },
   'env2.inv': { label: 'Inv', module: 'ENV 2' },
-  'lfo.out': { label: 'Out', module: 'LFO 1' },
-  'lfo2.out': { label: 'Out', module: 'LFO 2' },
+  'lfo.out': { label: 'Out', module: 'LFO' },
+  'lfo2.out': { label: 'Out', module: 'MFO' },
   'sh.out': { label: 'Out', module: 'S&H' },
   'vca1.out': { label: 'Out', module: 'VCA 1' },
   'vca2.out': { label: 'Out', module: 'VCA 2' },
   'ring.out': { label: 'Out', module: 'Ring Mod' },
   'att.out1': { label: 'Out', module: 'Attenuverter 1' },
   'att.out2': { label: 'Out', module: 'Attenuverter 2' },
-  'att.inv': { label: 'Out', module: 'Inverter' },
 };
 const fullName = (out) => (OUTPUTS[out] ? `${OUTPUTS[out].module} ${OUTPUTS[out].label}` : 'nothing');
 const jack = (label, def = '') => ({ type: 'jack', label, def, fmt: (v) => (v ? 'from ' + fullName(v) : 'not patched') });
@@ -58,9 +57,10 @@ const tune = { type: 'cont', label: 'Tune', min: -7, max: 7, def: 0, curve: 'lin
 const pw = { type: 'cont', label: 'PW', min: 0.05, max: 0.95, def: 0.5, curve: 'lin', unit: '%',
   fmt: (v) => Math.round(v * 100) + '%', marks: [[0.05, '5'], [0.25, '25'], [0.5, '50'], [0.75, '75'], [0.95, '95']] };
 const fmAmt = { type: 'cont', label: 'FM Amt', min: 0, max: 1, def: 0, curve: 'pow', k: 2, fmt: fmtPct };
-// mixer levels go to 11: 10 is full level, past that the mix is pushed into its Mode (Drive or Fold)
-const mixLevel = (label, def) => ({ type: 'cont', label, min: 0, max: 1.5, def, curve: 'lin', fmt: (v) => (v * 10).toFixed(1),
-  marks: [[0, '0'], [0.2, '2'], [0.4, '4'], [0.6, '6'], [0.8, '8'], [1, '10'], [1.5, '11']] });
+// Mixer levels go to 11. 0-10 is normal (10 = full level); 10-11 boosts steeply (up to 8x) into
+// the Mode, Drive or Fold. The engine turns the result back down so it stays a sensible level.
+const mixLevel = (label, def) => ({ type: 'cont', label, min: 0, max: 11, def, curve: 'lin', fmt: (v) => v.toFixed(1),
+  marks: [[0, '0'], [2, '2'], [4, '4'], [6, '6'], [8, '8'], [10, '10'], [11, '11']] });
 // VCF cutoff: stored in Hz (20 Hz - 20 kHz, log), shown as a percentage of the knob's travel
 const cutPct = (v) => Math.log(v / 20) / Math.log(1000);
 const env = (n, a, d, s, r) => ({
@@ -82,7 +82,7 @@ export const PARAMS = {
   'noise.colour': { ...bipolar('Colour'), marks: [[-1, 'dark'], [0, 'white'], [1, 'bright']], unit: '',
     fmt: (v) => (Math.abs(v) < 0.03 ? 'white' : v < 0 ? `darker ${Math.round(-v * 100)}%` : `brighter ${Math.round(v * 100)}%`) },
 
-  'mix.l1': mixLevel('Level 1', 0.7), 'mix.l2': mixLevel('Level 2', 0.6), 'mix.l3': mixLevel('Level 3', 0), 'mix.l4': mixLevel('Level 4', 0),
+  'mix.l1': mixLevel('Level 1', 7), 'mix.l2': mixLevel('Level 2', 6), 'mix.l3': mixLevel('Level 3', 0), 'mix.l4': mixLevel('Level 4', 0),
   'mix.mode': { type: 'step', label: 'Mode', def: 'clean', span: 120,
     options: [{ v: 'clean', label: 'Clean' }, { v: 'drive', label: 'Drive' }, { v: 'fold', label: 'Fold' }] },
 
@@ -98,8 +98,8 @@ export const PARAMS = {
   'ring.mix': { ...level('Mix', 1), fmt: (v) => (v < 0.02 ? 'A only' : v > 0.98 ? 'A × B' : Math.round(v * 100) + '% ring'),
     marks: [[0, 'A'], [1, 'A×B']], unit: '' },
 
-  'vca1.level': level('Level 1', 0), 'vca1.cv': level('CV Amt 1', 1),
-  'vca2.level': level('Level 2', 0), 'vca2.cv': level('CV Amt 2', 1),
+  'vca1.level': level('Level', 0), 'vca1.cv': level('CV Amt', 1),
+  'vca2.level': level('Level', 0), 'vca2.cv': level('CV Amt', 1),
 
   'att.a1': bipolar('Amount 1'),
   'att.a2': bipolar('Amount 2'),
@@ -108,14 +108,14 @@ export const PARAMS = {
   ...env(2, 0.005, 0.5, 0.2, 0.3),
 
   // LFO 1: the classic one, up to 30 Hz, its speed movable by the Rate input
-  'lfo.rate': pick('lfo.rate', { label: 'Rate 1', def: 5 }),
-  'lfo.shape': pick('lfo.shape', { label: 'Shape 1', options: LFO_SHAPES, def: 'tri' }),
+  'lfo.rate': pick('lfo.rate', { def: 5 }),
+  'lfo.shape': pick('lfo.shape', { options: LFO_SHAPES, def: 'tri' }),
   'lfo.rcv': level('Rate CV', 0),
-  // LFO 2: up to 100 Hz (into the audio range), with FM (linear, or through zero) and a choice of
-  // bipolar (-1..1) or unipolar (0..1) output
-  'lfo2.rate': { type: 'cont', label: 'Rate 2', min: 0.05, max: 100, def: 0.3, curve: 'log', unit: 'Hz',
+  // MFO (mid-frequency oscillator; 'lfo2' inside): up to 100 Hz, into the audio range, with FM
+  // (linear, or through zero) and a choice of bipolar (-1..1) or unipolar (0..1) output
+  'lfo2.rate': { type: 'cont', label: 'Rate', min: 0.05, max: 100, def: 0.3, curve: 'log', unit: 'Hz',
     fmt: NF1_PARAMS['lfo.rate'].fmt, marks: [[0.05, '.05'], [0.5, '.5'], [5, '5'], [100, '100']] },
-  'lfo2.shape': pick('lfo.shape', { label: 'Shape 2', options: LFO_SHAPES, def: 'tri' }),
+  'lfo2.shape': pick('lfo.shape', { options: LFO_SHAPES, def: 'tri' }),
   'lfo2.fm': { ...fmAmt, label: 'FM Amt' },
   'lfo2.fmmode': toggle('FM', { v: 'lin', label: 'Lin' }, { v: 'tz', label: 'TZ' }, 'lin'),
   'lfo2.pol': toggle('Output', { v: 'bi', label: 'Bi' }, { v: 'uni', label: 'Uni' }, 'bi'),
@@ -125,7 +125,7 @@ export const PARAMS = {
     fmt: (v) => (v < 0.001 ? 'off' : v < 1 ? Math.round(v * 1000) + ' ms' : v.toFixed(2) + ' s'),
     marks: [[0, '0'], [0.1, '.1'], [0.5, '.5'], [1, '1'], [2, '2']] },
 
-  'out.vol': { ...level('Volume', 0.8) }, // no knob: the output is just a patch point
+  'out.vol': level('Volume', 0.8),
 
   // ---- input jacks, with the starting patch: two detuned saws, mixed, filtered, with an
   // envelope on the VCA and a second envelope opening the filter
@@ -136,7 +136,8 @@ export const PARAMS = {
   'jack.ring.a': jack('In A'), 'jack.ring.b': jack('In B'),
   'jack.vca1.in': jack('In', 'filt.out'), 'jack.vca1.cv': jack('CV', 'env1.out'),
   'jack.vca2.in': jack('In'), 'jack.vca2.cv': jack('CV'),
-  'jack.att.in1': jack('In'), 'jack.att.in2': jack('In'), 'jack.att.inv': jack('In'),
+  'jack.att.in1': jack('In'), 'jack.att.in2': jack('In'),
+  'jack.noise.cv': jack('CV'),
   'jack.out.in': jack('In', 'vca1.out'),
   'jack.env1.gate': jack('Gate', 'kb.gate'), 'jack.env2.gate': jack('Gate', 'kb.gate'),
   'jack.lfo.gate': jack('Gate'), 'jack.lfo.rate': jack('Rate'), 'jack.lfo2.gate': jack('Gate'), 'jack.lfo2.fm': jack('FM'),
@@ -151,7 +152,7 @@ export const LAYOUT = [
       jacks: ['jack.vco1.pitch', 'jack.vco1.fm', 'jack.vco1.pwm', 'jack.vco1.sync', 'out:vco1.saw', 'out:vco1.sq', 'out:vco1.tri'] },
     { id: 'vco2', title: 'VCO 2', rows: [['osc2.range', 'osc2.tune', 'osc2.pw', 'osc2.fm', 'osc2.pwm']],
       jacks: ['jack.vco2.pitch', 'jack.vco2.fm', 'jack.vco2.pwm', 'jack.vco2.sync', 'out:vco2.saw', 'out:vco2.sq', 'out:vco2.tri'] },
-    { id: 'noise', title: 'Noise', rows: [['noise.colour']], jacks: ['out:noise.white', 'out:noise.pink', 'out:noise.col'] },
+    { id: 'noise', title: 'Noise', rows: [['noise.colour']], jacks: ['jack.noise.cv', 'out:noise.white', 'out:noise.pink', 'out:noise.col'] },
     { id: 'mix', title: 'Mixer', rows: [['mix.l1', 'mix.l2', 'mix.l3', 'mix.l4', 'mix.mode']],
       jacks: ['jack.mix.in1', 'jack.mix.in2', 'jack.mix.in3', 'jack.mix.in4', 'out:mix.out'] },
   ],
@@ -159,18 +160,23 @@ export const LAYOUT = [
     { id: 'filt', title: 'VCF', rows: [['vcf.cutoff', 'vcf.res', 'vcf.width', 'vcf.cv']],
       jacks: ['jack.filt.in', 'jack.filt.cv', 'jack.filt.key', 'jack.filt.res', 'out:filt.out', 'out:filt.bp', 'out:filt.hp'] },
     { id: 'ring', title: 'Ring Mod', rows: [['ring.mix']], jacks: ['jack.ring.a', 'jack.ring.b', 'out:ring.out'] },
-    { id: 'vca', title: 'Dual VCA', rows: [['vca1.level', 'vca1.cv', 'vca2.level', 'vca2.cv']],
-      jacks: ['#1', 'jack.vca1.in', 'jack.vca1.cv', 'out:vca1.out', '#2', 'jack.vca2.in', 'jack.vca2.cv', 'out:vca2.out'] },
-    { id: 'att', title: 'Attenuverter', rows: [['att.a1', 'att.a2']],
-      jacks: ['#1', 'jack.att.in1', 'out:att.out1', '#2', 'jack.att.in2', 'out:att.out2', '#−', 'jack.att.inv', 'out:att.inv'] },
-    // the output is just a patch point (with a light that shows when it is being limited)
-    { id: 'out', title: 'Output', rows: [], jacks: ['jack.out.in'] },
+    // two VCAs in one module, split down the middle
+    { id: 'vca', title: 'Dual VCA', parts: [
+      { title: 'VCA 1', rows: [['vca1.level', 'vca1.cv']], jacks: ['jack.vca1.in', 'jack.vca1.cv', 'out:vca1.out'] },
+      { title: 'VCA 2', rows: [['vca2.level', 'vca2.cv']], jacks: ['jack.vca2.in', 'jack.vca2.cv', 'out:vca2.out'] },
+    ] },
+    { id: 'att', title: 'Attenuverter', parts: [
+      { rows: [['att.a1']], jacks: ['jack.att.in1', 'out:att.out1'] },
+      { rows: [['att.a2']], jacks: ['jack.att.in2', 'out:att.out2'] },
+    ] },
+    { id: 'out', title: 'Output', rows: [['out.vol']], jacks: ['jack.out.in'] },
   ],
   [
     { id: 'env1', title: 'ENV 1', rows: [['env1.a', 'env1.d', 'env1.s', 'env1.r']], jacks: ['jack.env1.gate', 'out:env1.out', 'out:env1.inv'] },
     { id: 'env2', title: 'ENV 2', rows: [['env2.a', 'env2.d', 'env2.s', 'env2.r']], jacks: ['jack.env2.gate', 'out:env2.out', 'out:env2.inv'] },
-    { id: 'lfo', title: 'Dual LFO', rows: [['lfo.rate', 'lfo.shape', 'lfo.rcv', 'lfo2.rate', 'lfo2.shape', 'lfo2.fm', 'lfo2.fmmode', 'lfo2.pol']],
-      jacks: ['#1', 'jack.lfo.gate', 'jack.lfo.rate', 'out:lfo.out', '#2', 'jack.lfo2.gate', 'jack.lfo2.fm', 'out:lfo2.out'] },
+    { id: 'lfo', title: 'LFO', rows: [['lfo.rate', 'lfo.shape', 'lfo.rcv']], jacks: ['jack.lfo.gate', 'jack.lfo.rate', 'out:lfo.out'] },
+    // the MFO's two switches share one cell, one above the other
+    { id: 'mfo', title: 'MFO', rows: [['lfo2.rate', 'lfo2.shape', 'lfo2.fm', ['lfo2.fmmode', 'lfo2.pol']]], jacks: ['jack.lfo2.gate', 'jack.lfo2.fm', 'out:lfo2.out'] },
     { id: 'sh', title: 'S&H', rows: [['sh.rate', 'sh.lag']], jacks: ['jack.sh.in', 'jack.sh.clock', 'out:sh.out'] },
   ],
 ];
@@ -188,7 +194,7 @@ export const PRESETS = {
     'env1.a': 0.4, 'env1.r': 0.8, 'vcf.cutoff': 2500, 'vcf.cv': 0.1,
   },
   'Sync Lead': {
-    ...cable('vco2.sync', 'vco1.saw'), ...cable('vco2.fm', 'env2.out'), ...cable('mix.in1', ''), 'mix.l2': 0.8,
+    ...cable('vco2.sync', 'vco1.saw'), ...cable('vco2.fm', 'env2.out'), ...cable('mix.in1', ''), 'mix.l2': 8,
     'osc2.range': 1, 'osc2.tune': 0, 'osc2.fm': 0.6, 'env2.d': 0.8, 'env2.s': 0.3, 'vcf.cutoff': 3000, 'vcf.cv': 0.2,
   },
   'Random Bleeps': {
@@ -205,7 +211,7 @@ export const PRESETS = {
     'lfo.rate': 0.8, 'lfo.shape': 'sine',
   },
   'Noise Hat': {
-    ...cable('mix.in1', 'noise.col'), ...cable('mix.in2', ''), 'noise.colour': 0.6, 'mix.l1': 0.8,
+    ...cable('mix.in1', 'noise.col'), ...cable('mix.in2', ''), 'noise.colour': 0.6, 'mix.l1': 8,
     'vcf.cutoff': 9000, 'vcf.res': 0.3, 'vcf.cv': 0, 'env1.a': 0.001, 'env1.d': 0.08, 'env1.s': 0, 'env1.r': 0.05,
   },
   'Ring Bells': {
@@ -235,7 +241,7 @@ export const NFMOD = {
   OUTPUTS,
   card: {
     tagline: 'The full rack',
-    text: 'Two VCOs, noise, a mixer, a multimode filter, ring mod, two VCAs, an attenuverter, two envelopes, two LFOs and sample & hold, all patched with cables. For when the MiniModular feels small.',
+    text: 'Two VCOs, noise, a mixer, a multimode filter, ring mod, two VCAs, an attenuverter, two envelopes, an LFO, an MFO and sample & hold, all patched with cables. For when the MiniModular feels small.',
   },
   PARAMS, LAYOUT, KEYBED_SECTIONS, PRESETS,
 };

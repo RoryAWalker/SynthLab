@@ -35,16 +35,54 @@ function buildSection(sec) {
   el.dataset.section = sec.id;
   el.innerHTML = `<div class="section-title" data-help="section:${sec.id}"><span>${sec.title}</span></div><div class="section-grid"></div><div class="lock-veil"><span>LOCKED</span></div>`;
   const grid = el.querySelector('.section-grid');
+  sections[sec.id] = el;
+  // A module split into side-by-side halves with a line between them (the NF-Modular's Dual
+  // VCA): each part has its own knobs and jacks.
+  if (sec.parts) {
+    el.classList.add('split');
+    grid.className = 'parts';
+    sec.parts.forEach((part) => {
+      const pe = document.createElement('div');
+      pe.className = 'part';
+      if (part.title) pe.innerHTML = `<div class="part-title">${part.title}</div>`;
+      const g = document.createElement('div');
+      g.className = 'section-grid';
+      pe.appendChild(g);
+      fillGrid(g, part.rows, sec);
+      if (part.jacks && cables) pe.appendChild(cables.buildStrip(part.jacks));
+      grid.appendChild(pe);
+    });
+    return el;
+  }
   if (sec.jacks && cables) el.appendChild(cables.buildStrip(sec.jacks)); // modular synths: sockets along the module's foot
-  if (!sec.rows.length) { grid.remove(); sections[sec.id] = el; return el; } // a module with only jacks (Noise, S&H)
-  const cols = Math.max(...sec.rows.map((r) => r.length));
+  if (!sec.rows.length) { grid.remove(); return el; } // a module with only jacks
+  fillGrid(grid, sec.rows, sec);
+  return el;
+}
+
+function makeControl(id, sec) {
+  const spec = PARAMS[id];
+  const k = spec.ui === 'toggle' ? new Toggle(id, patch[id], onKnob)
+    : spec.type === 'wheel' ? new Wheel(id, patch[id], onKnob)
+    : new Knob(id, patch[id], onKnob);
+  knobs[id] = k;
+  if (spec.small) k.el.classList.add('small'); // the effects' smaller pots
+  // staggered layouts: nudge a control down (e.g. the classic mixer's in-between pots)
+  if (sec.offsets && sec.offsets[id]) { k.el.style.transform = `translateY(${sec.offsets[id]})`; k.el.classList.add('offset'); }
+  return k.el;
+}
+
+// Lay out rows of controls in a section's grid. A cell can be a list of ids: those controls are
+// stacked in one cell (e.g. two small switches on top of each other).
+function fillGrid(grid, rows, sec) {
+  const cols = Math.max(...rows.map((r) => r.length));
   // Columns holding only switches or wheels can be narrow (NiniFoog), freeing panel space.
   const narrowCol = (c) => {
-    const ids = sec.rows.map((r) => r[c]).filter(Boolean);
+    const ids = rows.map((r) => r[c]).filter((id) => typeof id === 'string');
     return SYNTH.narrowSwitches && ids.length && ids.every((id) => PARAMS[id].ui === 'toggle' || PARAMS[id].type === 'wheel');
   };
   grid.style.gridTemplateColumns = Array.from({ length: cols }, (_, c) => (narrowCol(c) ? 'var(--narrow-w)' : 'var(--cell-w)')).join(' ');
-  sec.rows.forEach((row, ri) => {
+  rows.forEach((row, ri) => {
     // optional row header (e.g. "Oscillator 2"), spanning the whole section
     if (sec.rowTitles && sec.rowTitles[ri] !== undefined) {
       const rt = document.createElement('div');
@@ -55,16 +93,13 @@ function buildSection(sec) {
     }
     for (let c = 0; c < cols; c++) {
       const id = row[c];
-      if (id) {
-        const spec = PARAMS[id];
-        const k = spec.ui === 'toggle' ? new Toggle(id, patch[id], onKnob)
-          : spec.type === 'wheel' ? new Wheel(id, patch[id], onKnob)
-          : new Knob(id, patch[id], onKnob);
-        knobs[id] = k;
-        if (spec.small) k.el.classList.add('small'); // the effects' smaller pots
-        // staggered layouts: nudge a control down (e.g. the classic mixer's in-between pots)
-        if (sec.offsets && sec.offsets[id]) { k.el.style.transform = `translateY(${sec.offsets[id]})`; k.el.classList.add('offset'); }
-        grid.appendChild(k.el);
+      if (Array.isArray(id)) {
+        const stack = document.createElement('div');
+        stack.className = 'stack-cell';
+        id.forEach((x) => stack.appendChild(makeControl(x, sec)));
+        grid.appendChild(stack);
+      } else if (id) {
+        grid.appendChild(makeControl(id, sec));
       } else {
         const blank = document.createElement('div');
         blank.className = 'knob-cell blank';
@@ -72,8 +107,6 @@ function buildSection(sec) {
       }
     }
   });
-  sections[sec.id] = el;
-  return el;
 }
 
 function buildPanel() {

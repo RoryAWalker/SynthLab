@@ -87,19 +87,24 @@ class VCO {
 
 const OUTPUTS = ['kb.pitch', 'kb.gate', 'kb.trig', 'vco1.saw', 'vco1.sq', 'vco1.tri', 'vco2.saw', 'vco2.sq', 'vco2.tri',
   'noise.white', 'noise.pink', 'noise.col', 'mix.out', 'filt.out', 'filt.bp', 'filt.hp', 'env1.out', 'env1.inv', 'env2.out', 'env2.inv',
-  'lfo.out', 'lfo2.out', 'sh.out', 'vca1.out', 'vca2.out', 'ring.out', 'att.out1', 'att.out2', 'att.inv'];
+  'lfo.out', 'lfo2.out', 'sh.out', 'vca1.out', 'vca2.out', 'ring.out', 'att.out1', 'att.out2'];
 
 function lfoWave(shape, ph) {
   return shape === 'saw' ? 2 * ph - 1 : shape === 'square' ? (ph < 0.5 ? 1 : -1)
     : shape === 'sine' ? Math.sin(TWO_PI * (ph - 0.25)) : 1 - 4 * Math.abs(ph - 0.5);
 }
 
-// Mixer modes for a mix pushed past full level: Clean (as it is), Drive (soft distortion),
-// Fold (a wavefolder: the wave folds back on itself each time it passes ±1)
-function mixShape(mode, x) {
-  if (mode === 'drive') return Math.tanh(x * 1.5) / Math.tanh(1.5);
-  if (mode === 'fold') { const t = (x + 1) * 0.25; return 4 * Math.abs(t - Math.floor(t + 0.5)) - 1; } // unchanged within ±1
-  return x;
+// Mixer. Each level knob goes 0-11: 0-10 is gain 0..1, and 10-11 boosts steeply, up to 8x.
+// Modes: Clean (the sum, turned back down by the boost so it stays sensible), Drive (hard
+// saturation) and Fold (a wavefolder: the wave folds back on itself each time it passes +-1;
+// the hotter the mix, the more folds). Drive and Fold are bounded, so they are trimmed to sit at
+// a similar loudness to Clean.
+const mixGain = (L) => (L <= 10 ? L / 10 : Math.pow(2, (L - 10) * 3));
+const fold = (x) => { const t = (x + 1) * 0.25; return 4 * Math.abs(t - Math.floor(t + 0.5)) - 1; };
+function mixShape(mode, x, boost) {
+  if (mode === 'drive') return Math.tanh(x * 4) * 0.7;
+  if (mode === 'fold') return fold(x * 3) * 0.8;
+  return x / boost;
 }
 
 class NFModProcessor extends AudioWorkletProcessor {
@@ -165,7 +170,7 @@ class NFModProcessor extends AudioWorkletProcessor {
     ['vco1.pitch', 'vco1.fm', 'vco1.pwm', 'vco1.sync', 'vco2.pitch', 'vco2.fm', 'vco2.pwm', 'vco2.sync',
       'mix.in1', 'mix.in2', 'mix.in3', 'mix.in4', 'filt.in', 'filt.cv', 'filt.key', 'filt.res',
       'env1.gate', 'env2.gate', 'lfo.gate', 'lfo.rate', 'lfo2.gate', 'lfo2.fm', 'sh.in', 'sh.clock',
-      'vca1.in', 'vca1.cv', 'vca2.in', 'vca2.cv', 'ring.a', 'ring.b', 'att.in1', 'att.in2', 'att.inv', 'out.in'].forEach((k) => (J[k] = src(k)));
+      'vca1.in', 'vca1.cv', 'vca2.in', 'vca2.cv', 'ring.a', 'ring.b', 'att.in1', 'att.in2', 'noise.cv', 'out.in'].forEach((k) => (J[k] = src(k)));
     const read = (k) => (J[k] ? o[J[k]] : 0);
 
     this.env1.setTimes(p['env1.a'], p['env1.d'], p['env1.s'], p['env1.r'], sr);
@@ -173,7 +178,8 @@ class NFModProcessor extends AudioWorkletProcessor {
     const glideCoef = p['kb.glide'] > 0.0005 ? 1 - Math.exp(-4.6 / (p['kb.glide'] * sr)) : 1;
     const v1 = { oct: p['osc1.range'] + p['osc1.tune'] / 12, pw: p['osc1.pw'], fm: p['osc1.fm'] * FM_OCTAVES, pwm: p['osc1.pwm'] * 0.45 };
     const v2 = { oct: p['osc2.range'] + p['osc2.tune'] / 12, pw: p['osc2.pw'], fm: p['osc2.fm'] * FM_OCTAVES, pwm: p['osc2.pwm'] * 0.45 };
-    const lv = [p['mix.l1'], p['mix.l2'], p['mix.l3'], p['mix.l4']];
+    const lv = [p['mix.l1'], p['mix.l2'], p['mix.l3'], p['mix.l4']].map(mixGain);
+    const boost = Math.max(1, ...lv); // Clean: turn a boosted mix back down
     const cut = Math.log2(p['vcf.cutoff']), cvDepth = p['vcf.cv'] * CUTOFF_CV_OCTAVES, halfW = p['vcf.width'] / 2;
     const lfoShape = p['lfo.shape'], lfoRate = p['lfo.rate'], lfoRcv = p['lfo.rcv'] * LFO_RATE_CV_OCTAVES;
     const vcas = [[p['vca1.level'], p['vca1.cv']], [p['vca2.level'], p['vca2.cv']]];
@@ -182,9 +188,13 @@ class NFModProcessor extends AudioWorkletProcessor {
     const mixMode = p['mix.mode'], att1 = p['att.a1'], att2 = p['att.a2'], ringMix = p['ring.mix'];
     // noise colour: below 0 a low-pass darkens it (down to ~150 Hz), above 0 a high-pass thins it (from 200 Hz up to ~10 kHz)
     const colour = p['noise.colour'];
-    const colLpA = colour < 0 ? 1 - Math.exp(-TWO_PI * 20000 * Math.pow(2, colour * 7) / sr) : 1;
-    const colHpA = colour > 0 ? Math.exp(-TWO_PI * 200 * Math.pow(2, colour * 5.6) / sr) : 0; // 200 Hz to ~10 kHz
-    const colGain = 1 + Math.abs(colour) * 1.5; // keep it roughly as loud as it gets darker or brighter
+    const colourCoefs = (cl) => [
+      cl < 0 ? 1 - Math.exp(-TWO_PI * 20000 * Math.pow(2, cl * 7) / sr) : 1,
+      cl > 0 ? Math.exp(-TWO_PI * 200 * Math.pow(2, cl * 5.6) / sr) : 0, // 200 Hz to ~10 kHz
+      1 + Math.abs(cl) * 1.5, // keep it roughly as loud as it gets darker or brighter
+    ];
+    let [colLpA, colHpA, colGain] = colourCoefs(colour);
+    let col = colour;
     const shInc = p['sh.rate'] / sr;
     const shLag = p['sh.lag'] > 0.001 ? 1 - Math.exp(-4.6 / (p['sh.lag'] * sr)) : 1;
     const pk2 = this.peak;
@@ -206,9 +216,14 @@ class NFModProcessor extends AudioWorkletProcessor {
       pk[2] = 0.57 * pk[2] + white * 1.0526913;
       o['noise.white'] = white * 0.7;
       o['noise.pink'] = (pk[0] + pk[1] + pk[2] + white * 0.1848) * 0.16;
+      if (J['noise.cv'] && (i & 15) === 0) { // Colour CV: re-tune the colour every 16 samples
+        col = colour + o[J['noise.cv']];
+        col = col < -1 ? -1 : col > 1 ? 1 : col;
+        [colLpA, colHpA, colGain] = colourCoefs(col);
+      }
       this.colLp += (white - this.colLp) * colLpA;
       this.colHp = colHpA * (this.colHp + this.colLp - this.colPrev); this.colPrev = this.colLp;
-      o['noise.col'] = (colour > 0 ? this.colHp : this.colLp) * 0.7 * colGain;
+      o['noise.col'] = (col > 0 ? this.colHp : this.colLp) * 0.7 * colGain;
 
       // ---- LFO: Rate CV speeds it up or slows it down; a rising Gate restarts it
       const lg = read('lfo.gate') > 0.5 ? 1 : 0;
@@ -258,7 +273,7 @@ class NFModProcessor extends AudioWorkletProcessor {
       this.vco2.next(v2.oct + read('vco2.pitch') + read('vco2.fm') * v2.fm, pw, read('vco2.sync'), sr, nyq, o, 'vco2.');
 
       // ---- mixer
-      o['mix.out'] = lim(mixShape(mixMode, read('mix.in1') * lv[0] + read('mix.in2') * lv[1] + read('mix.in3') * lv[2] + read('mix.in4') * lv[3]));
+      o['mix.out'] = lim(mixShape(mixMode, read('mix.in1') * lv[0] + read('mix.in2') * lv[1] + read('mix.in3') * lv[2] + read('mix.in4') * lv[3], boost));
 
       // ---- ring modulator: A times B
       const ra = read('ring.a');
@@ -267,7 +282,6 @@ class NFModProcessor extends AudioWorkletProcessor {
       // ---- attenuverters: In scaled (and flipped, below 0) by Amount; with nothing in In, a steady voltage
       o['att.out1'] = lim(J['att.in1'] ? o[J['att.in1']] * att1 : att1);
       o['att.out2'] = lim(J['att.in2'] ? o[J['att.in2']] * att2 : att2);
-      o['att.inv'] = lim(-read('att.inv')); // the inverter: turns its In upside down
 
       // ---- VCF. Cutoff (moved by CV x CV Amount, and Key at one octave per octave) is the centre;
       // Width puts the low-pass half its value above the centre and the high-pass half below.

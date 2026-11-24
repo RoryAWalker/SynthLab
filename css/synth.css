@@ -1147,3 +1147,19 @@ body[data-skin="modular"] .panel .section, body[data-skin="modular"] .perf .sect
   border-top: 3px solid color-mix(in srgb, var(--mod) 80%, #000);
 }
 body[data-skin="modular"] .panel .section-title { border-bottom-color: color-mix(in srgb, var(--mod) 55%, rgba(236,236,236,0.5)); }
+
+/* two controls stacked in one cell (the MFO's switches) */
+.stack-cell { width: var(--cell-w); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
+.stack-cell .toggle-cell { width: auto; padding: 0; }
+/* a module split into halves (Dual VCA): parts side by side with a line between */
+.section.split .parts { display: flex; justify-content: center; }
+.section.split .part { display: flex; flex-direction: column; flex: 1; padding: 0 6px; }
+.section.split .part + .part { border-left: 1px solid rgba(255,255,255,0.28); }
+.part-title { text-align: center; font-size: 10px; font-weight: 800; letter-spacing: 0.16em; color: var(--ink-dim); margin-bottom: 1px; }
+body[data-skin="modular"] .panel .section.split .part .jack-strip { margin-top: auto; }
+body[data-skin="modular"] .panel .section.split .parts { flex: 1; }
+body[data-skin="modular"] .section[data-section="mfo"] { --mod: #d99a2b; }   /* MFO: a deeper mustard than the LFO */
+/* NF-Modular: a shorter keyboard band (the rack above is what you work on) */
+body[data-synth="nfmod"] .keybed { height: 232px; padding-top: 8px; padding-bottom: 12px; }
+body[data-synth="nfmod"] .perf .dial { zoom: 0.8; }
+body[data-synth="nfmod"] .perf { padding-top: 4px; padding-bottom: 4px; }
