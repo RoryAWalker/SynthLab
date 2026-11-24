@@ -1163,3 +1163,5 @@ body[data-skin="modular"] .section[data-section="mfo"] { --mod: #d99a2b; }   /* 
 body[data-synth="nfmod"] .keybed { height: 232px; padding-top: 8px; padding-bottom: 12px; }
 body[data-synth="nfmod"] .perf .dial { zoom: 0.8; }
 body[data-synth="nfmod"] .perf { padding-top: 4px; padding-bottom: 4px; }
+/* rack rows: every module fills the full height of its row (no gaps under the shorter ones) */
+.rack-row > .section { height: auto !important; align-self: stretch; }

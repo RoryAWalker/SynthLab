@@ -261,7 +261,7 @@ export const HELP = {
     title: 'Spectrum analyser',
     body: [
       'Shows which frequencies are in the sound and how loud each one is. Low frequencies are on the left, high on the right.',
-      'A pitched note appears as a row of peaks: the fundamental (the pitch you hear) and its harmonics above it. The dashed orange line marks the Cutoff knob.',
+      'A pitched note appears as a row of peaks: the fundamental (the pitch you hear) and its harmonics above it. On synths with a single filter cutoff, a dashed orange line marks where it is.',
     ],
   },
   timebase: {
@@ -312,7 +312,7 @@ export const HELP = {
   },
   init: {
     title: 'Init',
-    body: ['Resets every control to a plain starting sound: one sawtooth wave, filter fully open, organ-style envelope. The best place to start building a sound from scratch.'],
+    body: ['Resets every control (and, on the modular synths, every cable) to the synth\'s plain starting patch. The best place to start building a sound from scratch.'],
   },
   showvalues: {
     title: 'Show values',
@@ -353,7 +353,7 @@ export const HELP = {
   synths: { title: 'Menu', body: ['Opens the start menu to choose a different synth. Each synth has its own panel, sound and saved patches.'] },
   scopes: {
     title: 'Scopes',
-    body: ['Shows or hides the oscilloscope and spectrum analyser. Hidden, the synth grows to fill the screen; shown, you can see the waveform and harmonics of everything you play, along with the teaching graphs.', 'Lessons always show the scopes, because the target sound is drawn on them.'],
+    body: ['Shows or hides the oscilloscope and spectrum analyser. Hidden, the synth grows to fill the screen; shown, you can see the waveform and harmonics of everything you play, along with the teaching graphs.', 'Lessons that play a target sound switch them on, because the target is drawn on them.'],
   },
   'section:chorus': {
     title: 'Chorus',

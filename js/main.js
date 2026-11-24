@@ -33,7 +33,9 @@ function buildSection(sec) {
   const el = document.createElement('div');
   el.className = 'section';
   el.dataset.section = sec.id;
-  el.innerHTML = `<div class="section-title" data-help="section:${sec.id}"><span>${sec.title}</span></div><div class="section-grid"></div><div class="lock-veil"><span>LOCKED</span></div>`;
+  // (an untitled section, e.g. the NiniFoog's switch columns on the section lines, has no help of its own)
+  const titleHelp = sec.title ? ` data-help="section:${sec.id}"` : '';
+  el.innerHTML = `<div class="section-title"${titleHelp}><span>${sec.title}</span></div><div class="section-grid"></div><div class="lock-veil"><span>LOCKED</span></div>`;
   const grid = el.querySelector('.section-grid');
   sections[sec.id] = el;
   // A module split into side-by-side halves with a line between them (the NF-Modular's Dual
@@ -321,7 +323,7 @@ for (let o = 2; o <= 4; o++) {
 // The cutoff marker follows the live (envelope/LFO-modulated) cutoff while a note sounds.
 const liveCutoff = () => {
   const l = engine.live;
-  return l && l.gate && l.a.s !== 0 ? l.fc : patch['filt.cutoff'];
+  return l && l.gate && l.a.s !== 0 ? l.fc : patch['filt.cutoff'] ?? patch['vcf.cutoff']; // (the NF-Modular's is vcf.cutoff)
 };
 const scope = new Scope(document.getElementById('scope'), document.getElementById('spectrum'), engine, liveCutoff);
 scope.overlay = overlay;

@@ -6,8 +6,13 @@ const lookup = (k) => HELP_FOR_SYNTH[k] || HELP[k];
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
+// Every control id in a section: its rows, the rows of its parts (a split module), and stacked cells
+function idsIn(sec) {
+  const rows = [...(sec.rows || []), ...(sec.parts || []).flatMap((p) => p.rows || [])];
+  return rows.flat(2).filter(Boolean);
+}
 function sectionOf(paramId) {
-  return ALL_SECTIONS.find((s) => s.rows.some((r) => r.includes(paramId)));
+  return ALL_SECTIONS.find((s) => idsIn(s).includes(paramId));
 }
 
 function rangeText(id) {
@@ -99,8 +104,9 @@ export class HelpPanel {
     if (rawKey === this.key) return;
     this.key = rawKey;
     const [paramId, optValue] = rawKey.split('=');
-    const entry = lookup(rawKey) || lookup(helpKeyFor(rawKey)) || lookup(paramId);
-    if (!entry) return;
+    // No written help: say what the control is rather than leave the last help on screen
+    const entry = lookup(rawKey) || lookup(helpKeyFor(rawKey)) || lookup(paramId)
+      || { title: PARAMS[paramId] ? PARAMS[paramId].label : rawKey, body: [] };
 
     let eyebrow = '';
     let valueHtml = '';
