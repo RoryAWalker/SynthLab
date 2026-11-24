@@ -544,6 +544,7 @@ window.synth = {
   setKeyboardOctaves: (o) => keyboard.setOctaves(o),
   get lesson() { return lesson; },
   get engine() { return engine; }, // for inspecting the audio in the console
+  get overlay() { return overlay; }, // the teaching graphs, for testing in the console
   params: PARAMS,
   noteName,
 };
