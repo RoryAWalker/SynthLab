@@ -503,7 +503,7 @@ body.help-open .help-panel.visible { display: block; animation: help-in 0.15s ea
 body.lesson-mode .free-only { display: none; }
 
 .lesson-bar {
-  display: grid; grid-template-columns: auto auto minmax(260px, 1fr) auto; gap: 26px; align-items: center;
+  display: grid; grid-template-columns: auto minmax(260px, 1fr) auto; gap: 26px; align-items: center;
   padding: 14px 24px;
   background: linear-gradient(#202227, #1a1c20);
   border-bottom: 1px solid #2e3137;
@@ -511,10 +511,11 @@ body.lesson-mode .free-only { display: none; }
 .lesson-bar[hidden] { display: none; }
 .lb-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent); }
 .lb-title { font-size: 22px; font-weight: 700; color: #fff; white-space: nowrap; }
-.lb-steps { display: flex; gap: 6px; }
+/* the challenge numbers: a compact row above the question, wrapping if there are many */
+.lb-steps { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
 .lb-step {
-  width: 30px; height: 30px; border-radius: 50%; padding: 0; cursor: pointer;
-  font: 700 12px var(--font); color: #c9ccd1;
+  width: 22px; height: 22px; border-radius: 50%; padding: 0; cursor: pointer;
+  font: 700 10.5px var(--font); color: #c9ccd1;
   background: #2a2c31; border: 1.5px solid #3d4047;
   display: grid; place-items: center; transition: transform 0.15s, background 0.2s;
 }
@@ -523,7 +524,7 @@ body.lesson-mode .free-only { display: none; }
 .lb-step.current { border-color: var(--accent); color: #fff; box-shadow: 0 0 0 3px rgba(255, 181, 71, 0.2); }
 .lb-step.done { background: #2f8a55; border-color: #49c07c; color: #fff; }
 .lb-step.done.current { box-shadow: 0 0 0 3px rgba(255, 181, 71, 0.35); border-color: var(--accent); }
-.lb-step svg { width: 15px; height: 15px; fill: none; stroke: #fff; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.lb-step svg { width: 12px; height: 12px; fill: none; stroke: #fff; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
 .lb-step.done.pop { animation: step-pop 0.5s ease-out; }
 @keyframes step-pop { 0% { transform: scale(1); } 40% { transform: scale(1.35); } 100% { transform: scale(1); } }
 .lb-task-head { display: flex; align-items: center; gap: 12px; margin-bottom: 3px; }
@@ -549,7 +550,7 @@ body.lesson-mode .free-only { display: none; }
 .lb-check { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: #b9bcc2; cursor: pointer; white-space: nowrap; }
 @media (max-width: 1250px) {
   .lesson-bar { grid-template-columns: auto 1fr; }
-  .lb-task { grid-column: 1 / -1; }
+  .lb-task { grid-column: 2; }
   .lb-actions { grid-column: 1 / -1; justify-content: flex-start; }
 }
 
@@ -928,10 +929,12 @@ body.preview #fit { margin: 0; }
 .lb-heat-fill { height: 100%; width: 0; border-radius: 6px; background: linear-gradient(90deg, #4d8fe0, #9b6bd6 45%, #f0a03a 75%, #ff4d3a); background-size: 300px 100%; transition: width 0.15s; }
 .lb-heat-word { min-width: 92px; color: #ffd9a0; }
 
-/* the lesson bar sits in a wrapper of fixed (resting) height; when it grows it overlays the scopes */
-.lesson-wrap { position: relative; z-index: 30; }
-.lesson-wrap .lesson-bar { position: absolute; left: 0; right: 0; top: 0; }
-.lesson-bar.overlaying { box-shadow: 0 18px 30px rgba(0,0,0,0.55); border-bottom-color: #3a3d44; }
+/* The top bar and the lesson panel stay pinned to the top of the window. The synth is sized to
+   fit below them; when the scopes are on, the page opens scrolled so the lesson hangs over them,
+   and scrolling up brings them into view. */
+.appbar { position: sticky; top: 0; z-index: 31; background: #141518; }
+.lesson-wrap { position: sticky; top: var(--appbar-h, 0px); z-index: 30; }
+.lesson-bar { box-shadow: 0 10px 24px rgba(0,0,0,0.45); }
 
 /* ==========================================================================
    Effects unit: a small separate box between the scopes and the synth

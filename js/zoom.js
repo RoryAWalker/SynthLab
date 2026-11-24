@@ -31,7 +31,12 @@ export class ZoomPan {
     const designW = this.stage.offsetWidth;
     const designH = this.stage.offsetHeight;
     // parts marked data-no-fit (the open FX drawer) extend the page instead of shrinking the stage
-    const extra = [...this.stage.querySelectorAll('[data-no-fit]')].reduce((s, el) => s + (el.offsetParent ? el.offsetHeight + 8 : 0), 0);
+    // In lessons the scopes sit under the lesson panel (scroll up to see them), so they don't count either.
+    const noFit = [...this.stage.querySelectorAll('[data-no-fit]')];
+    const scopes = this.stage.querySelector('.scope-unit');
+    if (document.body.classList.contains('lesson-mode') && scopes) noFit.push(scopes);
+    const outer = (el) => { const cs = getComputedStyle(el); return el.offsetHeight + parseFloat(cs.marginTop) + parseFloat(cs.marginBottom); };
+    const extra = noFit.reduce((s, el) => s + (el.offsetParent ? outer(el) : 0), 0);
     const oldScale = this.scale;
     // fit the width, and the height left below the top bars, so the keyboard stays on screen
     const top = this.vp.getBoundingClientRect().top + window.scrollY;

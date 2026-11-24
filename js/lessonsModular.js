@@ -39,6 +39,15 @@ const P_ENV = { ...P_KEYS, 'vca.level': 0, ...cable('vca.cv', 'env.out') };
 const P_GATE = { ...P_ENV, ...cable('env.gate', 'kb.gate') };
 const P_VIBRATO = { ...P_GATE, ...cable('osc.fm', 'lfo.out'), 'osc.fm': 0.08 };
 
+// Lesson 3's target patches (added on top of the basic synth, P_GATE)
+const VIBRATO = { ...cable('osc.fm', 'lfo.out'), 'osc.fm': 0.1, 'lfo.rate': 5.5 };
+const WAH = { ...cable('filt.cv', 'lfo.out'), 'filt.cv': 0.5, 'filt.cutoff': 500, 'filt.res': 0.4, 'lfo.rate': 2.5 };
+const PLUCK = { ...cable('filt.cv', 'env.out'), 'filt.cv': 0.7, 'filt.cutoff': 200, 'filt.res': 0.3, 'aenv.d': 0.5, 'aenv.s': 0.15 };
+const ZAP = { ...cable('osc.fm', 'env.out'), 'osc.fm': 0.6, 'aenv.d': 0.25, 'aenv.s': 0 };
+const REPEAT = { ...cable('env.gate', 'lfo.out'), 'lfo.shape': 'square', 'lfo.rate': 4 };
+const SELF_FM = { ...cable('osc.fm', 'osc.out'), 'osc.fm': 0.35 };
+const FILTER_ONLY = { ...cable('filt.in', ''), ...cable('filt.cv', 'kb.pitch'), 'filt.cv': 0.17, 'filt.res': 1, 'filt.cutoff': 300 };
+
 const BASIC = ['osc', 'vca', 'out'];
 const WITH_FILTER = [...BASIC, 'filt'];
 const WITH_KEYS = [...WITH_FILTER, 'kb'];
@@ -49,10 +58,10 @@ export const MOD_LESSONS = [
   {
     id: 'patch1',
     number: 1,
-    title: 'Patching',
+    title: 'Patching (Basic)',
     summary: 'Build a synth from nothing, one cable at a time, and meet the parts that were hidden inside the NF-1.',
     doneText: 'You built a complete synth from nothing: VCO into VCF into VCA, played by the keyboard and shaped by an envelope, with vibrato and a filter wobble from the LFO. That is the same voice as the NF-1, but now you know where every connection is.',
-    base: P_EMPTY, introUnlocked: [], carry: true,
+    base: P_EMPTY, introUnlocked: [], carry: true, scopes: false,
     challenges: [
       {
         type: 'goal', title: 'Your first cables',
@@ -155,27 +164,23 @@ export const MOD_LESSONS = [
         },
       },
       {
-        type: 'goal', title: 'Let the envelope open the VCA',
+        type: 'question', title: 'Let the envelope open the VCA',
         text: 'Turn the VCA\'s Level down to 0, and patch the Envelope\'s Out into the VCA\'s CV. Then play a note.',
         unlocked: WITH_ENV,
         make: (c) => ({ start: P_KEYS, note: c.note }),
-        check: (s) => is(s.patch, 'vca.cv', 'env.out') && s.patch['vca.level'] < 0.05 && s.note != null,
+        // the question appears once they have patched it and heard (nothing)
+        revealWhen: (s) => is(s.patch, 'vca.cv', 'env.out') && s.patch['vca.level'] < 0.05 && s.note != null && !s.held,
         progress: (s) => share(is(s.patch, 'vca.cv', 'env.out'), s.patch['vca.level'] < 0.05, s.note != null),
         hint: 'Turn the VCA\'s Level knob fully anticlockwise. Drag from the Envelope\'s OUT to the VCA\'s CV. Then click a key.',
-      },
-      {
-        type: 'question', title: 'Silence again',
-        text: 'The envelope is patched into the VCA\'s CV, but playing a key makes no sound.',
-        unlocked: WITH_ENV,
-        make: (c) => ({ start: P_ENV, note: c.note }),
         question: {
-          prompt: 'Why is there no sound?',
+          prompt: 'Silence! The envelope is patched into the VCA\'s CV, but playing a key makes no sound. Why?',
           options: [
             { text: 'The Envelope does not know a key was pressed: its Gate input is empty', correct: true },
             { text: 'The VCA\'s Level must be turned up', feedback: 'That would just bring the drone back: the sound would no longer start and stop with the keys.' },
             { text: 'The Envelope\'s Attack is too slow', feedback: 'Even a slow envelope starts eventually. This one never starts at all. What starts an envelope?' },
           ],
           explain: 'An envelope runs when its Gate input goes high, and releases when it goes low. The keyboard\'s Gate output does exactly that: high while a key is held, low when it is let go. On the NF-1 this connection is hidden inside; here you have to make it.',
+          hint: 'Look at the Envelope\'s jacks. What is plugged into its Gate input?',
         },
       },
       {
@@ -237,10 +242,10 @@ export const MOD_LESSONS = [
   {
     id: 'patch2',
     number: 2,
-    title: 'Stranger patches',
+    title: 'Patching (Intermediate)',
     summary: 'Any output can go into any input. Bend the basic synth into plucks, zaps, self-playing patterns and a filter you can play like an instrument.',
     doneText: 'You patched an envelope into the filter and the pitch, made the cutoff follow the keyboard, let the LFO play the synth for you, played the filter on its own and made the VCO modulate itself. On a modular, a "sound" is really a patch.',
-    base: P_GATE, introUnlocked: [],
+    base: P_GATE, introUnlocked: [], scopes: false,
     challenges: [
       {
         type: 'question', title: 'Bright, then dark',
@@ -342,6 +347,70 @@ export const MOD_LESSONS = [
             { text: 'It stopped when I let go, as before', feedback: 'Listen again after letting go. Is anything between the VCO and the Output now?' },
           ],
           explain: 'The VCO runs all the time. Notes only start and stop because the envelope opens and closes the VCA. Take the VCA out of the path and you hear the raw oscillator constantly, through no filter and with no envelope.',
+        },
+      },
+    ],
+  },
+  // ---------------------------------------------------------------------------------------
+  {
+    id: 'patch3',
+    number: 3,
+    title: 'Patching (By Ear)',
+    summary: 'Hear a patch, then rebuild it: work out which modulator is going where, just by listening.',
+    doneText: 'You rebuilt every patch by ear: you can now hear where a modulator is patched (pitch, filter or gate) and roughly how fast and how far it moves.',
+    base: P_GATE, introUnlocked: [], scopes: true,
+    challenges: [
+      {
+        title: 'Which wobble?',
+        text: 'Press Hear target. The LFO is patched somewhere: is it moving the pitch (vibrato) or the filter (wah)? Patch it the same way and play the marked key. Only the cable has to match here, but you will need some FM Amount or CV Amount to hear it.',
+        unlocked: ALL, start: P_GATE, compare: ['jack.osc.fm', 'jack.filt.cv'], showKey: true,
+        make: (c) => ({ patch: c.pick([VIBRATO, WAH]), note: c.note }),
+      },
+      {
+        title: 'Pluck or zap?',
+        text: 'This time the Envelope is the modulator. Is it sweeping the filter (a pluck) or the pitch (a zap)? Patch it the same way.',
+        unlocked: ALL, start: P_GATE, compare: ['jack.osc.fm', 'jack.filt.cv'], showKey: true,
+        make: (c) => ({ patch: c.pick([PLUCK, ZAP]), note: c.note }),
+      },
+      {
+        title: 'How fast does it repeat?',
+        text: 'The LFO is playing the Envelope\'s Gate, so the note repeats on its own. Patch it the same way, then match the speed with the LFO\'s Rate.',
+        unlocked: ALL, start: P_GATE, compare: ['jack.env.gate', 'lfo.shape', 'lfo.rate'], showKey: true,
+        make: (c) => ({ patch: { ...cable('env.gate', 'lfo.out'), 'lfo.shape': 'square', 'lfo.rate': c.pick([2, 3, 5, 8]) }, note: c.note }),
+      },
+      {
+        title: 'Vibrato: speed and depth',
+        text: 'Vibrato again, but now match how fast it wobbles (LFO Rate) and how far (FM Amount).',
+        unlocked: ALL, start: P_GATE, compare: ['jack.osc.fm', 'osc.fm', 'lfo.rate'], showKey: true,
+        make: (c) => ({ patch: { ...cable('osc.fm', 'lfo.out'), 'osc.fm': c.level(0.05, 0.2), 'lfo.rate': c.pick([3, 4, 5.5, 7]) }, note: c.note }),
+      },
+      {
+        title: 'Filter sweep',
+        text: 'The Envelope is sweeping the filter. Patch it, then match where the sweep ends (Cutoff) and how far it goes (CV Amount).',
+        unlocked: ALL, start: P_GATE, compare: ['jack.filt.cv', 'filt.cutoff', 'filt.cv'], showKey: true,
+        make: (c) => ({ patch: { ...cable('filt.cv', 'env.out'), 'filt.cutoff': c.pick([150, 250, 400, 600]), 'filt.cv': c.level(0.4, 0.9), 'filt.res': 0.3, 'aenv.s': 0.3, 'aenv.d': 0.5 }, note: c.note }),
+      },
+      {
+        title: 'The shape of the wobble',
+        text: 'The LFO is moving the filter. Listen to the shape: a smooth rise and fall (triangle), a slow rise then a drop (ramp), or a jump between two places (square)? Match the cable, the Shape and the Rate.',
+        unlocked: ALL, start: P_GATE, compare: ['jack.filt.cv', 'lfo.shape', 'lfo.rate'], showKey: true,
+        make: (c) => ({ patch: { ...WAH, 'lfo.shape': c.pick(['tri', 'saw', 'square']), 'lfo.rate': c.pick([1.5, 3, 5]) }, note: c.note }),
+      },
+      {
+        title: 'Mystery patch',
+        text: 'Anything from the last two lessons: vibrato, wah, pluck, zap, a repeating gate, the VCO feeding its own FM, or the filter played on its own. Work out which, and patch it.',
+        unlocked: ALL, start: P_GATE, compare: ['jack.osc.fm', 'jack.filt.cv', 'jack.env.gate', 'jack.filt.in'], showKey: true,
+        make: (c) => ({ patch: c.pick([VIBRATO, WAH, PLUCK, ZAP, REPEAT, SELF_FM, FILTER_ONLY]), note: c.note }),
+      },
+      {
+        title: 'Two at once',
+        text: 'Two modulations are patched at the same time. Find both.',
+        unlocked: ALL, start: P_GATE, compare: ['jack.osc.fm', 'jack.filt.cv', 'jack.env.gate'], showKey: true,
+        make: (c) => {
+          const [a, b] = c.pickDistinct([
+            [VIBRATO, 'fm'], [ZAP, 'fm'], [WAH, 'cv'], [PLUCK, 'cv'], [REPEAT, 'gate'],
+          ], 5).reduce((acc, x) => (acc.length < 2 && !acc.some((y) => y[1] === x[1]) ? [...acc, x] : acc), []); // two that use different inputs
+          return { patch: { ...a[0], ...b[0] }, note: c.note };
         },
       },
     ],

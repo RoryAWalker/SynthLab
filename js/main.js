@@ -209,8 +209,10 @@ document.getElementById('zoom-out').addEventListener('click', () => zoomPan.zoom
 document.getElementById('zoom-level').addEventListener('click', () => zoomPan.reset());
 
 function fit() {
-  // help panel overlays below the top bar
-  document.getElementById('help-panel').style.top = document.querySelector('.appbar').offsetHeight + 'px';
+  // help panel overlays below the top bar; the lesson panel pins just under it
+  const barH = document.querySelector('.appbar').offsetHeight;
+  document.getElementById('help-panel').style.top = barH + 'px';
+  document.body.style.setProperty('--appbar-h', barH + 'px');
   zoomPan.fit();
 }
 
@@ -358,9 +360,20 @@ lesson = new LessonController({
   getPatch: () => ({ ...patch }), setPatch, engine, scope, keyboard, lockSection, ensureAudio,
   onModeChange: (mode) => {
     document.querySelectorAll('#mode-switch button').forEach((b) => b.classList.toggle('on', b.dataset.mode === mode));
-    // lessons show the target on the scopes, so they switch the scopes on; Free play restores your setting
-    setScopes(mode === 'lessons' || loadPref(scopesPref, '0') === '1', false);
+    // each lesson chooses whether the scopes start on (showScopes below); Free play restores your setting
+    if (mode !== 'lessons') { setScopes(loadPref(scopesPref, '0') === '1', false); window.scrollTo(0, 0); }
     requestAnimationFrame(fit);
+  },
+  // A lesson turns the scopes on or off. With them on, the page scrolls so the lesson panel
+  // hangs over them and the synth sits just below it; scrolling up shows the scopes.
+  showScopes: (on) => {
+    setScopes(on, false);
+    requestAnimationFrame(() => {
+      fit();
+      const synthTop = document.querySelector('.synth').getBoundingClientRect().top + window.scrollY;
+      const pinned = document.querySelector('.appbar').offsetHeight + lessonWrap.offsetHeight;
+      window.scrollTo(0, on ? Math.max(0, synthTop - pinned - 12) : 0);
+    });
   },
 });
 document.querySelectorAll('#mode-switch button').forEach((b) => b.addEventListener('click', () => lesson.setMode(b.dataset.mode)));
@@ -392,21 +405,9 @@ if (knobs['mix.feedback']) {
 const startMenu = new StartMenu({ skip: PREVIEW });
 document.getElementById('btn-synths').addEventListener('click', () => startMenu.open());
 
-// ---- lesson bar: grows over the scopes rather than pushing the synth down ----
-// The page reserves the bar's resting height. When a question, hint or feedback makes it
-// taller, the extra spreads over the scope screens and the synth stays where it is.
+// ---- lesson panel: pinned to the top of the window (see showScopes above). A question or hint
+// makes it taller and the page scrolls, rather than the synth shrinking.
 const lessonWrap = document.getElementById('lesson-wrap');
-const lessonBar = document.getElementById('lesson-bar');
-const barExpanded = () => !document.getElementById('lb-question').hidden
-  || !document.getElementById('lb-hintbox').hidden
-  || document.getElementById('lb-feedback').textContent.trim() !== '';
-new ResizeObserver(() => {
-  const resting = lessonBar.hidden ? 0 : lessonBar.offsetHeight;
-  const expanded = !lessonBar.hidden && barExpanded();
-  lessonBar.classList.toggle('overlaying', expanded);
-  if (expanded) return; // keep the reserved height; the bar overlays the scopes
-  if (Math.abs(lessonWrap.offsetHeight - resting) > 1) { lessonWrap.style.height = resting + 'px'; fit(); }
-}).observe(lessonBar);
 
 // ---- NF-Modular: cables over the panel, and lamps by the output jacks ----
 if (cables) {

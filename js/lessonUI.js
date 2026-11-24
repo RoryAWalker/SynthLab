@@ -23,7 +23,7 @@ function load(key, d) { try { const v = localStorage.getItem(key); return v == n
 function save(key, v) { try { localStorage.setItem(key, JSON.stringify(v)); } catch { /* storage unavailable */ } }
 
 export class LessonController {
-  // deps: { getPatch, setPatch, engine, scope, keyboard, lockSection, ensureAudio, onModeChange }
+  // deps: { getPatch, setPatch, engine, scope, keyboard, lockSection, ensureAudio, onModeChange, showScopes }
   constructor(deps) {
     this.d = deps;
     this.lessonIndex = Math.min(LESSONS.length - 1, Math.max(0, load(INDEX_KEY, 0)));
@@ -110,6 +110,8 @@ export class LessonController {
     // the intro shows the lesson's starting point (NF-1: Init, with only Oscillator 1 open)
     this.lockFor(this.lesson.introUnlocked || ['osc1']);
     this.d.setPatch(this.lesson.base || {});
+    // the scopes start on unless the lesson says otherwise (the first patching lessons don't need them)
+    if (this.d.showScopes && this.mode === 'lessons') this.d.showScopes(this.lesson.scopes !== false);
     const started = this.done.some(Boolean);
     const total = this.lesson.challenges.length;
     const complete = this.done.filter(Boolean).length === total;

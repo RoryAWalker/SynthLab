@@ -78,7 +78,7 @@ export const LAYOUT = [
   [{ id: 'filt', title: 'VCF', rows: [['filt.cutoff', 'filt.res'], ['filt.cv', null]], jacks: ['jack.filt.in', 'jack.filt.cv', 'out:filt.out'] }],
   // the two modulators side by side
   [{ id: 'lfo', title: 'LFO', rows: [['lfo.rate'], ['lfo.shape']], jacks: ['jack.lfo.gate', 'out:lfo.out'] }],
-  [{ id: 'env', title: 'Envelope', rows: [['aenv.a', 'aenv.d'], ['aenv.s', 'aenv.r']], jacks: ['jack.env.gate', 'out:env.out'] }],
+  [{ id: 'env', title: 'ENV', rows: [['aenv.a', 'aenv.d'], ['aenv.s', 'aenv.r']], jacks: ['jack.env.gate', 'out:env.out'] }],
   [{ id: 'vca', title: 'VCA', rows: [['vca.level'], [null]], jacks: ['jack.vca.in', 'jack.vca.cv', 'out:vca.out'] }],
   [{ id: 'out', title: 'Output', rows: [['out.vol'], [null]], jacks: ['jack.out.in'] }],
 ];
