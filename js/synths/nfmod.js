@@ -22,8 +22,11 @@ export const OUTPUTS = {
   'vco2.tri': { label: 'Tri', module: 'VCO 2' },
   'noise.white': { label: 'White', module: 'Noise' },
   'noise.pink': { label: 'Pink', module: 'Noise' },
+  'noise.col': { label: 'Colour', module: 'Noise' },
   'mix.out': { label: 'Out', module: 'Mixer' },
-  'filt.out': { label: 'Out', module: 'VCF' },
+  'filt.out': { label: 'LP', module: 'VCF' },
+  'filt.bp': { label: 'BP', module: 'VCF' },
+  'filt.hp': { label: 'HP', module: 'VCF' },
   'env1.out': { label: 'Out', module: 'ENV 1' },
   'env1.inv': { label: 'Inv', module: 'ENV 1' },
   'env2.out': { label: 'Out', module: 'ENV 2' },
@@ -63,6 +66,16 @@ export const PARAMS = {
   'filt.cutoff': pick('filt.cutoff', { def: 1200 }),
   'filt.res': pick('filt.res', { def: 0.2 }),
   'filt.cv': bipolar('CV Amount'),
+
+  // noise colour: darker (left) through white (centre) to brighter (right), for the Colour output
+  'noise.colour': { ...bipolar('Colour'), marks: [[-1, 'dark'], [0, 'white'], [1, 'bright']], unit: '',
+    fmt: (v) => (Math.abs(v) < 0.03 ? 'white' : v < 0 ? `darker ${Math.round(-v * 100)}%` : `brighter ${Math.round(v * 100)}%`) },
+
+  // sample & hold: its own clock (when nothing is in Clock) and a lag that glides between steps
+  'sh.rate': { ...NF1_PARAMS['lfo.rate'], label: 'Speed', def: 4 },
+  'sh.lag': { type: 'cont', label: 'Lag', min: 0, max: 2, def: 0, curve: 'pow', k: 2, unit: 'sec',
+    fmt: (v) => (v < 0.001 ? 'off' : v < 1 ? Math.round(v * 1000) + ' ms' : v.toFixed(2) + ' s'),
+    marks: [[0, '0'], [0.1, '.1'], [0.5, '.5'], [1, '1'], [2, '2']] },
 
   ...env(1, 0.005, 0.3, 0.7, 0.25),
   ...env(2, 0.005, 0.5, 0.2, 0.3),
@@ -104,12 +117,12 @@ export const LAYOUT = [
   [
     { id: 'mix', title: 'Mixer', rows: [['mix.l1', 'mix.l2'], ['mix.l3', 'mix.l4']],
       jacks: [['jack.mix.in1', 'jack.mix.in2', 'jack.mix.in3', 'jack.mix.in4'], ['out:mix.out']] },
-    { id: 'noise', title: 'Noise', rows: [], jacks: [['out:noise.white', 'out:noise.pink']] },
+    { id: 'noise', title: 'Noise', rows: [['noise.colour']], jacks: [['out:noise.white', 'out:noise.pink', 'out:noise.col']] },
   ],
   [
     { id: 'filt', title: 'VCF', rows: [['filt.cutoff', 'filt.res'], ['filt.cv', null]],
-      jacks: [['jack.filt.in', 'jack.filt.cv', 'jack.filt.key', 'jack.filt.res'], ['out:filt.out']] },
-    { id: 'sh', title: 'S&H', rows: [], jacks: [['jack.sh.in', 'jack.sh.clock', 'out:sh.out']] },
+      jacks: [['jack.filt.in', 'jack.filt.cv', 'jack.filt.key', 'jack.filt.res'], ['out:filt.out', 'out:filt.bp', 'out:filt.hp']] },
+    { id: 'sh', title: 'S&H', rows: [['sh.rate', 'sh.lag']], jacks: [['jack.sh.in', 'jack.sh.clock', 'out:sh.out']] },
   ],
   [
     { id: 'env1', title: 'ENV 1', rows: [['env1.a', 'env1.d'], ['env1.s', 'env1.r']], jacks: [['jack.env1.gate', 'out:env1.out', 'out:env1.inv']] },
@@ -142,11 +155,16 @@ export const PRESETS = {
     'osc2.range': 1, 'osc2.tune': 0, 'osc2.fm': 0.6, 'env2.d': 0.8, 'env2.s': 0.3, 'filt.cutoff': 3000, 'filt.cv': 0.2,
   },
   'Random Bleeps': {
-    ...cable('sh.clock', 'lfo.out'), ...cable('filt.cv', 'sh.out'), 'lfo.shape': 'square', 'lfo.rate': 6,
-    'filt.cutoff': 800, 'filt.res': 0.7, 'filt.cv': 0.5,
+    ...cable('filt.cv', 'sh.out'), 'sh.rate': 6, 'filt.cutoff': 800, 'filt.res': 0.7, 'filt.cv': 0.5,
+  },
+  'Random Wander': {
+    ...cable('filt.cv', 'sh.out'), 'sh.rate': 1.5, 'sh.lag': 0.6, 'filt.cutoff': 700, 'filt.res': 0.5, 'filt.cv': 0.45, 'env1.a': 0.2, 'env1.r': 0.6,
+  },
+  'Thin Highpass': {
+    ...cable('vca1.in', 'filt.hp'), 'filt.cutoff': 900, 'filt.res': 0.4, 'filt.cv': 0,
   },
   'Noise Hat': {
-    ...cable('mix.in1', 'noise.white'), ...cable('mix.in2', ''), ...cable('filt.key', ''), 'mix.l1': 0.8,
+    ...cable('mix.in1', 'noise.col'), ...cable('mix.in2', ''), 'noise.colour': 0.6, 'mix.l1': 0.8,
     'filt.cutoff': 9000, 'filt.res': 0.3, 'filt.cv': 0, 'env1.a': 0.001, 'env1.d': 0.08, 'env1.s': 0, 'env1.r': 0.05,
   },
   'Tremolo Pad': {

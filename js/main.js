@@ -178,6 +178,18 @@ function buildToolbar() {
   });
 
 
+  // See-through cables (modular synths): off by default, remembered
+  const faded = document.getElementById('faded-cables');
+  if (faded && SYNTH.modular) {
+    faded.parentNode.hidden = false;
+    faded.checked = loadPref('sl.cablesFaded', '0') === '1';
+    document.body.classList.toggle('cables-faded', faded.checked);
+    faded.addEventListener('change', (e) => {
+      document.body.classList.toggle('cables-faded', e.target.checked);
+      savePref('sl.cablesFaded', e.target.checked ? '1' : '0');
+    });
+  }
+
   // scope timebase
   const tb = document.getElementById('tb-buttons');
   const hold = document.getElementById('hold-btn');

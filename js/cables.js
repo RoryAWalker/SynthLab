@@ -56,7 +56,7 @@ export class Cables {
     this.layer = svg('svg', { class: 'cable-layer' });
     stage.appendChild(this.layer);
     this.drag = null;
-    window.addEventListener('pointermove', (e) => this.onMove(e));
+    window.addEventListener('pointermove', (e) => { this.onMove(e); this.fadeNear(e); });
     window.addEventListener('pointerup', (e) => this.onUp(e));
     window.addEventListener('pointercancel', () => this.cancel());
     // anything that moves the modules (window size, scopes, help, effects drawer) redraws the cables
@@ -117,6 +117,9 @@ export class Cables {
     const sag = Math.min(150, 26 + Math.abs(b[0] - a[0]) * 0.22 + Math.abs(b[1] - a[1]) * 0.06);
     const d = `M${a[0]},${a[1]} C${a[0]},${a[1] + sag} ${b[0]},${b[1] + sag} ${b[0]},${b[1]}`;
     const g = svg('g', { class: 'cable' + (live ? ' live' : '') }, parent);
+    // points along the cable, for fading it when the mouse comes near (see fadeNear)
+    const bez = (t, p0, p1, p2, p3) => (1 - t) ** 3 * p0 + 3 * (1 - t) ** 2 * t * p1 + 3 * (1 - t) * t * t * p2 + t ** 3 * p3;
+    g._pts = Array.from({ length: 25 }, (_, i) => { const t = i / 24; return [bez(t, a[0], a[0], b[0], b[0]), bez(t, a[1], a[1] + sag, b[1] + sag, b[1])]; });
     svg('path', { d, class: 'cable-shadow' }, g);
     svg('path', { d, class: 'cable-body', stroke: colour }, g);
     svg('path', { d, class: 'cable-shine' }, g);
@@ -145,6 +148,19 @@ export class Cables {
       const d = this.drag;
       d.g = this.drawCable(this.pos(d.anchor), d.at, d.colour, L, true);
     }
+  }
+
+  // Cables near the mouse fade almost away (their plugs stay), so the knobs underneath can be
+  // seen and turned. While a knob is being turned, the cables stay as they are.
+  fadeNear(e) {
+    if (this.drag || document.body.classList.contains('knob-dragging')) return;
+    const [x, y] = this.toStage(e.clientX, e.clientY);
+    const R = 70; // design pixels
+    this.layer.querySelectorAll('.cable').forEach((g) => {
+      if (!g._pts) return;
+      const near = g._pts.some(([px, py]) => (px - x) ** 2 + (py - y) ** 2 < R * R);
+      g.classList.toggle('near', near);
+    });
   }
 
   // ---- dragging ----

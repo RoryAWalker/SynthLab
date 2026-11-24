@@ -79,7 +79,7 @@ class VCO {
 }
 
 const OUTPUTS = ['kb.pitch', 'kb.gate', 'kb.trig', 'vco1.saw', 'vco1.sq', 'vco1.tri', 'vco2.saw', 'vco2.sq', 'vco2.tri',
-  'noise.white', 'noise.pink', 'mix.out', 'filt.out', 'env1.out', 'env1.inv', 'env2.out', 'env2.inv', 'lfo.out', 'sh.out',
+  'noise.white', 'noise.pink', 'noise.col', 'mix.out', 'filt.out', 'filt.bp', 'filt.hp', 'env1.out', 'env1.inv', 'env2.out', 'env2.inv', 'lfo.out', 'sh.out',
   'vca1.out', 'vca2.out'];
 
 class NFModProcessor extends AudioWorkletProcessor {
@@ -92,7 +92,9 @@ class NFModProcessor extends AudioWorkletProcessor {
     this.vco1 = new VCO(); this.vco2 = new VCO();
     this.env1 = new Envelope(); this.env2 = new Envelope();
     this.lfoPh = 0; this.lfoT = 0; this.lfoGateWas = 0;
-    this.shVal = 0; this.shClockWas = 0;
+    this.shVal = 0; this.shOut = 0; this.shClockWas = 0; this.shPh = 0;
+    this.colLp = 0; this.colHp = 0; this.colPrev = 0;
+    this.ic1 = 0; this.ic2 = 0; // the state-variable filter behind the BP and HP outputs
     this.pink = [0, 0, 0];
     this.s = [0, 0, 0, 0];
     this.o = {}; this.peak = {};
@@ -153,6 +155,13 @@ class NFModProcessor extends AudioWorkletProcessor {
     const lfoShape = p['lfo.shape'], lfoRate = p['lfo.rate'], lfoRcv = p['lfo.rcv'] * LFO_RATE_CV_OCTAVES;
     const vcas = [[p['vca1.level'], p['vca1.cv']], [p['vca2.level'], p['vca2.cv']]];
     const vol = p['out.vol'];
+    // noise colour: below 0 a low-pass darkens it (down to ~150 Hz), above 0 a high-pass thins it (from 200 Hz up to ~10 kHz)
+    const colour = p['noise.colour'];
+    const colLpA = colour < 0 ? 1 - Math.exp(-TWO_PI * 20000 * Math.pow(2, colour * 7) / sr) : 1;
+    const colHpA = colour > 0 ? Math.exp(-TWO_PI * 200 * Math.pow(2, colour * 5.6) / sr) : 0; // 200 Hz to ~10 kHz
+    const colGain = 1 + Math.abs(colour) * 1.5; // keep it roughly as loud as it gets darker or brighter
+    const shInc = p['sh.rate'] / sr;
+    const shLag = p['sh.lag'] > 0.001 ? 1 - Math.exp(-4.6 / (p['sh.lag'] * sr)) : 1;
     const pk2 = this.peak;
 
     for (let i = 0; i < n; i++) {
@@ -172,6 +181,9 @@ class NFModProcessor extends AudioWorkletProcessor {
       pk[2] = 0.57 * pk[2] + white * 1.0526913;
       o['noise.white'] = white * 0.7;
       o['noise.pink'] = (pk[0] + pk[1] + pk[2] + white * 0.1848) * 0.16;
+      this.colLp += (white - this.colLp) * colLpA;
+      this.colHp = colHpA * (this.colHp + this.colLp - this.colPrev); this.colPrev = this.colLp;
+      o['noise.col'] = (colour > 0 ? this.colHp : this.colLp) * 0.7 * colGain;
 
       // ---- LFO: Rate CV speeds it up or slows it down; a rising Gate restarts it
       const lg = read('lfo.gate') > 0.5 ? 1 : 0;
@@ -189,11 +201,20 @@ class NFModProcessor extends AudioWorkletProcessor {
       const e2 = this.env2.next(read('env2.gate'));
       o['env2.out'] = e2; o['env2.inv'] = -e2;
 
-      // ---- sample & hold: on each rising Clock, grab the In (or white noise if nothing is patched)
-      const clk = read('sh.clock');
-      if (clk > 0.2 && this.shClockWas <= 0.2) this.shVal = J['sh.in'] ? o[J['sh.in']] : white;
-      this.shClockWas = clk;
-      o['sh.out'] = this.shVal;
+      // ---- sample & hold: on each rising Clock (or its own Speed clock when nothing is in Clock),
+      // grab the In (or white noise if nothing is patched). Lag glides to each new value.
+      let tick = false;
+      if (J['sh.clock']) {
+        const clk = o[J['sh.clock']];
+        tick = clk > 0.2 && this.shClockWas <= 0.2;
+        this.shClockWas = clk;
+      } else {
+        this.shPh += shInc;
+        if (this.shPh >= 1) { this.shPh -= 1; tick = true; }
+      }
+      if (tick) this.shVal = J['sh.in'] ? o[J['sh.in']] : white;
+      this.shOut += (this.shVal - this.shOut) * shLag;
+      o['sh.out'] = this.shOut;
 
       // ---- VCOs
       let pw = v1.pw + read('vco1.pwm') * v1.pwm; pw = pw < 0.05 ? 0.05 : pw > 0.95 ? 0.95 : pw;
@@ -223,6 +244,16 @@ class NFModProcessor extends AudioWorkletProcessor {
         u = y;
       }
       o['filt.out'] = u * (1 + fb * 0.45);
+      // BP and HP come from a 2-pole state-variable filter at the same cutoff and resonance
+      // (zero-delay-feedback form), so all three outputs move together
+      const k = 2 - 1.96 * res;
+      const a1 = 1 / (1 + gg * (gg + k)), a2 = gg * a1, a3 = gg * a2;
+      const sv3 = x - this.ic2;
+      const sv1 = a1 * this.ic1 + a2 * sv3;
+      const sv2 = this.ic2 + a2 * this.ic1 + a3 * sv3;
+      this.ic1 = 2 * sv1 - this.ic1; this.ic2 = 2 * sv2 - this.ic2;
+      o['filt.bp'] = sv1 * (0.5 + k * 0.5);
+      o['filt.hp'] = x - k * sv1 - sv2;
       if (i === n - 1) this.lastFc = fc;
 
       // ---- VCAs: Level opens it by hand; CV (scaled by CV Amount) opens it further
