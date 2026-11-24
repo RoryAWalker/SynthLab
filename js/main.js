@@ -13,6 +13,8 @@ import { ZoomPan } from './zoom.js';
 import { LessonController } from './lessonUI.js';
 import { PatchMenu } from './patches.js';
 import { Cables } from './cables.js';
+import { CompScope } from './compScope.js';
+import { loadSource, loadUserFile, userFileName } from './sources.js';
 
 const engine = new Engine({ module: SYNTH.module, processor: SYNTH.processor });
 document.body.dataset.skin = SYNTH.skin;
@@ -20,7 +22,12 @@ document.body.dataset.skin = SYNTH.skin;
 const PREVIEW = new URLSearchParams(location.search).has('preview');
 document.body.classList.toggle('preview', PREVIEW);
 document.body.dataset.synth = SYNTH.id;
+// the processors (the NF-C1 compressor): no keyboard; they play a sound through themselves
+const PROC = SYNTH.kind === 'processor';
+document.body.classList.toggle('processor', PROC);
 let patch = defaultPatch();
+const sentSources = new Set(); // processors: sounds already handed to the engine
+const meters = []; // processors: the level meters
 const knobs = {};
 const sections = {};
 let help = null; // HelpPanel, created at boot
@@ -83,6 +90,8 @@ function buildSection(sec) {
     sec.head.forEach((id) => hd.appendChild(makeControl(id, sec)));
     grid.before(hd);
   }
+  if (sec.meters) { grid.replaceWith(buildMeters()); return el; } // the processors' level meters
+  if (sec.load) el.appendChild(buildLoadButton()); // the processors: load your own sound file
   if (sec.jacks && cables) el.appendChild(cables.buildStrip(sec.jacks)); // modular synths: sockets along the module's foot
   if (!sec.rows.length) { grid.remove(); return el; } // a module with only jacks
   fillGrid(grid, sec.rows, sec);
@@ -213,7 +222,8 @@ function ensureAudio() {
 function onKnob(id, value) {
   patch[id] = value;
   // modular synths: a patch can sound without a key (a drone), so any change may start the audio
-  if (SYNTH.modular && !engine.running) ensureAudio();
+  if ((SYNTH.modular || PROC) && !engine.running) ensureAudio();
+  if (PROC) { if (id === 'src.sound' || id === 'src.play') sendSource(); scope.focus(id); }
   refreshScales();
   if (!(lesson && lesson.busy)) engine.setParam(id, value); // while a lesson target plays, keep it intact
   if (lesson) lesson.onPatchChange();
@@ -234,6 +244,7 @@ function setPatch(p) {
   refreshScales();
   for (const id in knobs) knobs[id].set(patch[id]);
   engine.setPatch(patch);
+  if (PROC) sendSource();
   if (help) help.refresh();
   if (cables) cables.redraw();
 }
@@ -371,7 +382,9 @@ const liveCutoff = () => {
   const l = engine.live;
   return l && l.gate && l.a.s !== 0 ? l.fc : patch['filt.cutoff'] ?? patch['vcf.cutoff']; // (the NF-Modular's is vcf.cutoff)
 };
-const scope = new Scope(document.getElementById('scope'), document.getElementById('spectrum'), engine, liveCutoff);
+const scope = PROC
+  ? new CompScope(document.getElementById('scope'), document.getElementById('spectrum'), engine, () => patch)
+  : new Scope(document.getElementById('scope'), document.getElementById('spectrum'), engine, liveCutoff);
 
 // ---- pop-out graph (with Help on) ----
 // The teaching graphs are drawn on the spectrum screen. When that screen is too small to read
@@ -433,13 +446,14 @@ const graphPop = (() => {
   };
 })();
 scope.overlay = overlay;
-setInterval(() => document.getElementById('trig-led').classList.toggle('on', !!scope.triggered && engine.running), 120);
+const trigLed = document.getElementById('trig-led'); // (not on the processors' screens)
+if (trigLed && !PROC) setInterval(() => trigLed.classList.toggle('on', !!scope.triggered && engine.running), 120);
 
 // ---- help panel ----
 help = new HelpPanel(document.getElementById('help-panel'), () => patch);
 // when hover help opens on a control, show its graph too
-help.onShow = (key) => { overlay.activate(key, true); graphPop.from(key.split('=')[0]); }; // key may be an option, e.g. osc1.wave=square
-help.onHide = () => overlay.release();
+help.onShow = (key) => { overlay.activate(key, true); graphPop.from(key.split('=')[0]); if (PROC) scope.focus(key.split('=')[0]); }; // key may be an option, e.g. osc1.wave=square
+help.onHide = () => { overlay.release(); if (PROC) scope.release(); };
 function setHelp(open) {
   document.body.classList.toggle('help-open', open);
   document.getElementById('btn-help').setAttribute('aria-pressed', String(open));
@@ -503,7 +517,7 @@ function setMaxScopes(on) {
   scope.resize(); // redraw the screens at their new size
 }
 maxBtn.addEventListener('click', () => setMaxScopes(!document.body.classList.contains('scopes-max')));
-setScopes(!PREVIEW && loadPref(scopesPref, '0') === '1', false);
+setScopes(!PREVIEW && loadPref(scopesPref, PROC ? '1' : '0') === '1', false);
 
 // ---- effects drawer: a thin FX line below the keyboard that folds open ----
 const fxDrawer = document.getElementById('fx-drawer');
@@ -530,7 +544,7 @@ lesson = new LessonController({
   onModeChange: (mode) => {
     document.querySelectorAll('#mode-switch button').forEach((b) => b.classList.toggle('on', b.dataset.mode === mode));
     // each lesson chooses whether the scopes start on (showScopes below); Free play restores your setting
-    if (mode !== 'lessons') { document.body.classList.remove('lesson-scopes-visible'); setScopes(loadPref(scopesPref, '0') === '1', false); window.scrollTo(0, 0); }
+    if (mode !== 'lessons') { document.body.classList.remove('lesson-scopes-visible'); setScopes(loadPref(scopesPref, PROC ? '1' : '0') === '1', false); window.scrollTo(0, 0); }
     requestAnimationFrame(fit);
   },
   // A lesson turns the scopes on or off. With them on, the page scrolls so the lesson panel
@@ -619,6 +633,105 @@ if (cables) {
       }
     }
   })();
+}
+
+// ---- processors: the sound going in, the meters, the space bar ----
+// Make (or fetch) the chosen sound once the audio is running, and hand it to the engine.
+function sendSource() {
+  const id = patch['src.sound'];
+  if (sentSources.has(id)) return;
+  Promise.resolve(ensureAudio()).then(async () => {
+    if (sentSources.has(id)) return;
+    if (id === 'user' && !userFileName()) {
+      if (patch['src.play'] === 'play') patchMenu.toast('Load a sound file first: Load your own… under the Source.');
+      return;
+    }
+    const chans = await loadSource(engine.ctx, id);
+    if (!chans) return;
+    sentSources.add(id);
+    engine.post({ type: 'source', id, chans });
+  });
+}
+
+function buildLoadButton() {
+  const wrap = document.createElement('div');
+  wrap.className = 'load-own';
+  wrap.dataset.help = 'loadown';
+  wrap.innerHTML = '<button class="btn load-btn">Load your own…</button><input type="file" accept="audio/*,.wav,.mp3,.aif,.aiff,.flac,.ogg,.m4a" hidden><div class="load-name"></div>';
+  const btn = wrap.querySelector('button'), input = wrap.querySelector('input'), name = wrap.querySelector('.load-name');
+  btn.addEventListener('click', () => input.click());
+  input.addEventListener('change', async () => {
+    const file = input.files[0];
+    input.value = '';
+    if (!file) return;
+    try {
+      await ensureAudio();
+      const chans = await loadUserFile(engine.ctx, file);
+      engine.post({ type: 'source', id: 'user', chans });
+      sentSources.add('user');
+      name.textContent = file.name;
+      name.title = file.name;
+      knobs['src.sound'].commit('user');
+      knobs['src.play'].commit('play');
+    } catch (e) {
+      patchMenu.toast('That file could not be read as audio. Try a WAV or MP3.');
+    }
+  });
+  return wrap;
+}
+
+// Level meters: In, Gain Reduction, Out. Segmented ladders, like a hardware unit.
+function buildMeters() {
+  const box = document.createElement('div');
+  box.className = 'meters';
+  [['in', 'In', 'meter-in'], ['gr', 'GR', 'meter-gr'], ['out', 'Out', 'meter-out']].forEach(([id, text, help]) => {
+    const m = document.createElement('div');
+    m.className = `meter meter-${id}`;
+    m.dataset.help = help;
+    const segs = 20;
+    m.innerHTML = `<div class="meter-clip"></div><div class="meter-ladder">${'<i></i>'.repeat(segs)}</div><div class="meter-label">${text}</div>`;
+    box.appendChild(m);
+    meters.push({ id, el: m, segs: [...m.querySelectorAll('i')].reverse(), clip: m.querySelector('.meter-clip'), shown: id === 'gr' ? 0 : -120, clipAt: 0 });
+  });
+  const scale = document.createElement('div');
+  scale.className = 'meter-scale';
+  scale.innerHTML = '<span>0</span><span>−12</span><span>−24</span><span>−36</span><span>−48</span>';
+  box.insertBefore(scale, box.children[1]);
+  return box;
+}
+if (PROC) {
+  let last = performance.now();
+  (function meterLoop() {
+    requestAnimationFrame(meterLoop);
+    const now = performance.now(), dt = (now - last) / 1000;
+    last = now;
+    const n = scope.n, recent = (arr, f) => { let v = f === 'max' ? -Infinity : 0; for (let a = 0; a < 6 && a < n; a++) v = Math.max(v, arr[(n - 1 - a + scope.cap) % scope.cap]); return v; };
+    meters.forEach((m) => {
+      const live = engine.running && n > 0;
+      if (m.id === 'gr') {
+        const g = live ? recent(scope.gr, 'max') : 0;
+        m.shown = Math.max(g, m.shown - 30 * dt);
+        // lights from the top down: 0 to -24 dB of reduction
+        m.segs.forEach((s, i) => s.classList.toggle('on', m.shown > 0.3 && (m.segs.length - 1 - i) < m.shown / 24 * m.segs.length));
+        return;
+      }
+      const v = live ? recent(m.id === 'in' ? scope.inp : scope.out, 'max') : -120;
+      m.shown = Math.max(v, m.shown - 24 * dt); // falls 24 dB a second
+      m.segs.forEach((s, i) => s.classList.toggle('on', m.shown > -48 + (i / m.segs.length) * 48));
+      if (v >= 0) m.clipAt = now;
+      m.clip.classList.toggle('on', now - m.clipAt < 1200);
+    });
+  })();
+  // space bar: play / stop
+  window.addEventListener('keydown', (e) => {
+    if (e.code !== 'Space' || e.repeat || /INPUT|SELECT|TEXTAREA|BUTTON/.test(document.activeElement.tagName)) return;
+    e.preventDefault();
+    knobs['src.play'].commit(patch['src.play'] === 'play' ? 'stop' : 'play');
+  });
+  // the screens are the point of the NF-C1: label them for what they show
+  const caps = document.querySelectorAll('.screen-caption');
+  if (caps[0]) caps[0].innerHTML = '<span>LEVELS</span><span>in · out · gain reduction</span>';
+  if (caps[1]) caps[1].innerHTML = '<span>TRANSFER CURVE</span><span>out against in, dB</span>';
 }
 
 // Touch screens (iPhone/iPad Safari): audio may only be allowed to start when a finger

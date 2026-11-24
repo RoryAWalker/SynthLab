@@ -1,4 +1,4 @@
-// Start menu: choose which synth to play. Shown when the page opens without a synth
+// Start menu: choose which synth (or processor) to play. Shown when the page opens without a synth
 // chosen, and from the Synths button. Picking another synth reloads the page with
 // ?synth=<id>, so each synth starts clean with its own panel and sound engine.
 // Card pictures live in img/ and are regenerated with tools/make-previews.sh.
@@ -7,24 +7,34 @@ import { SYNTHS, SYNTH, SYNTH_CHOSEN, nameHtml } from './params.js';
 
 // Changed by tools/make-previews.sh each time the pictures are re-captured, so browsers fetch
 // the new pictures instead of showing ones they have kept from before.
-const PREVIEW_VERSION = '202611242227';
+const PREVIEW_VERSION = '202611242254';
 
 export class StartMenu {
   constructor({ skip = false } = {}) {
     this.el = document.getElementById('start-menu');
     const cards = document.getElementById('sm-cards');
+    // the processors (the NF-C1 compressor) get their own row under the synths
+    const procCards = document.createElement('div');
+    procCards.className = 'sm-cards sm-proc';
+    if (SYNTHS.some((s) => s.kind === 'processor')) {
+      const h = document.createElement('h2');
+      h.className = 'sm-group';
+      h.textContent = 'Processors';
+      cards.after(h, procCards);
+    }
     SYNTHS.forEach((s) => {
+      const proc = s.kind === 'processor';
       const card = document.createElement('button');
-      card.className = 'sm-card';
+      card.className = 'sm-card' + (proc ? ' wide' : '');
       card.dataset.synth = s.id;
       card.innerHTML = `
         <div class="sm-preview" aria-hidden="true"><img src="img/preview-${s.id}.png?v=${PREVIEW_VERSION}" alt="" loading="eager"></div>
         <div class="sm-tag">${s.card.tagline}</div>
         <div class="sm-name">${nameHtml(s.name)}</div>
         <p class="sm-text">${s.card.text}</p>
-        <div class="sm-foot"><span class="sm-play">Play ${s.name} ▸</span>${s.lessons ? '<span class="sm-badge">Lessons</span>' : ''}${s.id === SYNTH.id && SYNTH_CHOSEN ? '<span class="sm-badge current">Playing now</span>' : ''}</div>`;
+        <div class="sm-foot"><span class="sm-play">${proc ? 'Open' : 'Play'} ${s.name} ▸</span>${s.lessons ? '<span class="sm-badge">Lessons</span>' : ''}${s.id === SYNTH.id && SYNTH_CHOSEN ? '<span class="sm-badge current">Playing now</span>' : ''}</div>`;
       card.addEventListener('click', () => this.choose(s.id));
-      cards.appendChild(card);
+      (proc ? procCards : cards).appendChild(card);
     });
     document.getElementById('sm-close').addEventListener('click', () => this.close());
     this.el.addEventListener('keydown', (e) => { if (e.key === 'Escape' && SYNTH_CHOSEN) this.close(); e.stopPropagation(); });

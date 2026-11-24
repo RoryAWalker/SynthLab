@@ -53,7 +53,11 @@ export class Engine {
     this.fx.output.connect(this.ctx.destination);
     this.fx.setAll({ ...patch, ...this.fxValues });
 
-    this.node.port.onmessage = (ev) => { if (ev.data.type === 'state') this.live = ev.data; };
+    this.node.port.onmessage = (ev) => {
+      if (ev.data.type !== 'state') return;
+      this.live = ev.data;
+      if (ev.data.frames && this.onFrames) this.onFrames(ev.data); // the processors' level reports
+    };
     this.node.port.postMessage({ type: 'patch', patch });
     this.ready = true;
     this.pending.forEach((m) => this.node.port.postMessage(m));

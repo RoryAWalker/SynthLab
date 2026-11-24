@@ -12,10 +12,13 @@ shot() { # synth, width, height
     --screenshot="img/preview-$1.png" "$URL/?synth=$1&preview=1" 2>/dev/null
   echo "img/preview-$1.png"
 }
+# a throwaway first shot: a cold Chrome sometimes captures an empty page the first time
+shot nf1 1600 680 >/dev/null
 shot nf1 1600 680
 shot nf3 1600 940
 shot nfm 1600 760
 shot nfmod 1880 1080
+shot nfc1 1360 540
 rm -rf "$PROFILE"
 # new pictures: bump the version in the start menu so browsers do not keep showing the old ones
 V=$(date +%Y%m%d%H%M)
