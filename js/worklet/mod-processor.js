@@ -81,6 +81,7 @@ class ModProcessor extends AudioWorkletProcessor {
     this.ph = 0; this.lfoPh = 0; this.shVal = 0; this.lfoT = 0;
     this.env = new Envelope();
     this.gateWas = 0;
+    this.lfoGateWas = 0;
     this.s = [0, 0, 0, 0];     // ladder filter state
     this.o = {};               // every output's latest value
     OUTPUTS.forEach((k) => (this.o[k] = 0));
@@ -124,7 +125,7 @@ class ModProcessor extends AudioWorkletProcessor {
 
     // where each input is plugged in ('' = nothing)
     const src = (jack) => p['jack.' + jack] || '';
-    const jPitch = src('osc.pitch'), jFm = src('osc.fm'), jFiltIn = src('filt.in'), jFiltCv = src('filt.cv'),
+    const jLfoGate = src('lfo.gate'), jPitch = src('osc.pitch'), jFm = src('osc.fm'), jFiltIn = src('filt.in'), jFiltCv = src('filt.cv'),
       jGate = src('env.gate'), jVcaIn = src('vca.in'), jVcaCv = src('vca.cv'), jOut = src('out.in');
     const read = (j) => (j ? o[j] : 0);
 
@@ -147,7 +148,14 @@ class ModProcessor extends AudioWorkletProcessor {
       if (this.retrig > 0) { this.retrig--; gate = 0; }
       o['kb.gate'] = gate;
 
-      // ---- LFO
+      // ---- LFO: a rising Gate restarts the wave from its start (a new random step for S&H)
+      const lg = read(jLfoGate) > 0.5 ? 1 : 0;
+      if (lg && !this.lfoGateWas) {
+        this.lfoPh = lfoShape === 'tri' ? 0.25 : 0; // the triangle starts at its centre, rising
+        this.lfoT = 0;
+        this.shVal = Math.random() * 2 - 1;
+      }
+      this.lfoGateWas = lg;
       this.lfoPh += lfoInc;
       let wrapped = false;
       if (this.lfoPh >= 1) { this.lfoPh -= 1; wrapped = true; }

@@ -59,6 +59,7 @@ export const PARAMS = {
   'out.vol':     { type: 'cont', label: 'Volume', min: 0, max: 1, def: 0.8, curve: 'lin', fmt: fmtPct },
 
   // ---- patch cables (input jacks), with the starting patch
+  'jack.lfo.gate':  jack('Gate'),
   'jack.osc.pitch': jack('Pitch', 'kb.pitch'),
   'jack.osc.fm':    jack('FM'),
   'jack.filt.in':   jack('In', 'osc.out'),
@@ -72,7 +73,7 @@ export const PARAMS = {
 // Panel: one module per section. 'jacks' is the row of sockets along the bottom of a module:
 // input ids are params (jack.*); 'out:<id>' is an output socket.
 export const LAYOUT = [
-  [{ id: 'lfo', title: 'LFO', rows: [['lfo.rate'], ['lfo.shape']], jacks: ['out:lfo.out'] }],
+  [{ id: 'lfo', title: 'LFO', rows: [['lfo.rate'], ['lfo.shape']], jacks: ['jack.lfo.gate', 'out:lfo.out'] }],
   [{ id: 'osc', title: 'Oscillator', rows: [['osc1.range', 'osc1.wave'], ['osc1.tune', 'osc.fm']], jacks: ['jack.osc.pitch', 'jack.osc.fm', 'out:osc.out'] }],
   [{ id: 'filt', title: 'Filter', rows: [['filt.cutoff', 'filt.res'], ['filt.cv', null]], jacks: ['jack.filt.in', 'jack.filt.cv', 'out:filt.out'] }],
   [{ id: 'env', title: 'Envelope', rows: [['aenv.a', 'aenv.d'], ['aenv.s', 'aenv.r']], jacks: ['jack.env.gate', 'out:env.out'] }],

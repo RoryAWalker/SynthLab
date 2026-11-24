@@ -470,7 +470,7 @@ export const HELP_NF3 = {
 
 // Entries for the NF-Modular (nfm): its modules, jacks and the controls that differ from the NF-1.
 export const HELP_NFM = {
-  'section:lfo': { title: 'LFO', body: ['A low-frequency oscillator: a wave too slow to hear, used to move other things up and down. Patch its Out into the Oscillator\'s FM for vibrato, the Filter\'s CV for a wah, or the VCA\'s CV for tremolo.'] },
+  'section:lfo': { title: 'LFO', body: ['A low-frequency oscillator: a wave too slow to hear, used to move other things up and down. Patch its Out into the Oscillator\'s FM for vibrato, the Filter\'s CV for a wah, or the VCA\'s CV for tremolo.', 'A signal in its Gate input restarts the wave, for example with every key press.'] },
   'section:osc': { title: 'Oscillator', body: ['Makes the raw sound. Its Pitch input sets the note: patch the Keyboard\'s Pitch into it to play tunes. With nothing in Pitch it drones on middle C (moved by Range and Tune).', 'FM bends the pitch with whatever is patched in, by as much as FM Amount allows.'] },
   'section:filt': { title: 'Filter', body: ['A low-pass filter: it lets the low frequencies through and cuts the high ones, making the sound darker or brighter. Patch audio into In and take the filtered sound from Out.', 'Anything patched into CV moves the cutoff, by as much as CV Amount allows.'] },
   'section:env': { title: 'Envelope', body: ['Makes a shape over time each time its Gate input goes high (a key is pressed): it rises (Attack), falls to a level (Decay, Sustain) and, when the key is let go, falls to zero (Release).', 'Patch its Out into the VCA\'s CV to shape the volume, or into the Filter\'s CV to shape the tone.'] },
@@ -490,6 +490,7 @@ export const HELP_NFM = {
   'aenv.s': { title: 'Sustain', body: ['The level held while the Gate stays high (the key is held).'] },
   'aenv.r': { title: 'Release', body: ['Time to fall to zero after the Gate goes low (the key is let go).'] },
 
+  'jack.lfo.gate': { title: 'LFO: Gate input', body: ['Each time the signal here goes high, the LFO restarts its wave from the beginning. Patch the Keyboard\'s Gate here and every note gets its wobble starting the same way (key sync); with nothing here the LFO runs freely and each note catches it somewhere different.'], tip: 'Set up vibrato (LFO Out into the Oscillator\'s FM), then patch the Keyboard\'s Gate here and play short notes: they all start the same.' },
   'jack.osc.pitch': { title: 'Oscillator: Pitch input', body: ['Sets the note. Patch the Keyboard\'s Pitch here to play tunes. An LFO here makes the pitch wobble; nothing here, and it holds one note.'], tip: 'Pull this cable out and play: every key gives the same note.' },
   'jack.osc.fm': { title: 'Oscillator: FM input', body: ['Bends the pitch by the signal patched here, scaled by FM Amount.'], tip: 'Patch the LFO\'s Out here and turn FM Amount up a little: vibrato.' },
   'jack.filt.in': { title: 'Filter: In', body: ['The sound to be filtered, usually the Oscillator\'s Out.'] },
