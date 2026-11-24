@@ -297,7 +297,7 @@ export const LESSONS = [
             { text: 'The high note: fewer of its harmonics are below the cutoff', correct: true },
             { text: 'The low note: low notes always sound darker', feedback: 'Count the peaks to the left of the CUTOFF line on the spectrum for each note.' },
           ],
-          explain: 'A high note\'s harmonics start higher and are spread further apart, so a fixed cutoff removes more of them. That is why some synths let the cutoff follow the keyboard (the NiniFoog\'s Keyboard Control switches).',
+          explain: 'A high note\'s harmonics start higher and are spread further apart, so a fixed cutoff removes more of them. That is why many synths let the cutoff follow the keyboard, a feature called keyboard tracking.',
           hint: 'Play each note again and count how many peaks sit to the left of the CUTOFF line.',
         },
       },
