@@ -46,8 +46,23 @@ export function fromNorm(id, n) {
   return p.min + (p.max - p.min) * n;
 }
 
+// Controls whose scale changes with other settings (spec.alt, e.g. NiniFoog Osc 3 Frequency
+// in Hz when it runs as an LFO). altOn holds the ids currently showing their alternative.
+export const altOn = new Set();
+export const scaleSpec = (id) => (altOn.has(id) ? { ...PARAMS[id], ...PARAMS[id].alt } : PARAMS[id]);
+export function updateAlts(patch) {
+  const changed = [];
+  for (const id in PARAMS) {
+    const alt = PARAMS[id].alt;
+    if (!alt) continue;
+    const on = !!alt.when(patch);
+    if (on !== altOn.has(id)) { if (on) altOn.add(id); else altOn.delete(id); changed.push(id); }
+  }
+  return changed;
+}
+
 export function formatValue(id, v) {
-  const p = PARAMS[id];
+  const p = scaleSpec(id);
   if (p.type === 'step') return (p.options.find((o) => o.v === v) || p.options[0]).label;
   return p.fmt(v);
 }

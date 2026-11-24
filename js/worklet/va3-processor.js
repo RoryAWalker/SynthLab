@@ -71,6 +71,9 @@ class Contour {
 
 const on = (v) => v === 'on';
 const hz = (n) => 440 * Math.pow(2, (n - 69) / 12);
+// Osc 3 as an LFO (Range LO, Control off): the Frequency knob (-7..+7) sweeps 0.1-20 Hz, log.
+const LFO_MIN = 0.1, LFO_MAX = 20;
+const lfoHz = (knob) => LFO_MIN * Math.pow(LFO_MAX / LFO_MIN, (knob + 7) / 14);
 
 class VA3Processor extends AudioWorkletProcessor {
   constructor() {
@@ -139,6 +142,8 @@ class VA3Processor extends AudioWorkletProcessor {
     const w1 = p['osc1.wave'], w2 = p['osc2.wave'], w3 = p['osc3.wave'];
     const r1 = p['osc1.range'] * 12, r2 = p['osc2.range'] * 12 + p['osc2.freq'], r3 = p['osc3.range'] * 12 + p['osc3.freq'];
     const osc3Keyed = on(p['osc3.ctrl']);
+    const lfo3 = !osc3Keyed && p['osc3.range'] === -7;
+    const lfo3Hz = lfo3 ? lfoHz(p['osc3.freq']) : 0;
     const oscMod = on(p['osc.mod']), filtMod = on(p['filt.mod']);
     const track = (on(p['filt.kb1']) ? 1 / 3 : 0) + (on(p['filt.kb2']) ? 2 / 3 : 0);
     const pinkNoise = p['mix.noisetype'] === 'pink';
@@ -170,7 +175,7 @@ class VA3Processor extends AudioWorkletProcessor {
       // Oscillator 3 first: it is also the modulation source.
       const bend = sm.bend * BEND_RANGE;
       const base3 = osc3Keyed ? this.note + bend : 60; // off the keyboard: a fixed pitch
-      const f3 = hz(base3 + sm.tune + r3 + dr3);
+      const f3 = lfo3 ? lfo3Hz : hz(base3 + sm.tune + r3 + dr3);
       const dt3 = Math.min(f3 / sr, 0.49);
       const o3 = oscSample(w3, this.ph3, dt3);
       this.ph3 += dt3; if (this.ph3 >= 1) this.ph3 -= 1;

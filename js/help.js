@@ -396,7 +396,6 @@ export function helpKeyFor(key) {
   if (m) return (m[1] === 'lfo.shape' ? 'lfo:' : 'wave:') + m[2];
   if (key === 'osc2.range' || key === 'osc3.range') return 'osc1.range';
   if (key === 'osc2.wave' || key === 'osc3.wave') return 'osc1.wave';
-  if (key === 'osc3.freq') return 'osc2.freq';
   return key;
 }
 
@@ -420,6 +419,12 @@ export const HELP_NF3 = {
     body: ["The octave, in organ-pipe feet: 8' is normal pitch, each halving (4', 2') is an octave up and each doubling (16', 32') an octave down.",
       'LO drops the oscillator far below hearing, so it slowly wobbles rather than sounds. On Oscillator 3 that turns it into a modulation source.'],
     tip: "Set Oscillator 2 to 16' under Oscillator 1 at 8' for a solid octave bass.",
+  },
+  'osc3.freq': {
+    title: 'Frequency',
+    body: ['Tunes Oscillator 3 up or down by up to 7 semitones, like Oscillator 2.',
+      'With Range on LO and Osc. 3 Control off, Oscillator 3 is a modulation source and this knob sets its speed instead: from 0.1 Hz (one slow sweep every 10 seconds) to 20 Hz (a fast buzz). About 5 Hz gives a natural vibrato.'],
+    tip: 'Push the mod wheel up a little, then turn this knob to hear the vibrato speed up and slow down.',
   },
   'osc2.freq': {
     title: 'Frequency',

@@ -1,4 +1,4 @@
-import { PARAMS, LAYOUT, KEYBED_SECTIONS, FX_SECTIONS, ALL_SECTIONS, defaultPatch, SYNTH, nameHtml } from './params.js';
+import { PARAMS, LAYOUT, KEYBED_SECTIONS, FX_SECTIONS, ALL_SECTIONS, defaultPatch, updateAlts, SYNTH, nameHtml } from './params.js';
 import { Knob } from './knob.js';
 import { Toggle } from './toggle.js';
 import { Wheel } from './wheel.js';
@@ -122,6 +122,7 @@ function ensureAudio() {
 
 function onKnob(id, value) {
   patch[id] = value;
+  refreshScales();
   if (!(lesson && lesson.busy)) engine.setParam(id, value); // while a lesson target plays, keep it intact
   if (lesson) lesson.onPatchChange();
   if (help) help.refresh(id);
@@ -130,8 +131,14 @@ function onKnob(id, value) {
 }
 
 // ---- patch API (used by presets now, by the game layer later) --------------------------
+// knobs whose scale depends on other settings (e.g. Osc 3 Frequency shown in Hz as an LFO)
+function refreshScales() {
+  updateAlts(patch).forEach((id) => { if (knobs[id] && knobs[id].rescale) knobs[id].rescale(); });
+}
+
 function setPatch(p) {
   patch = { ...defaultPatch(), ...p };
+  refreshScales();
   for (const id in knobs) knobs[id].set(patch[id]);
   engine.setPatch(patch);
   if (help) help.refresh();
@@ -206,6 +213,7 @@ document.querySelector('.np-model').innerHTML = nameHtml(SYNTH.name); // name pl
 document.querySelector('.brand-sub').textContent = SYNTH.brandSub;
 document.title = `SynthLab · ${SYNTH.name}`;
 buildPanel();
+refreshScales(); // e.g. Osc 3 Frequency starts in Hz when Osc 3 is an LFO
 alignRows();
 buildToolbar();
 

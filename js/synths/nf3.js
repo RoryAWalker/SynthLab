@@ -37,6 +37,12 @@ const WAVES_3 = [
 ];
 const FREQ_MARKS = [[-7, '−7'], [-5, '−5'], [-3, '−3'], [0, '0'], [3, '+3'], [5, '+5'], [7, '+7']];
 const fmtSt = (v) => (v > 0.005 ? '+' : '') + v.toFixed(2) + ' st';
+// Osc 3 as an LFO (Range LO, Control off): Frequency sweeps 0.1-20 Hz. The knob keeps its
+// stored -7..+7 position; these convert between that position and Hz (same as the worklet).
+const LFO_MIN = 0.1, LFO_MAX = 20;
+export const lfoHz = (knob) => LFO_MIN * Math.pow(LFO_MAX / LFO_MIN, (knob + 7) / 14);
+const lfoKnob = (h) => Math.round((14 * Math.log(h / LFO_MIN) / Math.log(LFO_MAX / LFO_MIN) - 7) * 100) / 100;
+const fmtLfo = (v) => { const h = lfoHz(v); return (h < 1 ? h.toFixed(2) : h < 10 ? h.toFixed(1) : h.toFixed(0)) + ' Hz'; };
 const level = (label, def) => ({ type: 'cont', label, min: 0, max: 1, def, curve: 'lin', fmt: fmtPct, evens: true });
 const time = (label, def) => ({ type: 'cont', label, min: 0.001, max: 10, def, curve: 'log', fmt: fmtTime, unit: 'sec', marks: TIME_MARKS });
 
@@ -57,7 +63,10 @@ export const PARAMS = {
   'osc2.range':  { type: 'step', label: 'Range', options: RANGES, def: 0, span: 180 },
   'osc3.range':  { type: 'step', label: 'Range', options: RANGES, def: -7, span: 180 },
   'osc2.freq':   { type: 'cont', label: 'Frequency', min: -7, max: 7, def: 0, curve: 'lin', fmt: fmtSt, unit: 'semi', marks: FREQ_MARKS },
-  'osc3.freq':   { type: 'cont', label: 'Frequency', min: -7, max: 7, def: 7, curve: 'lin', fmt: fmtSt, unit: 'semi', marks: FREQ_MARKS },
+  // default: a 5 Hz vibrato (Osc 3 starts as an LFO)
+  'osc3.freq':   { type: 'cont', label: 'Frequency', min: -7, max: 7, def: lfoKnob(5), curve: 'lin', fmt: fmtSt, unit: 'semi', marks: FREQ_MARKS,
+                   alt: { when: (p) => p['osc3.range'] === -7 && p['osc3.ctrl'] === 'off', fmt: fmtLfo, unit: 'Hz',
+                          marks: [[0.1, '.1'], [0.5, '.5'], [2, '2'], [5, '5'], [20, '20']].map(([h, t]) => [lfoKnob(h), t]) } },
   'osc1.wave':   { type: 'step', label: 'Waveform', options: WAVES_12, def: 'saw', span: 180 },
   'osc2.wave':   { type: 'step', label: 'Waveform', options: WAVES_12, def: 'saw', span: 180 },
   'osc3.wave':   { type: 'step', label: 'Waveform', options: WAVES_3, def: 'tri', span: 180 },
@@ -136,12 +145,12 @@ export const PRESETS = {
     'perf.glideon': 'on', 'ctrl.glide': 0.08, 'perf.decay': 'on', 'aenv.d': 0.5, 'aenv.s': 0.9,
   },
   'Osc 3 Vibrato': {
-    'osc2.freq': 0.06, 'mix.osc2': 0.6, 'osc3.range': -7, 'osc3.ctrl': 'off', 'osc3.freq': 4, 'mix.osc3': 0,
+    'osc2.freq': 0.06, 'mix.osc2': 0.6, 'osc3.range': -7, 'osc3.ctrl': 'off', 'osc3.freq': lfoKnob(5.5), 'mix.osc3': 0,
     'osc.mod': 'on', 'perf.mod': 0.22, 'filt.cutoff': 2500, 'filt.res': 0.2,
   },
   'Osc 3 Filter Wobble': {
     'osc1.range': -1, 'osc2.range': -1, 'osc2.freq': 0.12, 'mix.osc2': 0.7,
-    'osc3.range': -7, 'osc3.ctrl': 'off', 'osc3.freq': 7, 'mix.osc3': 0, 'osc.mod': 'off',
+    'osc3.range': -7, 'osc3.ctrl': 'off', 'osc3.freq': lfoKnob(3), 'mix.osc3': 0, 'osc.mod': 'off',
     'filt.mod': 'on', 'perf.mod': 0.65, 'filt.cutoff': 320, 'filt.res': 0.6,
   },
   'Fifth Stack': {
@@ -154,7 +163,7 @@ export const PRESETS = {
   },
   'Wind': {
     'mix.osc1': 0, 'mix.noise': 0.9, 'mix.noisetype': 'pink',
-    'osc3.range': -7, 'osc3.ctrl': 'off', 'osc3.freq': -7, 'mix.osc3': 0, 'osc.mod': 'off', 'filt.mod': 'on', 'perf.mod': 0.7,
+    'osc3.range': -7, 'osc3.ctrl': 'off', 'osc3.freq': lfoKnob(1.4), 'mix.osc3': 0, 'osc.mod': 'off', 'filt.mod': 'on', 'perf.mod': 0.7,
     'filt.cutoff': 700, 'filt.res': 0.8, 'aenv.a': 1.2, 'aenv.d': 2.5, 'perf.decay': 'on',
   },
   'Feedback Growl': {

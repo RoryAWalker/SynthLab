@@ -1,4 +1,4 @@
-import { PARAMS, toNorm, fromNorm, formatValue, WAVE_ICONS } from './params.js';
+import { PARAMS, toNorm, fromNorm, formatValue, scaleSpec, WAVE_ICONS } from './params.js';
 
 const SVGNS = 'http://www.w3.org/2000/svg';
 const DIAL = 116;          // size of the scale area around the knob
@@ -45,6 +45,7 @@ export class Knob {
     const dial = document.createElement('div');
     dial.className = 'dial';
     this.el.appendChild(dial);
+    this.dial = dial;
     dial.appendChild(this.buildScale());
 
     this.knob = document.createElement('div');
@@ -68,7 +69,7 @@ export class Knob {
 
   buildScale() {
     const s = svg('svg', { class: 'scale', viewBox: `0 0 ${DIAL} ${DIAL}`, width: DIAL, height: DIAL });
-    const spec = this.spec;
+    const spec = scaleSpec(this.id);
     if (this.stepped) {
       const n = spec.options.length;
       spec.options.forEach((o, i) => {
@@ -124,6 +125,12 @@ export class Knob {
       svg('text', { x: C, y: C + R_LABEL - 4, class: 'unit' }, s).textContent = spec.unit;
     }
     return s;
+  }
+
+  // the scale's labels changed (spec.alt switched on or off)
+  rescale() {
+    this.dial.querySelector('.scale').replaceWith(this.buildScale());
+    this.set(this.value);
   }
 
   set(value) {
