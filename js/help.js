@@ -355,6 +355,28 @@ export const HELP = {
     title: 'Scopes',
     body: ['Shows or hides the oscilloscope and spectrum analyser. Hidden, the synth grows to fill the screen; shown, you can see the waveform and harmonics of everything you play, along with the teaching graphs.', 'Lessons always show the scopes, because the target sound is drawn on them.'],
   },
+  'section:chorus': {
+    title: 'Chorus',
+    body: ['Adds slightly delayed copies of the sound whose timing gently wobbles, one on each side. They drift in and out of tune with the original, making it wider, shimmering and lush.', 'The effects come after the synth: the scopes show the synth itself, without them.'],
+  },
+  'fx.chorus': { title: 'Chorus amount', body: ['How much chorus is mixed in. At 0 it is off.'], tip: 'Try Chorus on a single sawtooth: it starts to sound like two detuned oscillators.' },
+  'section:delay': {
+    title: 'Delay',
+    body: ['Repeats the sound as echoes. Each echo is a little quieter and darker than the last, like a tape echo.'],
+  },
+  'fx.dtime': { title: 'Delay time', body: ['The time between one echo and the next. Short times (under 0.1 s) thicken the sound; longer times give distinct, rhythmic echoes.'] },
+  'fx.delay': { title: 'Delay amount', body: ['How loud the echoes are and how long they keep repeating. At 0 the delay is off.'], tip: 'Set Time to about 0.3 s and Amount to 40%, then play short notes.' },
+  'section:reverb': {
+    title: 'Reverb',
+    body: ['Places the sound in a space by adding thousands of tiny reflections that fade away, like the echo of a room or a hall.'],
+  },
+  'fx.rsize': { title: 'Reverb size', body: ['How big the space is: small settings sound like a room, large ones like a hall or cathedral, with a longer tail.'] },
+  'fx.reverb': { title: 'Reverb amount', body: ['How much of the reverberant space you hear. At 0 the reverb is off.'] },
+  maximise: {
+    title: 'Maximise',
+    body: ['Makes the oscilloscope and spectrum much bigger, for looking closely at the sound. The keyboard folds away so the synth\'s controls stay in view; the KEYBOARD button brings it back, and your computer keyboard always plays. Press RESTORE to return to normal.'],
+  },
+  keysbtn: { title: 'Keyboard', body: ['Shows or hides the on-screen keyboard while the scopes are maximised.'] },
   zoom: {
     title: 'Zoom',
     body: [

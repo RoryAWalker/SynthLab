@@ -34,7 +34,10 @@ export class ZoomPan {
     // fit the width, and the height left below the top bars, so the keyboard stays on screen
     const top = this.vp.getBoundingClientRect().top + window.scrollY;
     const availH = window.innerHeight - top - 20;
-    this.base = Math.min(1, (this.vp.clientWidth - 32) / designW, availH > 300 ? availH / designH : 1);
+    // Maximised scopes: fit the width only and let the page scroll, so the big screens don't
+    // shrink the synth's controls below them.
+    const fitHeight = !document.body.classList.contains('scopes-max');
+    this.base = Math.min(1, (this.vp.clientWidth - 32) / designW, fitHeight && availH > 300 ? availH / designH : 1);
     this.vp.style.height = designH * this.base + 'px';
     if (this.zoom === 1) this.center();
     else { // keep the same point in the middle of the view

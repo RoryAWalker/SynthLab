@@ -1,5 +1,7 @@
-// Main-thread side of the audio engine: owns the AudioContext, the worklet node
-// and two analysers (oscilloscope + spectrum).
+// Main-thread side of the audio engine: owns the AudioContext, the worklet node,
+// the effects (chorus, delay, reverb) and the analysers (oscilloscope + spectrum).
+
+import { FXChain } from './fx.js';
 
 export class Engine {
   // module / processor: the synth's AudioWorklet file and processor name
@@ -11,6 +13,7 @@ export class Engine {
     this.ready = false;
     this.pending = [];
     this.live = null; // latest envelope/LFO/cutoff state reported by the worklet
+    this.fxValues = {}; // effect settings, applied once the audio starts
   }
 
   start(patch) {
@@ -42,9 +45,13 @@ export class Engine {
     this.osc2Scope = this.ctx.createAnalyser();
     [this.osc1Scope, this.osc2Scope].forEach((a, i) => { a.fftSize = this.scope.fftSize; a.smoothingTimeConstant = 0; split.connect(a, i); });
 
+    // the scopes see the synth itself; the speakers hear it through the effects
     this.node.connect(this.scope);
     this.node.connect(this.spectrum);
-    this.node.connect(this.ctx.destination);
+    this.fx = new FXChain(this.ctx);
+    this.node.connect(this.fx.input);
+    this.fx.output.connect(this.ctx.destination);
+    this.fx.setAll({ ...patch, ...this.fxValues });
 
     this.node.port.onmessage = (ev) => { if (ev.data.type === 'state') this.live = ev.data; };
     this.node.port.postMessage({ type: 'patch', patch });
@@ -62,8 +69,19 @@ export class Engine {
     else this.pending.push(msg);
   }
 
-  setPatch(patch) { this.post({ type: 'patch', patch }); }
-  setParam(id, value) { this.post({ type: 'param', id, value }); }
+  setPatch(patch) {
+    this.post({ type: 'patch', patch });
+    Object.keys(patch).forEach((id) => { if (id.startsWith('fx.')) this.fxValues[id] = patch[id]; });
+    if (this.fx) this.fx.setAll(patch);
+  }
+  setParam(id, value) {
+    if (id.startsWith('fx.')) { // effects live here, not in the worklet
+      this.fxValues[id] = value;
+      if (this.fx) this.fx.set(id, value);
+      return;
+    }
+    this.post({ type: 'param', id, value });
+  }
   noteOn(note) { this.post({ type: 'noteOn', note }); }
   noteOff(note) { this.post({ type: 'noteOff', note }); }
   allOff() { this.post({ type: 'allOff' }); }

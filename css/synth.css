@@ -932,3 +932,55 @@ body.preview #fit { margin: 0; }
 .lesson-wrap { position: relative; z-index: 30; }
 .lesson-wrap .lesson-bar { position: absolute; left: 0; right: 0; top: 0; }
 .lesson-bar.overlaying { box-shadow: 0 18px 30px rgba(0,0,0,0.55); border-bottom-color: #3a3d44; }
+
+/* ==========================================================================
+   Effects unit: a small separate box between the scopes and the synth
+   ========================================================================== */
+.fx-unit {
+  display: flex; align-items: center; gap: 18px;
+  margin: 0 18px 16px; padding: 8px 20px 4px;
+  border-radius: 10px;
+  background: repeating-linear-gradient(90deg, rgba(255,255,255,0.012) 0 1px, transparent 1px 3px), linear-gradient(#3a3c3f, #2b2d30);
+  box-shadow: 0 10px 24px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12), inset 0 -2px 0 rgba(0,0,0,0.4);
+  --ink: #ececec; --ink-dim: #b5b7ba; --rule: rgba(236,236,236,0.45); color: #ececec;
+}
+.fx-label { writing-mode: vertical-rl; transform: rotate(180deg); font-size: 11px; font-weight: 800; letter-spacing: 0.24em; color: #c9cbce; }
+.fx-sections { display: flex; gap: 6px; align-items: flex-start; }
+.fx-sections .section { padding: 0 10px; }
+.fx-sections .section + .section { border-left: 1px solid rgba(255,255,255,0.1); }
+.fx-sections .section-title { font-size: 11px; margin-bottom: 0; padding-bottom: 3px; }
+/* small pots (beat the per-skin sizes) */
+body .fx-unit .knob-cell.small { width: 84px; padding-top: 2px; }
+body .fx-unit .knob-cell.small .knob-label { font-size: 10px; height: 13px; width: auto; display: block; }
+body .fx-unit .knob-cell.small .dial { width: 74px; height: 74px; margin-top: -4px; }
+body .fx-unit .knob-cell.small .knob { width: 34px; height: 34px; margin: -17px 0 0 -17px; }
+body .fx-unit .knob-cell.small .knob-cap { inset: 6px; }
+body .fx-unit .knob-cell.small .knob-pointer { height: 9px; top: 2px; width: 2px; margin-left: -1px; }
+body .fx-unit .knob-cell.small .knob-body::after { height: 6px; }
+body .fx-unit .knob-cell.small .knob-value { font-size: 10.5px; height: 14px; margin-top: -6px; }
+.fx-unit .lock-veil { inset: 20px 2px 0; }
+body.preview .fx-unit { display: none !important; }
+
+/* ==========================================================================
+   Maximised scopes: tall screens; the keyboard folds away unless KEYBOARD is on
+   ========================================================================== */
+body.scopes-max .bezel, body[data-skin="vintage"].scopes-max .bezel { height: 420px; padding: 10px; }
+body.scopes-max .scope-unit { align-items: stretch; }
+body[data-skin="vintage"].scopes-max .scope-controls { flex-direction: column; width: 150px; }
+body[data-skin="vintage"].scopes-max .tb-buttons { grid-template-columns: repeat(3, 40px); }
+body.scopes-max:not(.keys-shown) .keybed,
+body.scopes-max:not(.keys-shown) .wood-band { display: none; }
+.max-btn { margin-top: 2px; }
+.max-btn.on, .keys-btn.on { background: linear-gradient(#ffcf7a, #f0a43a); }
+.keys-btn[hidden] { display: none; }
+body[data-skin="vintage"] .max-btn, body[data-skin="vintage"] .keys-btn { height: 24px; }
+
+/* The screens' pixel resolution must never widen the layout: they are redrawn sharper when
+   zoomed or maximised, and the page would otherwise grow, then shrink to fit. So the canvas is
+   positioned inside its bezel (out of the layout flow), sized from the bezel, not the other way. */
+.scope-screen-wrap, .bezel { min-width: 0; }
+.bezel { --bp: 10px; }
+body[data-skin="vintage"] .bezel { --bp: 6px; }
+body.scopes-max .bezel, body[data-skin="vintage"].scopes-max .bezel { --bp: 10px; }
+.bezel canvas { position: absolute; top: var(--bp); left: var(--bp); width: calc(100% - 2 * var(--bp)); height: calc(100% - 2 * var(--bp)); }
+.bezel .screen-glass { inset: var(--bp); }

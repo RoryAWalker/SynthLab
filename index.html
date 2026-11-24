@@ -80,6 +80,8 @@
           <div class="tb-group" data-help="timebase"><div class="scope-ctl-title">TIME / DIV</div>
           <div class="tb-buttons" id="tb-buttons"></div></div>
           <button class="hold-btn" id="hold-btn" data-help="hold">HOLD</button>
+          <button class="hold-btn max-btn" id="max-btn" data-help="maximise">MAXIMISE</button>
+          <button class="hold-btn keys-btn" id="keys-btn" data-help="keysbtn" hidden>KEYBOARD</button>
           <div class="scope-brand">NF SCOPE-2<br><small>DUAL DISPLAY</small></div>
         </div>
         <div class="scope-screen-wrap" data-help="spectrum">
@@ -89,6 +91,12 @@
       </section>
 
       <!-- The synthesizer -->
+      <!-- Effects: a separate small unit, shared by every synth -->
+      <section class="fx-unit" id="fx-unit">
+        <div class="fx-label">EFFECTS</div>
+        <div class="fx-sections" id="fx-sections"></div>
+      </section>
+
       <section class="synth">
         <div class="cheek left"></div>
         <div class="synth-body">

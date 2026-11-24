@@ -1,4 +1,4 @@
-import { PARAMS, LAYOUT, KEYBED_SECTIONS, ALL_SECTIONS, defaultPatch, SYNTH, nameHtml } from './params.js';
+import { PARAMS, LAYOUT, KEYBED_SECTIONS, FX_SECTIONS, ALL_SECTIONS, defaultPatch, SYNTH, nameHtml } from './params.js';
 import { Knob } from './knob.js';
 import { Toggle } from './toggle.js';
 import { Wheel } from './wheel.js';
@@ -56,6 +56,7 @@ function buildSection(sec) {
           : spec.type === 'wheel' ? new Wheel(id, patch[id], onKnob)
           : new Knob(id, patch[id], onKnob);
         knobs[id] = k;
+        if (spec.small) k.el.classList.add('small'); // the effects' smaller pots
         // staggered layouts: nudge a control down (e.g. the classic mixer's in-between pots)
         if (sec.offsets && sec.offsets[id]) { k.el.style.transform = `translateY(${sec.offsets[id]})`; k.el.classList.add('offset'); }
         grid.appendChild(k.el);
@@ -89,6 +90,9 @@ function buildPanel() {
   });
   const perf = document.getElementById('perf-sections');
   KEYBED_SECTIONS.forEach((sec) => perf.appendChild(buildSection(sec)));
+  // (skipped if the page is an older cached copy without the Effects unit)
+  const fx = document.getElementById('fx-sections');
+  if (fx) FX_SECTIONS.forEach((sec) => fx.appendChild(buildSection(sec)));
 }
 
 // Line up the rows of single-section columns (Mixer, Filter, LFO) with the rows of
@@ -296,7 +300,32 @@ function setScopes(on, remember = true) {
   fit();
   scope.resize(); // the screens had no size while hidden
 }
-scopesBtn.addEventListener('click', () => setScopes(document.body.classList.contains('scopes-hidden')));
+scopesBtn.addEventListener('click', () => {
+  const show = document.body.classList.contains('scopes-hidden');
+  if (!show) setMaxScopes(false); // hiding the scopes also leaves the maximised view
+  setScopes(show);
+});
+
+// ---- maximise the scopes: tall screens; the keyboard folds away (a button brings it back) ----
+const maxBtn = document.getElementById('max-btn') || document.createElement('button');
+const keysBtn = document.getElementById('keys-btn') || document.createElement('button');
+function setMaxScopes(on) {
+  document.body.classList.toggle('scopes-max', on);
+  maxBtn.classList.toggle('on', on);
+  maxBtn.textContent = on ? 'RESTORE' : 'MAXIMISE';
+  keysBtn.hidden = !on;
+  if (!on) { document.body.classList.remove('keys-shown'); keysBtn.classList.remove('on'); }
+  if (on && document.body.classList.contains('scopes-hidden')) setScopes(true, false);
+  fit();
+  scope.resize(); // redraw the screens at their new size
+}
+maxBtn.addEventListener('click', () => setMaxScopes(!document.body.classList.contains('scopes-max')));
+keysBtn.addEventListener('click', () => {
+  const on = !document.body.classList.contains('keys-shown');
+  document.body.classList.toggle('keys-shown', on);
+  keysBtn.classList.toggle('on', on);
+  fit();
+});
 setScopes(!PREVIEW && loadPref(scopesPref, '0') === '1', false);
 
 // ---- lessons ----
