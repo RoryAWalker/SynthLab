@@ -306,26 +306,17 @@ scopesBtn.addEventListener('click', () => {
   setScopes(show);
 });
 
-// ---- maximise the scopes: tall screens; the keyboard folds away (a button brings it back) ----
+// ---- maximise the scopes: tall screens; the keyboard folds away until RESTORE ----
 const maxBtn = document.getElementById('max-btn') || document.createElement('button');
-const keysBtn = document.getElementById('keys-btn') || document.createElement('button');
 function setMaxScopes(on) {
   document.body.classList.toggle('scopes-max', on);
   maxBtn.classList.toggle('on', on);
   maxBtn.textContent = on ? 'RESTORE' : 'MAXIMISE';
-  keysBtn.hidden = !on;
-  if (!on) { document.body.classList.remove('keys-shown'); keysBtn.classList.remove('on'); }
   if (on && document.body.classList.contains('scopes-hidden')) setScopes(true, false);
   fit();
   scope.resize(); // redraw the screens at their new size
 }
 maxBtn.addEventListener('click', () => setMaxScopes(!document.body.classList.contains('scopes-max')));
-keysBtn.addEventListener('click', () => {
-  const on = !document.body.classList.contains('keys-shown');
-  document.body.classList.toggle('keys-shown', on);
-  keysBtn.classList.toggle('on', on);
-  fit();
-});
 setScopes(!PREVIEW && loadPref(scopesPref, '0') === '1', false);
 
 // ---- effects drawer: a thin FX line below the keyboard that folds open ----

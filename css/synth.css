@@ -979,12 +979,11 @@ body.scopes-max .bezel, body[data-skin="vintage"].scopes-max .bezel { height: 42
 body.scopes-max .scope-unit { align-items: stretch; }
 body[data-skin="vintage"].scopes-max .scope-controls { flex-direction: column; width: 150px; }
 body[data-skin="vintage"].scopes-max .tb-buttons { grid-template-columns: repeat(3, 40px); }
-body.scopes-max:not(.keys-shown) .keybed,
-body.scopes-max:not(.keys-shown) .wood-band { display: none; }
+body.scopes-max .keybed,
+body.scopes-max .wood-band { display: none; }
 .max-btn { margin-top: 2px; }
-.max-btn.on, .keys-btn.on { background: linear-gradient(#ffcf7a, #f0a43a); }
-.keys-btn[hidden] { display: none; }
-body[data-skin="vintage"] .max-btn, body[data-skin="vintage"] .keys-btn { height: 24px; }
+.max-btn.on { background: linear-gradient(#ffcf7a, #f0a43a); }
+body[data-skin="vintage"] .max-btn { height: 24px; }
 
 /* The screens' pixel resolution must never widen the layout: they are redrawn sharper when
    zoomed or maximised, and the page would otherwise grow, then shrink to fit. So the canvas is

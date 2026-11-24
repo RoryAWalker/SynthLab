@@ -374,10 +374,9 @@ export const HELP = {
   'fx.reverb': { title: 'Reverb amount', body: ['How much of the reverberant space you hear. At 0 the reverb is off.'] },
   maximise: {
     title: 'Maximise',
-    body: ['Makes the oscilloscope and spectrum much bigger, for looking closely at the sound. The keyboard folds away so the synth\'s controls stay in view; the KEYBOARD button brings it back, and your computer keyboard always plays. Press RESTORE to return to normal.'],
+    body: ['Makes the oscilloscope and spectrum much bigger, for looking closely at the sound. The keyboard folds away so the synth\'s controls stay in view (your computer keyboard still plays). Press RESTORE to bring the keyboard back.'],
   },
   fxtab: { title: 'Effects', body: ['Opens or closes the effects: Chorus, Delay and Reverb. They come after the synth, so the scopes still show the synth\'s own sound.'] },
-  keysbtn: { title: 'Keyboard', body: ['Shows or hides the on-screen keyboard while the scopes are maximised.'] },
   zoom: {
     title: 'Zoom',
     body: [
