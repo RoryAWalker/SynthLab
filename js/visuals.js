@@ -362,7 +362,7 @@ export class Overlay {
   // ---- LFO ---------------------------------------------------------------------------------
   drawLfo(ctx, w, h, box) {
     const p = this.getPatch();
-    const rate = p['lfo.rate'], shape = p['lfo.shape'], delay = p['lfo.delay'] || 0; // no Delay knob on the NF-Modular
+    const rate = p['lfo.rate'], shape = p['lfo.shape'], delay = p['lfo.delay'] || 0; // no Delay knob on the modular synths
     const live = this.engine.live;
     const span = Math.min(10, Math.max(1.5, delay + 1.5, 3 / rate)); // seconds across the graph
     const t0 = live && live.gate && live.lfoT > span * 0.85 ? live.lfoT - span * 0.85 : 0; // scroll once past the edge
@@ -423,7 +423,7 @@ export class Overlay {
     // title and destinations
     const shapeName = PARAMS['lfo.shape'].options.find((o) => o.v === shape).label;
     label(ctx, `LFO   ·   ${formatValue('lfo.rate', rate)}   ·   ${shapeName}`, box.x, 16, AMBER, 'left', 10.5, 800);
-    // the NF-1's LFO depth knobs (the NF-Modular has none: its LFO goes wherever it is patched)
+    // the NF-1's LFO depth knobs (the modular synths have none: its LFO goes wherever it is patched)
     const dests = [['lfo.pitch', 'Pitch ±'], ['lfo.filter', 'Filter ±'], ['lfo.amp', 'Amp ']].filter(([id]) => PARAMS[id]);
     let x = w - PAD.r;
     for (let i = dests.length - 1; i >= 0; i--) {

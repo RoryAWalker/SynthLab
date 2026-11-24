@@ -468,7 +468,7 @@ export const HELP_NF3 = {
 };
 
 
-// Entries for the NF-Modular (nfm): its modules, jacks and the controls that differ from the NF-1.
+// Entries for the MiniModular (nfm): its modules, jacks and the controls that differ from the NF-1.
 export const HELP_NFM = {
   'section:lfo': { title: 'LFO', body: ['A low-frequency oscillator: a wave too slow to hear, used to move other things up and down. Patch its Out into the VCO\'s FM for vibrato, the VCF\'s CV for a wah, or the VCA\'s CV for tremolo.', 'A signal in its Gate input restarts the wave, for example with every key press.'] },
   'section:osc': { title: 'VCO (Voltage-Controlled Oscillator)', body: ['Makes the raw sound. Its Pitch input sets the note: patch the Keyboard\'s Pitch into it to play tunes. With nothing in Pitch it drones on middle C (moved by Range and Tune).', 'FM bends the pitch with whatever is patched in, by as much as FM Amount allows.'] },
@@ -507,4 +507,79 @@ export const HELP_NFM = {
   'out:filt.out': { title: 'VCF: Out', body: ['The filtered sound. Usually patched into the VCA\'s In.'] },
   'out:env.out': { title: 'Envelope: Out', body: ['The envelope\'s shape over time. Drag it to the VCA\'s CV to shape volume, or the VCF\'s CV to shape tone.'] },
   'out:vca.out': { title: 'VCA: Out', body: ['The sound after the VCA. Usually patched into the Output.'] },
+};
+
+// Entries for the NF-Modular (nfmod): the full rack.
+const vcoHelp = (n) => ({
+  [`section:vco${n}`]: { title: `VCO ${n} (Voltage-Controlled Oscillator)`, body: ['Makes three waveforms at once, each from its own output: Saw (bright, every harmonic), Pulse (a square wave at 50%: hollow, odd harmonics; its shape set by Pulse Width) and Tri (soft). Patch any of them, or several, into the Mixer.', 'Pitch sets the note (1 V per octave), FM bends it by FM Amount, PWM moves the pulse width, and Sync restarts the wave.'] },
+  [`osc${n}.range`]: { title: 'Range', body: ['Shifts the VCO up or down in whole octaves.'] },
+  [`osc${n}.tune`]: { title: 'Tune', body: ['Tunes the VCO up or down by up to 7 semitones. Set VCO 2 a few hundredths of a semitone away from VCO 1 for a thick, slowly beating sound.'] },
+  [`osc${n}.pw`]: { title: 'Pulse Width', body: ['The shape of the Pulse output: 50% is a true square (hollow); narrower pulses sound thinner and more nasal.'] },
+  [`osc${n}.fm`]: { title: 'FM Amount', body: ['How far a signal in the FM input bends the pitch.'] },
+  [`osc${n}.pwm`]: { title: 'PWM Amount', body: ['How far a signal in the PWM input moves the pulse width. A slow LFO here gives the classic moving, chorus-like PWM sound.'] },
+  [`jack.vco${n}.pitch`]: { title: `VCO ${n}: Pitch input`, body: ['Sets the note: 1 V per octave. Usually the Keyboard\'s Pitch.'] },
+  [`jack.vco${n}.fm`]: { title: `VCO ${n}: FM input`, body: ['Bends the pitch by the signal here, scaled by FM Amount: an LFO for vibrato, an envelope for a pitch sweep, or another VCO for metallic FM tones.'] },
+  [`jack.vco${n}.pwm`]: { title: `VCO ${n}: PWM input`, body: ['Moves the Pulse output\'s width by the signal here, scaled by PWM Amount.'] },
+  [`jack.vco${n}.sync`]: { title: `VCO ${n}: Sync input`, body: ['Each time the signal here rises through zero, this VCO restarts its wave. Patch the other VCO\'s Saw here and sweep this one\'s pitch for the tearing "sync" sound.'] },
+  [`out:vco${n}.saw`]: { title: `VCO ${n}: Saw output`, body: ['The sawtooth wave: bright, with every harmonic.'] },
+  [`out:vco${n}.sq`]: { title: `VCO ${n}: Pulse output`, body: ['The pulse wave, shaped by Pulse Width (and PWM).'] },
+  [`out:vco${n}.tri`]: { title: `VCO ${n}: Tri output`, body: ['The triangle wave: soft, with a few odd harmonics.'] },
+});
+const envHelp = (n) => ({
+  [`section:env${n}`]: { title: `ENV ${n} (Envelope)`, body: ['An ADSR envelope: starts when its Gate goes high, holds at Sustain, and falls at Release when the Gate goes low. Out rises from 0 to 1; Inv is the same shape upside down (0 to −1), for sweeps that go down instead of up.'] },
+  [`env${n}.a`]: { title: 'Attack', body: ['Time to rise to full when the Gate goes high.'] },
+  [`env${n}.d`]: { title: 'Decay', body: ['Time to fall from full to the Sustain level.'] },
+  [`env${n}.s`]: { title: 'Sustain', body: ['The level held while the Gate stays high.'] },
+  [`env${n}.r`]: { title: 'Release', body: ['Time to fall to zero after the Gate goes low.'] },
+  [`jack.env${n}.gate`]: { title: `ENV ${n}: Gate input`, body: ['Starts the envelope when the signal here goes high, and releases it when it goes low. Usually the Keyboard\'s Gate; an LFO square here repeats it.'] },
+  [`out:env${n}.out`]: { title: `ENV ${n}: Out`, body: ['The envelope, 0 to 1.'] },
+  [`out:env${n}.inv`]: { title: `ENV ${n}: Inv (inverted)`, body: ['The envelope upside down, 0 to −1. Into the VCF\'s CV it sweeps the cutoff down at each note instead of up.'] },
+});
+const vcaHelp = (n) => ({
+  [`section:vca${n}`]: { title: `VCA ${n} (Voltage-Controlled Amplifier)`, body: ['A volume control worked by a signal. Level opens it by hand; the CV input opens it further, by as much as CV Amount allows.'] },
+  [`vca${n}.level`]: { title: 'Level', body: ['Opens the VCA by hand. At 0 only the CV opens it.'] },
+  [`vca${n}.cv`]: { title: 'CV Amount', body: ['How much the CV input opens the VCA. Turn it down, with Level up, for gentle tremolo from an LFO.'] },
+  [`jack.vca${n}.in`]: { title: `VCA ${n}: In`, body: ['The signal whose level the VCA controls.'] },
+  [`jack.vca${n}.cv`]: { title: `VCA ${n}: CV input`, body: ['Opens the VCA: usually an envelope, or an LFO for tremolo.'] },
+  [`out:vca${n}.out`]: { title: `VCA ${n}: Out`, body: ['The signal after the VCA.'] },
+});
+export const HELP_NFMOD = {
+  ...vcoHelp(1), ...vcoHelp(2), ...envHelp(1), ...envHelp(2), ...vcaHelp(1), ...vcaHelp(2),
+  'section:kb': { title: 'Keyboard', body: ['Pitch: which note (1 V per octave). Gate: high while a key is held. Trig: a short pulse at the start of every note, even when you play legato (Gate stays high when notes overlap).', 'Glide slides the Pitch from note to note.'] },
+  'kb.glide': { title: 'Glide', body: ['How long the keyboard\'s Pitch takes to slide to a new note.'] },
+  'out:kb.pitch': { title: 'Keyboard: Pitch output', body: ['Which note is played, 1 V per octave.'] },
+  'out:kb.gate': { title: 'Keyboard: Gate output', body: ['High while a key is held.'] },
+  'out:kb.trig': { title: 'Keyboard: Trig output', body: ['A short pulse each time a key is pressed. Use it to restart an LFO or clock the S&H on every note.'] },
+  'section:noise': { title: 'Noise', body: ['Random signal at every frequency. White is bright and hissy (equal energy per frequency); Pink is darker and rounder (equal energy per octave). Use it as a sound (wind, drums, breath) or as a random control signal.'] },
+  'out:noise.white': { title: 'Noise: White', body: ['Bright, hissing noise.'] },
+  'out:noise.pink': { title: 'Noise: Pink', body: ['Darker, rumbling noise.'] },
+  'section:mix': { title: 'Mixer', body: ['Adds up to four signals into one, each with its own level. Mix the two VCOs, add noise, or mix control signals (an envelope and an LFO) before they go into one CV input.'] },
+  'mix.l1': { title: 'Level 1', body: ['How much of In 1 goes into the mix.'] },
+  'mix.l2': { title: 'Level 2', body: ['How much of In 2 goes into the mix.'] },
+  'mix.l3': { title: 'Level 3', body: ['How much of In 3 goes into the mix.'] },
+  'mix.l4': { title: 'Level 4', body: ['How much of In 4 goes into the mix.'] },
+  'jack.mix.in1': { title: 'Mixer: In 1', body: ['Any signal, set by Level 1.'] },
+  'jack.mix.in2': { title: 'Mixer: In 2', body: ['Any signal, set by Level 2.'] },
+  'jack.mix.in3': { title: 'Mixer: In 3', body: ['Any signal, set by Level 3.'] },
+  'jack.mix.in4': { title: 'Mixer: In 4', body: ['Any signal, set by Level 4.'] },
+  'out:mix.out': { title: 'Mixer: Out', body: ['All four inputs added together.'] },
+  'section:filt': { title: 'VCF (Voltage-Controlled Filter)', body: ['A 24 dB/octave low-pass filter. Its cutoff moves with CV (scaled by CV Amount) and with Key (exactly one octave per octave: patch the Keyboard\'s Pitch here and the filter follows the notes). Res adds to the Resonance knob.'] },
+  'filt.cv': { title: 'CV Amount', body: ['How far, and which way, the CV input moves the cutoff.'] },
+  'jack.filt.in': { title: 'VCF: In', body: ['The sound to filter, usually the Mixer\'s Out.'] },
+  'jack.filt.cv': { title: 'VCF: CV input', body: ['Moves the cutoff by the signal here, scaled by CV Amount.'] },
+  'jack.filt.key': { title: 'VCF: Key input', body: ['Moves the cutoff one octave for each octave of signal, so the Keyboard\'s Pitch here makes the tone stay even from low notes to high (keyboard tracking). With Resonance up, the filter plays in tune.'] },
+  'jack.filt.res': { title: 'VCF: Res input', body: ['Adds the signal here to the Resonance setting: an envelope or LFO makes the resonance come and go.'] },
+  'out:filt.out': { title: 'VCF: Out', body: ['The filtered sound.'] },
+  'section:lfo': { title: 'LFO', body: ['A slow wave for moving other things. Gate restarts it; Rate speeds it up or slows it down by the signal there (scaled by Rate CV).'] },
+  'lfo.rcv': { title: 'Rate CV', body: ['How much a signal in the Rate input changes the LFO\'s speed. An envelope here makes the wobble speed up or slow down during a note.'] },
+  'jack.lfo.gate': { title: 'LFO: Gate input', body: ['Restarts the wave each time the signal here rises: the Keyboard\'s Gate or Trig gives key sync.'] },
+  'jack.lfo.rate': { title: 'LFO: Rate input', body: ['Changes the LFO\'s speed by the signal here, scaled by Rate CV.'] },
+  'out:lfo.out': { title: 'LFO: Out', body: ['The slow LFO wave, −1 to 1.'] },
+  'section:sh': { title: 'S&H (Sample and Hold)', body: ['Each time the Clock input rises, it measures (samples) the In and holds that value until the next clock. With nothing in In it samples noise, giving a new random value each time: the classic "random bleeps" when patched into the VCF\'s CV.'] },
+  'jack.sh.in': { title: 'S&H: In', body: ['The signal to sample. Empty: noise (random values).'] },
+  'jack.sh.clock': { title: 'S&H: Clock input', body: ['Each rise here takes a new sample. A square LFO gives a steady rhythm; the Keyboard\'s Trig gives one per note.'] },
+  'out:sh.out': { title: 'S&H: Out', body: ['The held value: a staircase of steps.'] },
+  'section:out': { title: 'Output', body: ['What you hear. Patch the end of your chain into In.'] },
+  'out.vol': { title: 'Volume', body: ['The overall loudness.'] },
+  'jack.out.in': { title: 'Output: In', body: ['What you hear. Patch any output here to listen to it on its own.'] },
 };

@@ -24,7 +24,7 @@ const knobs = {};
 const sections = {};
 let help = null; // HelpPanel, created at boot
 let lesson = null; // LessonController, created at boot
-// NF-Modular: jack sockets and patch cables (cables.js)
+// Modular synths: jack sockets and patch cables (cables.js)
 const cables = SYNTH.modular ? new Cables(document.getElementById('stage'), { getPatch: () => patch, onChange: (id, v) => onKnob(id, v), controls: knobs }) : null;
 const overlay = new Overlay(() => patch, engine); // teaching graphs on the spectrum display
 
@@ -35,7 +35,8 @@ function buildSection(sec) {
   el.dataset.section = sec.id;
   el.innerHTML = `<div class="section-title" data-help="section:${sec.id}"><span>${sec.title}</span></div><div class="section-grid"></div><div class="lock-veil"><span>LOCKED</span></div>`;
   const grid = el.querySelector('.section-grid');
-  if (sec.jacks && cables) el.appendChild(cables.buildStrip(sec.jacks)); // NF-Modular: sockets along the module's foot
+  if (sec.jacks && cables) el.appendChild(cables.buildStrip(sec.jacks)); // modular synths: sockets along the module's foot
+  if (!sec.rows.length) { grid.remove(); sections[sec.id] = el; return el; } // a module with only jacks (Noise, S&H)
   const cols = Math.max(...sec.rows.map((r) => r.length));
   // Columns holding only switches or wheels can be narrow (NiniFoog), freeing panel space.
   const narrowCol = (c) => {
@@ -126,7 +127,7 @@ function ensureAudio() {
 
 function onKnob(id, value) {
   patch[id] = value;
-  // NF-Modular: a patch can sound without a key (a drone), so any change may start the audio
+  // modular synths: a patch can sound without a key (a drone), so any change may start the audio
   if (SYNTH.modular && !engine.running) ensureAudio();
   refreshScales();
   if (!(lesson && lesson.busy)) engine.setParam(id, value); // while a lesson target plays, keep it intact
@@ -411,7 +412,7 @@ document.getElementById('btn-synths').addEventListener('click', () => startMenu.
 // makes it taller and the page scrolls, rather than the synth shrinking.
 const lessonWrap = document.getElementById('lesson-wrap');
 
-// ---- NF-Modular: cables over the panel, and lamps by the output jacks ----
+// ---- modular synths: cables over the panel, and lamps by the output jacks ----
 if (cables) {
   requestAnimationFrame(() => cables.redraw());
   (function lamps() {

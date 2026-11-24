@@ -999,7 +999,7 @@ body.scopes-max .bezel, body[data-skin="vintage"].scopes-max .bezel { --bp: 10px
 .bezel .screen-glass { inset: var(--bp); }
 
 /* ==========================================================================
-   NF-Modular (nfm): separate module plates in a dark rack, jack sockets, patch cables
+   MiniModular (nfm): separate module plates in a dark rack, jack sockets, patch cables
    ========================================================================== */
 body[data-skin="modular"] {
   --desk: #141517; --desk-2: #1d1f23;
@@ -1074,5 +1074,14 @@ body.patching-in .socket[data-jack], body.patching-out .socket[data-out] { box-s
 body.preview .cable-layer { display: block; }
 /* the keyboard's jacks sit with its Glide knob, left of the keys */
 body[data-skin="modular"] .perf .jack-strip { border-top-color: rgba(255,255,255,0.12); }
-/* NF-Modular: the keyboard section holds more than Glide, so the knob keeps its label */
+/* MiniModular: the keyboard section holds more than Glide, so the knob keeps its label */
 body[data-skin="modular"] .perf .knob-label { visibility: visible; height: 15px; }
+
+/* NF-Modular: a two-row rack (columns stack two modules) and modules with several rows of jacks */
+body[data-skin="modular"] .panel-column.stacked { gap: 8px; }
+body[data-skin="modular"] .panel-column.stacked > .section { height: auto; flex: 1 1 auto; }
+body[data-skin="modular"] .panel .section .jack-rows { margin-top: auto; }
+.jack-rows .jack-strip { margin-top: 0; }
+.jack-rows .jack-strip:first-child { margin-top: 6px; }
+.jack-rows .jack-strip + .jack-strip { border-top: none; padding-top: 2px; }
+.section.locked .jack-rows { opacity: 0.22; filter: grayscale(1); pointer-events: none; }

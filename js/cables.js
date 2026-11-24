@@ -1,4 +1,4 @@
-// Patch cables for the NF-Modular: jack sockets on the modules and the cables between them.
+// Patch cables for the modular synths: jack sockets on the modules and the cables between them.
 //
 //   Drag from an output to an input (or from an input to an output) to connect them.
 //   Drag a plugged-in cable off an input to move it elsewhere; drop it anywhere else to remove it.
@@ -8,7 +8,7 @@
 // layer laid over the whole instrument; it does not catch clicks, so knobs under a cable
 // still work.
 
-import { PARAMS } from './params.js';
+import { PARAMS, SYNTH } from './params.js';
 
 const SVGNS = 'http://www.w3.org/2000/svg';
 const COLOURS = ['#e8463b', '#f2b632', '#3d8fe0', '#4cbf6a', '#e8833a', '#a66bd6', '#e05a9c', '#3fc4c4'];
@@ -63,15 +63,21 @@ export class Cables {
     new ResizeObserver(() => this.redraw()).observe(stage);
   }
 
-  // The row of sockets along the bottom of a module.
+  // The sockets along the bottom of a module: one row, or several (e.g. inputs above outputs).
   buildStrip(ids) {
+    if (Array.isArray(ids[0])) {
+      const box = el('div', 'jack-rows');
+      ids.forEach((row) => box.appendChild(this.buildStrip(row)));
+      return box;
+    }
     const strip = el('div', 'jack-strip');
     ids.forEach((id) => {
       if (id.startsWith('out:')) {
         const out = id.slice(4);
         const cell = el('div', 'jack-cell out', strip);
         cell.dataset.help = id;
-        el('div', 'jack-label', cell).textContent = 'Out';
+        const info = SYNTH.OUTPUTS && SYNTH.OUTPUTS[out];
+        el('div', 'jack-label', cell).textContent = info ? info.label : 'Out';
         const s = el('div', 'socket', cell);
         s.dataset.out = out;
         el('span', 'jack-lamp', cell);
@@ -85,13 +91,6 @@ export class Cables {
         j.socket.addEventListener('pointerdown', (e) => this.startFromIn(e, id));
       }
     });
-    // output labels name what they carry when a module has more than one (the keyboard's Pitch and Gate)
-    if (ids.filter((i) => i.startsWith('out:')).length > 1) {
-      strip.querySelectorAll('.jack-cell.out').forEach((c, i) => {
-        const out = ids.filter((x) => x.startsWith('out:'))[i].slice(4);
-        c.querySelector('.jack-label').textContent = out === 'kb.pitch' ? 'Pitch' : out === 'kb.gate' ? 'Gate' : 'Out';
-      });
-    }
     return strip;
   }
 

@@ -1,4 +1,4 @@
-// NF-Modular: a first modular synth. One of each basic module (LFO, Oscillator, Filter,
+// MiniModular: a first modular synth. One of each basic module (LFO, Oscillator, Filter,
 // Envelope, VCA, Output) plus the keyboard's Pitch and Gate outputs, all joined by patch cables.
 // It opens with a simple patch already in place, so it makes a sound before anyone patches.
 //
@@ -98,15 +98,16 @@ export const PRESETS = {
 
 export const NFM = {
   id: 'nfm',
-  name: 'NF-Modular',
+  name: 'MiniModular',
   brandSub: 'MODULAR SYNTHESIZER',
   skin: 'modular',
   module: 'js/worklet/mod-processor.js',
   processor: 'mod-processor',
   lessons: true,
   modular: true,
+  OUTPUTS,
   card: {
-    tagline: 'Patch it yourself',
+    tagline: 'Your first modular',
     text: 'One oscillator, filter, envelope, VCA and LFO, joined by patch cables you drag between the jacks. It starts with a simple patch, so it plays straight away.',
   },
   PARAMS, LAYOUT, KEYBED_SECTIONS, PRESETS,
