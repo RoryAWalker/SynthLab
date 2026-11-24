@@ -90,7 +90,7 @@ export const PRESETS = {
   'Filter Sweep': { 'jack.filt.cv': 'env.out', 'filt.cv': 0.6, 'filt.cutoff': 150, 'filt.res': 0.5, 'aenv.d': 0.6, 'aenv.s': 0.3 },
   'Wah Wobble': { 'jack.filt.cv': 'lfo.out', 'filt.cv': 0.4, 'filt.cutoff': 500, 'filt.res': 0.6, 'lfo.rate': 3 },
   'Drone': { 'jack.vca.cv': '', 'vca.level': 0.8, 'jack.osc.pitch': '', 'osc1.range': -1 },
-  'Siren': { 'jack.osc.fm': 'lfo.out', 'osc.fm': 0.45, 'lfo.rate': 0.4, 'lfo.shape': 'tri', 'osc1.wave': 'square' },
+  'Siren': { 'jack.osc.fm': 'lfo.out', 'osc.fm': 0.1, 'lfo.rate': 2.8, 'lfo.shape': 'square', 'osc1.wave': 'square', 'filt.cutoff': 5600, 'filt.res': 0 },
 };
 
 export const NFM = {
