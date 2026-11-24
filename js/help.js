@@ -469,7 +469,7 @@ export const HELP_NF3 = {
 };
 
 
-// Entries for the MiniModular (nfm): its modules, jacks and the controls that differ from the NF-1.
+// Entries for the NF-MiniModular (nfm): its modules, jacks and the controls that differ from the NF-1.
 export const HELP_NFM = {
   'section:lfo': { title: 'LFO', body: ['A low-frequency oscillator: a wave too slow to hear, used to move other things up and down. Patch its Out into the VCO\'s FM for vibrato, the VCF\'s CV for a wah, or the VCA\'s CV for tremolo.', 'A signal in its Gate input restarts the wave, for example with every key press.'], tip: 'LFO Out into the VCO\'s FM with FM Amount at about 8%: vibrato.' },
   'section:osc': { title: 'VCO (Voltage-Controlled Oscillator)', body: ['Makes the raw sound. Its Pitch input sets the note: patch the Keyboard\'s Pitch into it to play tunes. With nothing in Pitch it drones on middle C (moved by Range and Tune).', 'FM bends the pitch with whatever is patched in, by as much as FM Amount allows.'], tip: 'Turn the Waveform knob while holding a note and watch the shape change on the scope.' },

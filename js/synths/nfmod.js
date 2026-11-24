@@ -1,4 +1,4 @@
-// NF-Modular: the full modular rack, for students who have learnt to patch on the MiniModular.
+// NF-Modular: the full modular rack, for students who have learnt to patch on the NF-MiniModular.
 // Three rows of modules:
 //   sources     two VCOs (saw, pulse and triangle at once; pulse width, FM, PWM, sync), Noise
 //               (white, pink and a Colour output), a four-input Mixer that goes to 11
@@ -8,7 +8,7 @@
 //               with linear or through-zero FM), Sample & Hold
 // plus the keyboard's Pitch, Gate and Trigger.
 //
-// As on the MiniModular, each INPUT jack is a param ('jack.<module>.<input>') whose value is the
+// As on the NF-MiniModular, each INPUT jack is a param ('jack.<module>.<input>') whose value is the
 // output plugged into it ('' = nothing). See js/cables.js.
 
 import { PARAMS as NF1_PARAMS, fmtPct } from './nf1.js';
@@ -295,7 +295,7 @@ export const NFMOD = {
   OUTPUTS,
   card: {
     tagline: 'The full rack',
-    text: 'A virtual analog modular: two VCOs, noise, a mixer, a multimode filter, ring mod, two VCAs, an attenuverter, two envelopes, an LFO, an MFO and sample & hold, all patched with cables. For when the MiniModular feels small.',
+    text: 'A full virtual analog rack: fifteen modules for advanced patching.',
   },
   PARAMS, LAYOUT, KEYBED_SECTIONS, PRESETS,
 };

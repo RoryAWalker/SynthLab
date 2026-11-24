@@ -764,34 +764,35 @@ body[data-skin="vintage"] .perf { padding: 8px 10px; }
   animation: help-in 0.25s ease-out;
 }
 .start-menu[hidden] { display: none; }
-.sm-inner { position: relative; width: min(980px, calc(100vw - 32px)); padding: 40px 0; text-align: center; }
+/* sized to the window's height, so all four synths fit on one screen without scrolling */
+.sm-inner { position: relative; width: min(1040px, calc(100vw - 32px), calc((100vh - 180px) * 1.55)); padding: 3vh 0; text-align: center; }
 .sm-close {
-  position: absolute; top: 34px; right: 0; width: 36px; height: 36px; border-radius: 8px;
+  position: absolute; top: 3vh; right: 0; width: 36px; height: 36px; border-radius: 8px;
   border: 1px solid #3a3d44; background: #24262b; color: #d6d8dc; font-size: 20px; cursor: pointer;
 }
 .sm-close[hidden] { display: none; }
 .sm-eyebrow { font-size: 12px; font-weight: 800; letter-spacing: 0.22em; text-transform: uppercase; color: var(--accent); }
-.sm-title { margin: 6px 0 28px; font-size: 34px; color: #fff; }
-.sm-cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 22px; } /* always 2 x 2, however wide the window */
+.sm-title { margin: 4px 0 2.4vh; font-size: 32px; color: #fff; }
+.sm-cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2.2vh 22px; } /* always 2 x 2, however wide the window */
 @media (max-width: 640px) { .sm-cards { grid-template-columns: 1fr; } } /* one column on a phone */
 .sm-card {
-  text-align: left; padding: 0 0 20px; border-radius: 16px; cursor: pointer; overflow: hidden;
+  text-align: left; padding: 0 0 14px; border-radius: 16px; cursor: pointer; overflow: hidden;
   background: #1c1e23; border: 1px solid #34373e; color: inherit; font: inherit;
   transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
 }
 .sm-card:hover, .sm-card:focus-visible { transform: translateY(-3px); border-color: var(--accent); box-shadow: 0 16px 40px rgba(0,0,0,0.45); outline: none; }
 .sm-card > :not(.sm-preview) { margin-left: 22px; margin-right: 22px; }
 .sm-preview {
-  height: 190px; margin-bottom: 16px; padding: 14px 16px 0; display: flex; align-items: center; justify-content: center;
+  height: clamp(100px, 19.5vh, 210px); margin-bottom: 12px; padding: 12px 16px 0; display: flex; align-items: center; justify-content: center;
   background: radial-gradient(ellipse at 50% 30%, #2a2c31, #17181b 75%);
   border-bottom: 1px solid #2c2f35;
 }
 .sm-preview img { max-width: 100%; max-height: 100%; object-fit: contain; filter: drop-shadow(0 10px 14px rgba(0,0,0,0.55)); transition: transform 0.2s; }
 .sm-card:hover .sm-preview img { transform: scale(1.03); }
 .sm-tag { font-size: 11px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent); }
-.sm-name { font-size: 28px; font-weight: 800; color: #fff; margin-top: 2px; letter-spacing: 0.02em; }
-.sm-text { font-size: 14.5px; line-height: 1.55; color: #c3c6cc; margin-top: 8px; min-height: 66px; }
-.sm-foot { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+.sm-name { font-size: 26px; font-weight: 800; color: #fff; margin-top: 2px; letter-spacing: 0.02em; }
+.sm-text { font-size: 14.5px; line-height: 1.45; color: #c3c6cc; margin-top: 4px; }
+.sm-foot { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
 .sm-play { font-weight: 700; color: #ffd9a0; }
 .sm-badge { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 20px; background: #2f3238; color: #c9ccd1; }
 .sm-badge.current { background: #2f8a55; color: #fff; }
@@ -1000,7 +1001,7 @@ body.scopes-max .bezel, body[data-skin="vintage"].scopes-max .bezel, body[data-s
 .bezel .screen-glass { inset: var(--bp); }
 
 /* ==========================================================================
-   MiniModular (nfm): separate module plates in a dark rack, jack sockets, patch cables
+   NF-MiniModular (nfm): separate module plates in a dark rack, jack sockets, patch cables
    ========================================================================== */
 body[data-skin="modular"] {
   --desk: #141517; --desk-2: #1d1f23;
@@ -1084,7 +1085,7 @@ body.cables-faded .cable.near .cable-body { opacity: 0.1; }
 body.preview .cable-layer { display: block; }
 /* the keyboard's jacks sit with its Glide knob, left of the keys */
 body[data-skin="modular"] .perf .jack-strip { border-top-color: rgba(255,255,255,0.12); }
-/* MiniModular: the keyboard section holds more than Glide, so the knob keeps its label */
+/* NF-MiniModular: the keyboard section holds more than Glide, so the knob keeps its label */
 body[data-skin="modular"] .perf .knob-label { visibility: visible; height: 15px; }
 
 /* NF-Modular: a two-row rack (columns stack two modules) and modules with several rows of jacks */
@@ -1172,3 +1173,6 @@ body[data-skin="modular"] .perf .section-grid { column-gap: 2px; }
 /* modular synths: the Mono/Legato switch in the keyboard's controls column */
 .perf-mode { width: auto; margin-top: 2px; }
 .perf-mode .toggle-title { font-size: 11px; letter-spacing: 0.12em; }
+/* start menu: "SynthLab by NoFoe" at the top, in its own capitals */
+.sm-brand { text-transform: none; font-size: 15px; letter-spacing: 0.08em; }
+.sm-brand span { font-weight: 600; color: #c9ccd1; }

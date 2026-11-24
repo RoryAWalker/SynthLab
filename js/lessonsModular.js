@@ -1,4 +1,4 @@
-// MiniModular lessons: learning to patch. Students already know what each part does from the
+// NF-MiniModular lessons: learning to patch. Students already know what each part does from the
 // NF-1; here they build a synth from nothing, one cable at a time, then bend it into new shapes.
 // Same challenge format as lessons.js (goal and question challenges), plus:
 //   carry (lesson)   arriving at a challenge with Next keeps the student's own patch, so the

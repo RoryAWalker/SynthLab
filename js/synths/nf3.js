@@ -184,7 +184,7 @@ export const NF3 = {
   narrowSwitches: true, // vertical rockers in narrow columns, as on the original
   card: {
     tagline: 'Three oscillators, 1970s style',
-    text: 'A classic three-oscillator layout: Oscillator 3 doubles as a modulation source, plus noise, a feedback loop with an overload light, a ladder filter with keyboard tracking, and pitch and mod wheels.',
+    text: 'A classic three-oscillator monosynth with mod wheels and feedback.',
   },
   PARAMS, LAYOUT, KEYBED_SECTIONS, PRESETS,
 };

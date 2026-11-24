@@ -178,7 +178,7 @@ export const NF1 = {
   lessons: true,
   card: {
     tagline: 'Your first synth',
-    text: 'Two oscillators, a mixer, a low-pass filter, two envelopes and an LFO. The place to learn the basics, with lessons.',
+    text: 'Learn the basics: two oscillators, a filter, envelopes and an LFO.',
   },
   PARAMS, LAYOUT, KEYBED_SECTIONS, PRESETS,
 };

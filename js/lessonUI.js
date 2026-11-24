@@ -111,7 +111,7 @@ export class LessonController {
     this.lockFor(this.lesson.introUnlocked || ['osc1']);
     this.d.setPatch(this.lesson.base || {});
     // Scopes: the NF-1's lessons (no 'scopes' setting) show them in full, since matching by ear
-    // leans on them. The MiniModular's lessons choose: false = off, true = on, under the panel.
+    // leans on them. The NF-MiniModular's lessons choose: false = off, true = on, under the panel.
     const sc = this.lesson.scopes;
     if (this.d.showScopes && this.mode === 'lessons') this.d.showScopes(sc !== false, sc === undefined);
     const started = this.done.some(Boolean);
@@ -148,7 +148,7 @@ export class LessonController {
 
   // ---- a challenge ---------------------------------------------------------------------------
   // carry: arrived with Next from the previous challenge. Lessons marked 'carry' (the
-  // MiniModular's patching lessons) then keep the student's own patch, so it builds up step
+  // NF-MiniModular's patching lessons) then keep the student's own patch, so it builds up step
   // by step; otherwise (and with Reset) the challenge's starting patch is loaded.
   enter(i, carry = false) {
     this.index = i;

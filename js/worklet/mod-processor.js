@@ -1,4 +1,4 @@
-// MiniModular voice: a small modular synth running in an AudioWorklet.
+// NF-MiniModular voice: a small modular synth running in an AudioWorklet.
 // Modules: Keyboard, LFO, Oscillator, Filter, Envelope, VCA, Output. Nothing is wired
 // inside: every connection is a patch cable, stored in the patch as
 //   'jack.<module>.<input>': '<output id>'  (or '' when nothing is plugged in)

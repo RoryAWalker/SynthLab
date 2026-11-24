@@ -1,6 +1,6 @@
 // NF-Modular voice: the full modular rack, running in an AudioWorklet.
 // Modules: Keyboard, two VCOs, Noise, Mixer, VCF, two ENVs, LFO, Sample & Hold, two VCAs, Output.
-// As on the MiniModular, nothing is wired inside: every connection is a patch cable, stored in
+// As on the NF-MiniModular, nothing is wired inside: every connection is a patch cable, stored in
 // the patch as 'jack.<module>.<input>': '<output id>' ('' = nothing plugged in). Each sample the
 // modules run in a fixed order, each reading its inputs from the outputs computed so far; a cable
 // that runs "backwards" in that order reads the previous sample.
@@ -22,7 +22,7 @@ const TRIG_SECONDS = 0.005;
 // every part gets a tiny fixed error ("component tolerance"); the oscillators drift slowly; each
 // new note varies the envelope times a little; and every oscillator starts at a random point
 // in its cycle. All of it is far too small to put a patch out of tune, but enough that the
-// sound is never quite the same twice. (The MiniModular, built for learning, has none of this.)
+// sound is never quite the same twice. (The NF-MiniModular, built for learning, has none of this.)
 const tol = (spread) => 1 + (Math.random() * 2 - 1) * spread;  // e.g. tol(0.01): 0.99..1.01
 const TUNE_TOL = 0.0012;    // octaves: each VCO up to about +-1.5 cents out
 const DRIFT_OCT = 0.0017;   // octaves: slow wander of up to about +-2 cents
