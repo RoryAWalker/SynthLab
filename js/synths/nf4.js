@@ -77,10 +77,12 @@ const strip = (n) => {
   const k = `ch${n}.`, stem = SONG_STEMS[n - 1];
   return [{
     id: `ch${n}`, title: String(n), strip: true,
-    // three narrow columns, read row by row in signal order: input and gain; HPF and EQ (high,
-    // mid, low); the two aux sends and pan; then routing, mute and solo above the fader
-    rows: [[k + 'in', [k + 'p48', k + 'pol'], k + 'gain'], [k + 'hpf', k + 'eq', k + 'hf'], [k + 'mf', k + 'mg', k + 'lf'],
-      [k + 'aux1', k + 'aux2', k + 'pan'], [k + 'main', k + 'mute', k + 'solo']],
+    // one control per row, in signal order from top to bottom; the knobs zig-zag left and right
+    // so the strip stays narrow (as on real desks); only small buttons sit side by side
+    zigzag: true,
+    rows: [[k + 'in'], [[k + 'p48', k + 'pol']], [k + 'gain'], [k + 'hpf'],
+      [k + 'hf'], [k + 'mf'], [k + 'mg'], [k + 'lf'], [[k + 'eq']],
+      [k + 'aux1'], [k + 'aux2'], [k + 'pan'], [[k + 'main']], [[k + 'mute', k + 'solo']]],
     fader: k + 'fader', meters: [[`ch${n}`, '', 'chmeter']], scribble: `${stem.label}`, scribbleNote: stem.note,
   }];
 };

@@ -1430,3 +1430,31 @@ body.show-values .fader-value, .fader-cell.active .fader-value { visibility: vis
 .scribble span { display: block; font-size: 9px; color: #5a5348; font-family: var(--font); }
 body[data-synth="nf4"] .section[data-section="tape"] .scribble { margin-top: 2px; }
 body[data-synth="nf4"] .bezel { height: 250px; }
+
+/* ---- NF-4: tall channel strips, one knob per row, zig-zagging left and right ---- */
+body[data-synth="nf4"] .zigzag .section-grid { grid-template-columns: 112px !important; row-gap: 0; justify-content: center; }
+body[data-synth="nf4"] .zigzag .knob-cell.small { width: 74px; justify-self: center; margin-bottom: -13px; position: relative; }
+body[data-synth="nf4"] .zigzag .knob-cell.zz-l { transform: translateX(-19px); }
+body[data-synth="nf4"] .zigzag .knob-cell.zz-r { transform: translateX(19px); }
+/* the knob after a button row does not need to tuck under it */
+body[data-synth="nf4"] .zigzag .stack-cell { flex-direction: row; justify-content: center; gap: 6px; margin: 2px 0 15px; position: relative; z-index: 1; }
+body[data-synth="nf4"] .zigzag .stack-cell .led-cell.wide .led-btn { width: 50px; }
+body[data-synth="nf4"] .zigzag .stack-cell:has([data-param$=".eq"]),
+body[data-synth="nf4"] .zigzag .stack-cell:has([data-param$=".main"]) { margin-bottom: 4px; }
+body[data-synth="nf4"] .zigzag .stack-cell:last-child { margin-bottom: 4px; }
+body[data-synth="nf4"] .zigzag .toggle-cell { width: 100px; justify-self: center; margin-bottom: 4px; }
+body[data-synth="nf4"] .zigzag .strip-foot { margin-top: 10px; }
+body[data-synth="nf4"] .fader-body { height: 230px; }
+body[data-synth="nf4"] .meter-group.beside-fader .meter-ladder { height: 230px; }
+body[data-synth="nf4"] .strip .scribble { width: 104px; align-self: center; }
+
+/* ---- NF-4: the screens stand to the right of the console, one above the other ---- */
+body[data-synth="nf4"] #stage { display: flex; align-items: flex-start; }
+body[data-synth="nf4"] .synth { order: 1; }
+body[data-synth="nf4"] .scope-unit { order: 2; flex-direction: column; width: 560px; margin: 0 0 0 18px; padding: 14px 16px 12px; gap: 10px; align-items: stretch; }
+body[data-synth="nf4"] .scope-unit .scope-screen-wrap { flex: none; }
+body[data-synth="nf4"] .scope-unit .scope-screen-wrap:first-child .bezel { height: 360px; }
+body[data-synth="nf4"] .scope-unit .scope-screen-wrap:last-child .bezel { height: 320px; }
+body[data-synth="nf4"] .scope-controls { flex-direction: row; justify-content: center; width: auto; gap: 10px; padding: 0; }
+body[data-synth="nf4"] .scope-controls .hold-btn { width: 110px; height: 26px; }
+body[data-synth="nf4"] .max-btn, body[data-synth="nf4"] .scope-brand { display: none; }

@@ -98,6 +98,11 @@ function buildSection(sec) {
   if (sec.fader || Array.isArray(sec.meters) || sec.scribble) {
     if (sec.rows.length) fillGrid(grid, sec.rows, sec); else grid.remove();
     if (sec.strip) el.classList.add('strip');
+    // a zig-zag strip (the console's channels): alternate knobs sit left and right of centre
+    if (sec.zigzag) {
+      el.classList.add('zigzag');
+      [...grid.children].filter((c) => c.classList.contains('knob-cell')).forEach((c, i) => c.classList.add(i % 2 ? 'zz-r' : 'zz-l'));
+    }
     const foot = document.createElement('div');
     foot.className = 'strip-foot';
     if (Array.isArray(sec.meters)) {
