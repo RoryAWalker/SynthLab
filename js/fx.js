@@ -7,8 +7,9 @@ import { fmtTime, fmtPct } from './synths/nf1.js';
 
 export const FX_PARAMS = {
   'fx.chorus': { type: 'cont', label: 'Amount', min: 0, max: 1, def: 0, curve: 'lin', fmt: fmtPct, evens: true, small: true },
-  'fx.dtime':  { type: 'cont', label: 'Time', min: 0.05, max: 1.2, def: 0.35, curve: 'log', fmt: fmtTime, unit: 'sec', small: true,
-                 marks: [[0.05, '.05'], [0.1, '.1'], [0.2, '.2'], [0.5, '.5'], [1.2, '1.2']] },
+  // echo time 50-500 ms on a log curve; the default sits at 12 o'clock (about 160 ms)
+  'fx.dtime':  { type: 'cont', label: 'Time', min: 0.05, max: 0.5, def: Math.sqrt(0.05 * 0.5), curve: 'log', fmt: fmtTime, unit: 'sec', small: true,
+                 marks: [[0.05, '.05'], [0.1, '.1'], [0.2, '.2'], [0.5, '.5']] },
   'fx.delay':  { type: 'cont', label: 'Amount', min: 0, max: 1, def: 0, curve: 'lin', fmt: fmtPct, evens: true, small: true },
   // reverb length in seconds; log curve puts 1.5 s at 12 o'clock
   'fx.rsize':  { type: 'cont', label: 'Size', min: 0.75, max: 3, def: 1.5, curve: 'log', fmt: (v) => v.toFixed(1) + ' s', unit: 'sec', small: true,
@@ -55,8 +56,8 @@ export class FXChain {
     // ---- delay: echoes with feedback; a low-pass in the loop makes each repeat a little darker
     const delayOut = g();
     this.dDry = g(1); this.dWet = g(0); this.dFb = g(0.25);
-    this.dNode = ctx.createDelay(2);
-    this.dNode.delayTime.value = 0.35;
+    this.dNode = ctx.createDelay(1);
+    this.dNode.delayTime.value = FX_PARAMS['fx.dtime'].def;
     const tone = ctx.createBiquadFilter();
     tone.type = 'lowpass'; tone.frequency.value = DELAY_LP; tone.Q.value = 0.5;
     this.dTone = tone;
