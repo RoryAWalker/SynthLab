@@ -917,7 +917,8 @@ export class Overlay {
     });
     if (this.param === 'vcf.cv' && Math.abs(p['vcf.cv']) > 0.01) {
       const f2 = Math.min(fMax, Math.max(fMin, centre * Math.pow(2, p['vcf.cv'] * 6)));
-      this.sweepArrow(ctx, xOf(centre), xOf(f2), box.y + 44, `CV input of 1: the whole filter moves ${p['vcf.cv'] > 0 ? 'up' : 'down'} ${Math.abs(p['vcf.cv'] * 6).toFixed(1)} octaves`);
+      this.sweepArrow(ctx, xOf(centre), xOf(f2), box.y + 44, `Freq input of 1: the whole filter moves ${p['vcf.cv'] > 0 ? 'up' : 'down'} ${Math.abs(p['vcf.cv'] * 6).toFixed(1)} octaves`);
+      label(ctx, `Res input of 1: Resonance ${p['vcf.cv'] > 0 ? '+' : '−'}${Math.round(Math.abs(p['vcf.cv']) * 100)}%`, w - PAD.r, box.y + 80, HI, 'right', 10.5, 700);
     }
     label(ctx, `VCF   ·   Cutoff ${fmtHz(centre)}${playing ? ' (live)' : ''}   ·   Width ${p['vcf.width'].toFixed(1)} oct`, PAD.l, 16, AMBER, 'left', 10.5, 800);
     label(ctx, p['vcf.width'] < 0.3 ? 'BP is a narrow peak at the cutoff' : 'BP keeps the band between the HP and LP cutoffs', w - PAD.r, 16, HI, 'right', 10.5, 700);

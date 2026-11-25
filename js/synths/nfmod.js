@@ -155,7 +155,7 @@ export const PARAMS = {
   'jack.vco1.pitch': jack('Pitch', 'kb.pitch'), 'jack.vco1.fm': jack('FM'), 'jack.vco1.pwm': jack('PWM'), 'jack.vco1.sync': jack('Sync'),
   'jack.vco2.pitch': jack('Pitch', 'kb.pitch'), 'jack.vco2.fm': jack('FM'), 'jack.vco2.pwm': jack('PWM'), 'jack.vco2.sync': jack('Sync'),
   'jack.mix.in1': jack('In 1', 'vco1.saw'), 'jack.mix.in2': jack('In 2', 'vco2.saw'), 'jack.mix.in3': jack('In 3'), 'jack.mix.in4': jack('In 4'),
-  'jack.filt.in': jack('In', 'mix.out'), 'jack.filt.cv': jack('CV', 'env2.out'), 'jack.filt.key': jack('Key'), 'jack.filt.res': jack('Res'),
+  'jack.filt.in': jack('In', 'mix.out'), 'jack.filt.cv': jack('Freq', 'env2.out'), 'jack.filt.key': jack('Pitch'), 'jack.filt.res': jack('Res'),
   'jack.ring.a': jack('In A'), 'jack.ring.b': jack('In B'),
   'jack.vca1.in': jack('In', 'filt.out'), 'jack.vca1.cv': jack('CV', 'env1.out'),
   'jack.vca2.in': jack('In'), 'jack.vca2.cv': jack('CV'),

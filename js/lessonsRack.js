@@ -121,8 +121,8 @@ export const RACK_LESSONS = [
   // ---------------------------------------------------------------------------------------
   {
     id: 'rack-vcf', number: 2, title: 'The Multimode Filter',
-    summary: 'Low-pass, band-pass and high-pass; Width; playing the filter in tune with Key; and moving the resonance with an envelope.',
-    doneText: 'You heard all three filter outputs, shaped a band-pass with Width, played a self-oscillating filter through its Key input, and made the resonance move.',
+    summary: 'Low-pass, band-pass and high-pass; Width; playing the filter in tune with its Pitch input; and moving the resonance with an envelope.',
+    doneText: 'You heard all three filter outputs, shaped a band-pass with Width, played a self-oscillating filter through its Pitch input, and made the resonance move.',
     introUnlocked: [], scopes: SCOPES,
     challenges: [
       {
@@ -162,21 +162,21 @@ export const RACK_LESSONS = [
       },
       {
         type: 'goal', title: 'Play the filter',
-        text: 'Take the VCOs out of the Mixer, turn Resonance fully up, and patch the Keyboard\'s Pitch into the VCF\'s Key input. Play notes an octave apart: the filter whistles in tune.',
+        text: 'Take the VCOs out of the Mixer, turn Resonance fully up, and patch the Keyboard\'s Pitch into the VCF\'s Pitch input. Play notes an octave apart: the filter whistles in tune.',
         unlocked: ALL,
         make: (c) => ({ start: { ...cable('filt.cv', ''), 'vcf.cutoff': 262 }, note: c.note }),
         check: (s) => !heardFrom(s.patch, 'vco') && s.patch['vcf.res'] >= 0.95 && has(s.patch, 'filt.key', 'kb.pitch') && s.highNote - s.lowNote >= 12,
         progress: (s) => share(!heardFrom(s.patch, 'vco'), s.patch['vcf.res'] >= 0.95, has(s.patch, 'filt.key', 'kb.pitch'), s.highNote - s.lowNote >= 12),
-        hint: 'Lift both VCO cables out of the Mixer. Resonance to the top. Keyboard PITCH to VCF KEY (the Keyboard\'s Pitch can feed several inputs).',
+        hint: 'Lift both VCO cables out of the Mixer. Resonance to the top. Keyboard PITCH to VCF PITCH (the Keyboard\'s Pitch can feed several inputs).',
       },
       {
         type: 'goal', title: 'Moving resonance',
-        text: 'Patch ENV 2 into the VCF\'s Res input, keep Resonance low (under 20%), give ENV 2 a short Decay (under 0.4 s) and no Sustain, and play: each note starts with a resonant zap.',
+        text: 'Patch ENV 2 into the VCF\'s Res input, keep Resonance low (under 20%), turn CV Amount past 70%, give ENV 2 a short Decay (under 0.4 s) and no Sustain, and play: each note starts with a resonant zap.',
         unlocked: ALL,
         make: (c) => ({ start: { ...cable('filt.cv', ''), 'vcf.cutoff': 800 }, note: c.note }),
-        check: (s) => has(s.patch, 'filt.res', 'env2.out') && s.patch['vcf.res'] <= 0.2 && s.patch['env2.d'] <= 0.4 && s.patch['env2.s'] <= 0.05 && played(s),
-        progress: (s) => share(has(s.patch, 'filt.res', 'env2.out'), s.patch['vcf.res'] <= 0.2, s.patch['env2.d'] <= 0.4, s.patch['env2.s'] <= 0.05),
-        hint: 'ENV 2 OUT to VCF RES. ENV 2: Decay short, Sustain fully down.',
+        check: (s) => has(s.patch, 'filt.res', 'env2.out') && s.patch['vcf.res'] <= 0.2 && s.patch['vcf.cv'] >= 0.7 && s.patch['env2.d'] <= 0.4 && s.patch['env2.s'] <= 0.05 && played(s),
+        progress: (s) => share(has(s.patch, 'filt.res', 'env2.out'), s.patch['vcf.res'] <= 0.2, s.patch['vcf.cv'] >= 0.7, s.patch['env2.d'] <= 0.4, s.patch['env2.s'] <= 0.05),
+        hint: 'ENV 2 OUT to VCF RES. CV Amount well up. ENV 2: Decay short, Sustain fully down.',
       },
     ],
   },
@@ -190,7 +190,7 @@ export const RACK_LESSONS = [
     challenges: [
       {
         type: 'goal', title: 'A filter envelope',
-        text: 'Nothing is moving the filter. Patch ENV 2 into the VCF\'s CV, turn CV Amount past 50% and Cutoff below 30%, and make ENV 2 short (Decay under 0.5 s, Sustain under 20%). Play: a pluck. ENV 2 is Linear, falling at a steady speed. Now click the word Linear in its title to make it Exponential, fast at first and then easing off, and play again: the same times, a snappier pluck.',
+        text: 'Nothing is moving the filter. Patch ENV 2 into the VCF\'s Freq, turn CV Amount past 50% and Cutoff below 30%, and make ENV 2 short (Decay under 0.5 s, Sustain under 20%). Play: a pluck. ENV 2 is Linear, falling at a steady speed. Now click the word Linear in its title to make it Exponential, fast at first and then easing off, and play again: the same times, a snappier pluck.',
         unlocked: ALL,
         make: (c) => { shapes = { heard: new Set(), notes: 0 }; return { start: { ...cable('filt.cv', '') }, note: c.note }; },
         check: (s) => {
@@ -198,16 +198,16 @@ export const RACK_LESSONS = [
           return pluck(s.patch) && shapes.heard.size === 2;
         },
         progress: (s) => share(has(s.patch, 'filt.cv', 'env2.out'), s.patch['vcf.cv'] >= 0.5, s.patch['vcf.cutoff'] <= 159, s.patch['env2.d'] <= 0.5 && s.patch['env2.s'] <= 0.2, shapes.heard.size >= 1, shapes.heard.size === 2),
-        hint: 'ENV 2 OUT to VCF CV. CV Amount past +50%. Cutoff low. ENV 2 Decay short and Sustain low. Play a note, click the word LINEAR beside ENV 2 so it says EXPONENTIAL, and play another.',
+        hint: 'ENV 2 OUT to VCF FREQ. CV Amount past +50%. Cutoff low. ENV 2 Decay short and Sustain low. Play a note, click the word LINEAR beside ENV 2 so it says EXPONENTIAL, and play another.',
       },
       {
         type: 'goal', title: 'Backwards',
-        text: 'Swap ENV 2 Out for ENV 2 Inv in the VCF\'s CV, and turn Cutoff up past 75%. Play: each note starts muffled and opens up.',
+        text: 'Swap ENV 2 Out for ENV 2 Inv in the VCF\'s Freq, and turn Cutoff up past 75%. Play: each note starts muffled and opens up.',
         unlocked: ALL,
         make: (c) => ({ start: { 'vcf.cv': 0.6, 'env2.d': 0.8, 'env2.s': 0 }, note: c.note }),
         check: (s) => only(s.patch, 'filt.cv', 'env2.inv') && s.patch['vcf.cutoff'] >= 3557 && played(s),
         progress: (s) => share(only(s.patch, 'filt.cv', 'env2.inv'), s.patch['vcf.cutoff'] >= 3557),
-        hint: 'Lift ENV 2 OUT\'s cable from VCF CV, patch ENV 2 INV there instead, and turn Cutoff up.',
+        hint: 'Lift ENV 2 OUT\'s cable from VCF FREQ, patch ENV 2 INV there instead, and turn Cutoff up.',
       },
       {
         type: 'goal', title: 'Delayed vibrato',
@@ -272,30 +272,30 @@ export const RACK_LESSONS = [
       },
       {
         type: 'goal', title: 'Turn a wobble over',
-        text: 'Patch the LFO through Attenuverter channel 2 (LFO Out to In 2) and Out 2 into the VCF\'s CV, with Amount 2 at −90% or lower. Turn the LFO\'s Shape to ramp and listen: the ramp now falls instead of rising.',
+        text: 'Patch the LFO through Attenuverter channel 2 (LFO Out to In 2) and Out 2 into the VCF\'s Freq, with Amount 2 at −90% or lower. Turn the LFO\'s Shape to ramp and listen: the ramp now falls instead of rising.',
         unlocked: ALL,
         make: (c) => ({ start: { ...cable('filt.cv', ''), 'vcf.cv': 0.5, 'vcf.cutoff': 600, 'vcf.res': 0.4, 'lfo.rate': 2 }, note: c.note }),
         check: (s) => has(s.patch, 'att.in2', 'lfo.out') && has(s.patch, 'filt.cv', 'att.out2') && s.patch['att.a2'] <= -0.9 && s.patch['lfo.shape'] === 'saw' && s.held,
         progress: (s) => share(has(s.patch, 'att.in2', 'lfo.out'), has(s.patch, 'filt.cv', 'att.out2'), s.patch['att.a2'] <= -0.9, s.patch['lfo.shape'] === 'saw'),
-        hint: 'LFO OUT to Attenuverter IN 2, OUT 2 to VCF CV. Amount 2 fully left. LFO Shape to the ramp.',
+        hint: 'LFO OUT to Attenuverter IN 2, OUT 2 to VCF FREQ. Amount 2 fully left. LFO Shape to the ramp.',
       },
       {
         type: 'goal', title: 'Two modulations in one input',
-        text: 'Several cables in one input are added together. Patch both ENV 2 and the LFO into the VCF\'s CV, and hold a note: the envelope\'s sweep with a wobble on top.',
+        text: 'Several cables in one input are added together. Patch both ENV 2 and the LFO into the VCF\'s Freq, and hold a note: the envelope\'s sweep with a wobble on top.',
         unlocked: ALL,
         make: (c) => ({ start: { 'vcf.cutoff': 400, 'vcf.res': 0.4, 'lfo.rate': 4 }, note: c.note }),
         check: (s) => has(s.patch, 'filt.cv', 'env2.out') && has(s.patch, 'filt.cv', 'lfo.out') && s.held,
         progress: (s) => share(has(s.patch, 'filt.cv', 'env2.out'), has(s.patch, 'filt.cv', 'lfo.out'), s.held),
-        hint: 'ENV 2 is already in VCF CV. Drag a second cable from LFO OUT to the same VCF CV socket.',
+        hint: 'ENV 2 is already in VCF FREQ. Drag a second cable from LFO OUT to the same VCF FREQ socket.',
       },
       {
         type: 'goal', title: 'Half the sweep',
-        text: 'Route ENV 2 to the VCF\'s CV through Attenuverter channel 1 (ENV 2 Out to In 1, Out 1 to VCF CV, and nothing else in VCF CV), with Amount 1 between 40% and 60%: the same envelope, half the sweep.',
+        text: 'Route ENV 2 to the VCF\'s Freq through Attenuverter channel 1 (ENV 2 Out to In 1, Out 1 to VCF FREQ, and nothing else in VCF FREQ), with Amount 1 between 40% and 60%: the same envelope, half the sweep.',
         unlocked: ALL,
         make: (c) => ({ start: { 'vcf.cutoff': 300, 'vcf.cv': 0.8, 'env2.d': 0.6, 'env2.s': 0.1 }, note: c.note }),
         check: (s) => has(s.patch, 'att.in1', 'env2.out') && only(s.patch, 'filt.cv', 'att.out1') && s.patch['att.a1'] >= 0.4 && s.patch['att.a1'] <= 0.6 && played(s),
         progress: (s) => share(has(s.patch, 'att.in1', 'env2.out'), only(s.patch, 'filt.cv', 'att.out1'), s.patch['att.a1'] >= 0.4 && s.patch['att.a1'] <= 0.6),
-        hint: 'Lift ENV 2\'s cable out of VCF CV. ENV 2 OUT to Attenuverter IN 1, OUT 1 to VCF CV. Amount 1 about +50%.',
+        hint: 'Lift ENV 2\'s cable out of VCF FREQ. ENV 2 OUT to Attenuverter IN 1, OUT 1 to VCF FREQ. Amount 1 about +50%.',
       },
     ],
   },
@@ -309,12 +309,12 @@ export const RACK_LESSONS = [
     challenges: [
       {
         type: 'goal', title: 'Random bleeps',
-        text: 'Patch the S&H Out into the VCF\'s CV (instead of ENV 2), Resonance at least 50%, CV Amount at least 30%. Hold a note.',
+        text: 'Patch the S&H Out into the VCF\'s Freq (instead of ENV 2), Resonance at least 50%, CV Amount at least 30%. Hold a note.',
         unlocked: ALL,
         make: (c) => ({ start: { 'vcf.cutoff': 700 }, note: c.note }),
         check: (s) => only(s.patch, 'filt.cv', 'sh.out') && s.patch['vcf.res'] >= 0.5 && s.patch['vcf.cv'] >= 0.3 && s.held,
         progress: (s) => share(only(s.patch, 'filt.cv', 'sh.out'), s.patch['vcf.res'] >= 0.5, s.patch['vcf.cv'] >= 0.3),
-        hint: 'Lift ENV 2\'s cable from VCF CV; patch S&H OUT there. Resonance and CV Amount up.',
+        hint: 'Lift ENV 2\'s cable from VCF FREQ; patch S&H OUT there. Resonance and CV Amount up.',
       },
       {
         type: 'goal', title: 'Wander',
@@ -392,12 +392,12 @@ export const RACK_LESSONS = [
     challenges: [
       {
         type: 'goal', title: 'Growl',
-        text: 'Patch the MFO into the VCF\'s CV, turn the MFO\'s Rate above 30 Hz and CV Amount past 30%. Hold a low note.',
+        text: 'Patch the MFO into the VCF\'s Freq, turn the MFO\'s Rate above 30 Hz and CV Amount past 30%. Hold a low note.',
         unlocked: ALL,
         make: (c) => ({ start: { ...cable('filt.cv', ''), 'vcf.cutoff': 400, 'vcf.res': 0.5, 'osc1.range': -1, 'osc2.range': -1 }, note: c.note }),
         check: (s) => has(s.patch, 'filt.cv', 'lfo2.out') && s.patch['lfo2.rate'] >= 30 && s.patch['vcf.cv'] >= 0.3 && s.held,
         progress: (s) => share(has(s.patch, 'filt.cv', 'lfo2.out'), s.patch['lfo2.rate'] >= 30, s.patch['vcf.cv'] >= 0.3),
-        hint: 'MFO OUT to VCF CV. MFO Rate well up. CV Amount up.',
+        hint: 'MFO OUT to VCF FREQ. MFO Rate well up. CV Amount up.',
       },
       {
         type: 'goal', title: 'Ring bells',
@@ -410,12 +410,12 @@ export const RACK_LESSONS = [
       },
       {
         type: 'goal', title: 'Through zero',
-        text: 'Patch the LFO into the MFO\'s FM input, FM Amount at least 40%, switch FM to TZ, and use the MFO on the VCF\'s CV. Hold a note: the movement swirls, slowing, stopping and running backwards.',
+        text: 'Patch the LFO into the MFO\'s FM input, FM Amount at least 40%, switch FM to TZ, and use the MFO on the VCF\'s Freq. Hold a note: the movement swirls, slowing, stopping and running backwards.',
         unlocked: ALL,
         make: (c) => ({ start: { ...cable('filt.cv', ''), 'vcf.cutoff': 500, 'vcf.res': 0.5, 'vcf.cv': 0.4, 'lfo2.rate': 3, 'lfo.rate': 0.3 }, note: c.note }),
         check: (s) => has(s.patch, 'lfo2.fm', 'lfo.out') && s.patch['lfo2.fm'] >= 0.4 && s.patch['lfo2.fmmode'] === 'tz' && has(s.patch, 'filt.cv', 'lfo2.out') && s.held,
         progress: (s) => share(has(s.patch, 'lfo2.fm', 'lfo.out'), s.patch['lfo2.fm'] >= 0.4, s.patch['lfo2.fmmode'] === 'tz', has(s.patch, 'filt.cv', 'lfo2.out')),
-        hint: 'LFO OUT to MFO FM. FM Amt up. FM switch to TZ. MFO OUT to VCF CV.',
+        hint: 'LFO OUT to MFO FM. FM Amt up. FM switch to TZ. MFO OUT to VCF FREQ.',
       },
       {
         type: 'goal', title: 'Fold with an envelope',
@@ -447,12 +447,12 @@ export const RACK_LESSONS = [
       },
       {
         type: 'goal', title: 'One new value per note',
-        text: 'Patch the Keyboard\'s Trig into the S&H Clock and the S&H Out into the VCF\'s CV. Play several notes: each gets its own random tone.',
+        text: 'Patch the Keyboard\'s Trig into the S&H Clock and the S&H Out into the VCF\'s Freq. Play several notes: each gets its own random tone.',
         unlocked: ALL,
         make: (c) => ({ start: { ...cable('filt.cv', ''), 'vcf.cutoff': 600, 'vcf.res': 0.5, 'vcf.cv': 0.4 }, note: c.note }),
         check: (s) => has(s.patch, 'sh.clock', 'kb.trig') && has(s.patch, 'filt.cv', 'sh.out') && s.notes >= 4,
         progress: (s) => share(has(s.patch, 'sh.clock', 'kb.trig'), has(s.patch, 'filt.cv', 'sh.out'), s.notes >= 4),
-        hint: 'Keyboard TRIG to S&H CLOCK. S&H OUT to VCF CV. Play four notes or more.',
+        hint: 'Keyboard TRIG to S&H CLOCK. S&H OUT to VCF FREQ. Play four notes or more.',
       },
       {
         type: 'goal', title: 'A patch that plays itself',
@@ -555,12 +555,12 @@ export const RACK_LESSONS = [
       },
       {
         type: 'goal', title: 'Sequence the filter',
-        text: 'A sequencer can step anything, not just pitch. Put the keyboard back on the VCOs\' Pitch and the envelopes\' Gate, and patch the Sequencer\'s Pitch into the VCF\'s CV instead (Cutoff low, CV Amount 30%+). Hold a note while it runs: the tone steps through a pattern.',
+        text: 'A sequencer can step anything, not just pitch. Put the keyboard back on the VCOs\' Pitch and the envelopes\' Gate, and patch the Sequencer\'s Pitch into the VCF\'s Freq instead (Cutoff low, CV Amount 30%+). Hold a note while it runs: the tone steps through a pattern.',
         unlocked: ALL,
         make: (c) => ({ start: { 'seq.run': 'run', 'seq.s2': 6, 'seq.s3': 12, 'seq.s5': 3, 'seq.s7': 9, ...cable('filt.cv', ''), 'vcf.cutoff': 300, 'vcf.res': 0.5 }, note: c.note }),
         check: (s) => has(s.patch, 'filt.cv', 'seq.pitch') && s.patch['vcf.cv'] >= 0.3 && has(s.patch, 'vco1.pitch', 'kb.pitch') && has(s.patch, 'env1.gate', 'kb.gate') && s.patch['seq.run'] === 'run' && s.held,
         progress: (s) => share(has(s.patch, 'filt.cv', 'seq.pitch'), s.patch['vcf.cv'] >= 0.3, s.held),
-        hint: 'Sequencer PITCH to VCF CV; CV Amount up. Keep the Keyboard\'s cables on the VCOs and envelopes. Hold a key.',
+        hint: 'Sequencer PITCH to VCF FREQ; CV Amount up. Keep the Keyboard\'s cables on the VCOs and envelopes. Hold a key.',
       },
     ],
   },

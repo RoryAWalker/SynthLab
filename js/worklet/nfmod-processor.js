@@ -376,7 +376,7 @@ class NFModProcessor extends AudioWorkletProcessor {
       o['att.out1'] = lim(has('att.in1') ? read('att.in1') * att1 : att1);
       o['att.out2'] = lim(has('att.in2') ? read('att.in2') * att2 : att2);
 
-      // ---- VCF. Cutoff (moved by CV x CV Amount, and Key at one octave per octave) is the centre;
+      // ---- VCF. Cutoff (moved by Freq x CV Amount, and Pitch at one octave per octave) is the centre;
       // Width puts the low-pass half its value above the centre and the high-pass half below.
       //   LP: 4-pole ladder.  HP: 2-pole state-variable filter A.  BP: HP then a 2-pole low-pass
       //   (state-variable filter B), so it keeps the band between the two cutoffs.
@@ -386,7 +386,7 @@ class NFModProcessor extends AudioWorkletProcessor {
       if (fc > nyq) fc = nyq; else if (fc < 8) fc = 8;
       let fcH = Math.pow(2, centre - halfW);
       if (fcH > nyq) fcH = nyq; else if (fcH < 8) fcH = 8;
-      let res = p['vcf.res'] + read('filt.res');
+      let res = p['vcf.res'] + read('filt.res') * p['vcf.cv']; // CV Amount scales Res as well as Freq
       res = res < 0 ? 0 : res > 1 ? 1 : res;
       const gg = Math.tan(Math.PI * fc / sr);
       const G = gg / (1 + gg), G2 = G * G, G4 = G2 * G2;
