@@ -1,5 +1,5 @@
 // A word in a module's title that is also a switch: click it to change to the other option
-// (the NF-Modular's envelopes: Curved / Linear). Behaves like a control: set() and commit().
+// (the NF-Modular's envelopes: Exponential / Linear). Behaves like a control: set() and commit().
 
 import { PARAMS } from './params.js';
 

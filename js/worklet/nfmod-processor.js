@@ -42,7 +42,8 @@ function polyBlep(t, dt) {
   return 0;
 }
 
-// Curved: each stage eases in, like a capacitor charging (natural for loudness).
+// Exponential ('curved'): each sample closes a fixed share of the distance still to go, like a
+// capacitor charging (natural for loudness). Decay and Release are 99% there at the time set.
 // Linear: straight lines, taking exactly the set times. Each envelope can be either.
 class Envelope {
   constructor() { this.linear = false; this.relFrom = 0; this.v = 0; this.stage = 0; this.tOn = 0; this.tOff = 0; this.was = 0; }

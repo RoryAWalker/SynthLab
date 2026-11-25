@@ -41,7 +41,7 @@ function buildSection(sec) {
   el.innerHTML = `<div class="section-title"${titleHelp}><span>${sec.title}</span></div><div class="section-grid"></div><div class="lock-veil"><span>LOCKED</span></div>`;
   const grid = el.querySelector('.section-grid');
   sections[sec.id] = el;
-  // a word in the title that is a switch (the envelopes' Curved / Linear)
+  // a word in the title that is a switch (the envelopes' Exponential / Linear)
   if (sec.titleSwitch) el.querySelector('.section-title').appendChild(makeControl(sec.titleSwitch, sec));
   // a module that can fold away to a thin strip (the sequencer): a button in its title bar
   if (sec.foldable) {

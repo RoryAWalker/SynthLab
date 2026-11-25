@@ -69,8 +69,9 @@ const mixLevel = (label, def) => ({ type: 'cont', label, min: 0, max: 11, def, c
 // VCF cutoff: stored in Hz (20 Hz - 20 kHz, log), shown as a percentage of the knob's travel
 const cutPct = (v) => Math.log(v / 20) / Math.log(1000);
 // curve: the shape of the stages, switched by clicking the word in the module's title
+// (shown as Exponential, stored as 'curved' so that saved patches still load)
 const env = (n, a, d, s, r, curve) => ({
-  [`env${n}.curve`]: { type: 'step', ui: 'word', label: `ENV ${n} shape`, def: curve, options: [{ v: 'curved', label: 'Curved' }, { v: 'linear', label: 'Linear' }] },
+  [`env${n}.curve`]: { type: 'step', ui: 'word', label: `ENV ${n} shape`, def: curve, options: [{ v: 'curved', label: 'Exponential' }, { v: 'linear', label: 'Linear' }] },
   [`env${n}.a`]: pick('aenv.a', { def: a }), [`env${n}.d`]: pick('aenv.d', { def: d }),
   [`env${n}.s`]: pick('aenv.s', { def: s }), [`env${n}.r`]: pick('aenv.r', { def: r }),
 });

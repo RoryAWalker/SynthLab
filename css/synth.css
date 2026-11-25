@@ -1272,7 +1272,7 @@ body .rack-side .knob-cell.small .knob-value { font-size: 10.5px; height: 14px; 
 .midi-light i { width: 7px; height: 7px; border-radius: 50%; background: #49c07c; box-shadow: 0 0 6px #49c07c; }
 .midi-light.hit i { background: #b8ffd0; box-shadow: 0 0 10px #8affb3; }
 
-/* a word in a module's title that is a switch (ENV: Curved / Linear) */
+/* a word in a module's title that is a switch (ENV: Exponential / Linear) */
 .word-switch {
   font: inherit; letter-spacing: inherit; text-transform: inherit; color: #ffd9a0; cursor: pointer;
   background: rgba(0, 0, 0, 0.28); border: 1px solid rgba(255, 217, 160, 0.35); border-radius: 4px;

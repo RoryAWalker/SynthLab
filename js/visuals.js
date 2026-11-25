@@ -339,7 +339,7 @@ export class Overlay {
 
     // title
     // on the modular synths an envelope can go anywhere, so it is named for itself, not for loudness
-    let title = envN ? `ENV ${envN[1]} (${linear ? 'linear' : 'curved'})   ·   the shape at its Out (Inv: upside down)`
+    let title = envN ? `ENV ${envN[1]} (${linear ? 'linear' : 'exponential'})   ·   the shape at its Out (Inv: upside down)`
       : loud && PARAMS['jack.env.gate'] ? 'ENV   ·   the shape at its Out'
       : loud ? 'LOUDNESS ENVELOPE' : 'FILTER ENVELOPE';
     if (!loud) title += `   ·   ${PARAMS['filt.env'].label} ${formatValue('filt.env', amt)}`;
