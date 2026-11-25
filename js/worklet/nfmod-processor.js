@@ -42,8 +42,10 @@ function polyBlep(t, dt) {
   return 0;
 }
 
+// ENV 1 is curved (each stage eases in, like a capacitor charging: natural for loudness).
+// ENV 2 is linear: straight lines, taking exactly the set times.
 class Envelope {
-  constructor() { this.v = 0; this.stage = 0; this.tOn = 0; this.tOff = 0; this.was = 0; }
+  constructor(linear = false) { this.linear = linear; this.relFrom = 0; this.v = 0; this.stage = 0; this.tOn = 0; this.tOff = 0; this.was = 0; }
   // k: this envelope's fixed tolerance times this note's variation (virtual analogue)
   setTimes(a, d, s, r, sr) {
     const k = (this.tol || 1) * (this.jit || 1);
@@ -51,14 +53,16 @@ class Envelope {
     this.aCoef = 1 - Math.exp(-1.466 / (a * sr));
     this.dCoef = 1 - Math.exp(-4.6 / (d * sr));
     this.rCoef = 1 - Math.exp(-4.6 / (r * sr));
+    this.aStep = 1 / (a * sr); this.dStep = 1 / (d * sr); this.rStep = 1 / (r * sr);
     this.s = s;
   }
   // gate: the level at the Gate input this sample
   next(gate) {
     const g = gate > 0.5 ? 1 : 0;
     if (g && !this.was) { this.stage = 1; this.tOn = 0; this.jit = tol(ENV_NOTE_VAR); }
-    else if (!g && this.was && this.stage !== 0) { this.stage = 3; this.tOff = 0; }
+    else if (!g && this.was && this.stage !== 0) { this.stage = 3; this.tOff = 0; this.relFrom = this.v; }
     this.was = g;
+    if (this.linear) return this.nextLinear();
     switch (this.stage) {
       case 1:
         this.v += (1.3 - this.v) * this.aCoef;
@@ -68,6 +72,23 @@ class Envelope {
       case 3:
         this.v += (0 - this.v) * this.rCoef;
         if (this.v < 1e-5) { this.v = 0; this.stage = 0; }
+        break;
+    }
+    return this.v;
+  }
+  nextLinear() {
+    switch (this.stage) {
+      case 1:
+        this.v += this.aStep;
+        if (this.v >= 1) { this.v = 1; this.stage = 2; }
+        break;
+      case 2: // 1 down to Sustain over the Decay time (or up, if Sustain is raised while held)
+        if (this.v > this.s) this.v = Math.max(this.s, this.v - Math.max(0.02, 1 - this.s) * this.dStep);
+        else this.v = Math.min(this.s, this.v + this.dStep);
+        break;
+      case 3:
+        this.v -= this.relFrom * this.rStep;
+        if (this.v <= 1e-5) { this.v = 0; this.stage = 0; }
         break;
     }
     return this.v;
@@ -128,7 +149,7 @@ class NFModProcessor extends AudioWorkletProcessor {
     this.note = 60; this.target = 60;
     this.retrig = 0; this.trig = 0;
     this.vco1 = new VCO(); this.vco2 = new VCO();
-    this.env1 = new Envelope(); this.env2 = new Envelope();
+    this.env1 = new Envelope(); this.env2 = new Envelope(true);
     // virtual analogue: random starting points, and fixed tolerances for this run
     this.lfoPh = Math.random(); this.lfoT = 0; this.lfoGateWas = 0;
     this.lfo2Ph = Math.random(); this.lfo2GateWas = 0;

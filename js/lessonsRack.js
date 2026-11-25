@@ -14,6 +14,17 @@ const played = (s) => s.note != null;
 const share = (...bits) => bits.filter(Boolean).length / bits.length;
 const semis = (p, n) => p[`osc${n}.range`] * 12 + p[`osc${n}.tune`];
 const cable = (input, out) => ({ ['jack.' + input]: out });
+// What the Mixer is really passing on: the outputs plugged into channels that are turned up.
+// (Turning a channel down to 0 silences it just as well as pulling its cable out.)
+const heard = (p) => [1, 2, 3, 4].flatMap((n) => (p[`mix.l${n}`] > 0.05 ? ins(p, `mix.in${n}`) : []));
+const heardFrom = (p, prefix) => heard(p).some((o) => o.startsWith(prefix));
+const heardOnly = (p, out) => heard(p).join(',') === out;
+const detune = (p) => Math.abs(p['osc2.tune'] - p['osc1.tune']);
+const slightDetune = (p) => detune(p) >= 0.03 && detune(p) <= 0.3;
+// 'What sync does': VCO 1 syncs VCO 2, and ENV 2 sweeps VCO 2's pitch (through FM, or straight into Pitch)
+const syncSwept = (p) => (has(p, 'vco2.fm', 'env2.out') && p['osc2.fm'] >= 0.5) || has(p, 'vco2.pitch', 'env2.out');
+let sweptFrom = null; // how many notes had been played when the sweep was first patched
+const highNote = (s) => s.note != null && s.note + semis(s.patch, 1) >= 71.5; // VCO 1 sounding at C5 or above
 
 const ALL = ['seq', 'vco1', 'vco2', 'noise', 'mix', 'filt', 'ring', 'vca', 'att', 'out', 'env1', 'env2', 'lfo', 'mfo', 'sh', 'kb'];
 const SCOPES = true;
@@ -45,41 +56,45 @@ export const RACK_LESSONS = [
       },
       {
         type: 'goal', title: 'An octave apart',
-        text: 'Set VCO 2\'s Range one octave above or below VCO 1\'s, with both in the Mixer. Play.',
+        text: 'Set VCO 2\'s Range one octave above or below VCO 1\'s, with both in the Mixer. Then detune it very slightly with Tune (between 0.03 and 0.3 of a semitone, up or down) so the two beat slowly against each other. Play.',
         unlocked: ALL,
-        make: (c) => ({ start: {}, note: c.note }),
-        check: (s) => Math.abs(s.patch['osc2.range'] - s.patch['osc1.range']) === 1 && hasFrom(s.patch, 'mix.in1', 'vco1.') && hasFrom(s.patch, 'mix.in2', 'vco2.') && played(s),
-        progress: (s) => share(Math.abs(s.patch['osc2.range'] - s.patch['osc1.range']) === 1, played(s)),
-        hint: 'Turn VCO 2\'s Range knob one step.',
+        make: (c) => ({ start: { 'osc2.tune': 0 }, note: c.note }),
+        check: (s) => Math.abs(s.patch['osc2.range'] - s.patch['osc1.range']) === 1 && slightDetune(s.patch) && hasFrom(s.patch, 'mix.in1', 'vco1.') && hasFrom(s.patch, 'mix.in2', 'vco2.') && played(s),
+        progress: (s) => share(Math.abs(s.patch['osc2.range'] - s.patch['osc1.range']) === 1, slightDetune(s.patch), played(s)),
+        hint: 'Turn VCO 2\'s Range knob one step, then nudge its Tune. Hold Shift while turning for fine control, and tick Show values to see the number.',
       },
       {
         type: 'goal', title: 'Pulse-width modulation',
-        text: 'Listen to VCO 1\'s Pulse output instead of its Saw (Pulse into Mixer In 1, Saw out of it). Patch the LFO into VCO 1\'s PWM input, turn PWM Amount up past 40%, and slow the LFO below 3 Hz. Hold a note: the classic moving, chorus-like sound.',
+        text: 'Listen to VCO 1\'s Pulse output instead of its Saw (Pulse into Mixer In 1, Saw out of it). To unplug a cable, double-click its plug, or drag the plug off and drop it on an empty part of the panel. Patch the LFO into VCO 1\'s PWM input, turn PWM Amount up past 40%, and slow the LFO below 3 Hz. Hold a note: the classic moving, chorus-like sound.',
         unlocked: ALL,
         make: (c) => ({ start: ONE_VCO, note: c.note }),
         check: (s) => only(s.patch, 'mix.in1', 'vco1.sq') && has(s.patch, 'vco1.pwm', 'lfo.out') && s.patch['osc1.pwm'] >= 0.4 && s.patch['lfo.rate'] <= 3 && s.held,
         progress: (s) => share(only(s.patch, 'mix.in1', 'vco1.sq'), has(s.patch, 'vco1.pwm', 'lfo.out'), s.patch['osc1.pwm'] >= 0.4, s.patch['lfo.rate'] <= 3),
-        hint: 'Lift the cable out of Mixer IN 1 (drop it on nothing), patch VCO 1\'s PULSE there instead, then LFO OUT to VCO 1\'s PWM.',
+        hint: 'Double-click the plug in Mixer IN 1 to unplug it, patch VCO 1\'s PULSE there instead, then LFO OUT to VCO 1\'s PWM.',
       },
       {
         type: 'goal', title: 'Hard sync',
-        text: 'Patch VCO 1\'s Saw into VCO 2\'s Sync input. Listen to VCO 2 alone (only VCO 2 in the Mixer), and tune VCO 2 at least 3 semitones above VCO 1 with Tune or Range. Play.',
+        text: 'Patch VCO 1\'s Saw into VCO 2\'s Sync input. Listen to VCO 2 alone (unplug VCO 1 from the Mixer, or turn its Level down to 0), and tune VCO 2 at least 3 semitones above VCO 1 with Tune or Range. Play.',
         unlocked: ALL,
         make: (c) => ({ start: {}, note: c.note }),
-        check: (s) => has(s.patch, 'vco2.sync', 'vco1.saw') && ins(s.patch, 'mix.in1').every((o) => !o.startsWith('vco1.')) && hasFrom(s.patch, 'mix.in2', 'vco2.') && semis(s.patch, 2) - semis(s.patch, 1) >= 3 && played(s),
-        progress: (s) => share(has(s.patch, 'vco2.sync', 'vco1.saw'), !hasFrom(s.patch, 'mix.in1', 'vco1.'), semis(s.patch, 2) - semis(s.patch, 1) >= 3),
-        hint: 'VCO 1 SAW to VCO 2 SYNC. Take VCO 1 out of the Mixer. Turn VCO 2\'s Range up one step.',
+        check: (s) => has(s.patch, 'vco2.sync', 'vco1.saw') && !heardFrom(s.patch, 'vco1.') && heardFrom(s.patch, 'vco2.') && semis(s.patch, 2) - semis(s.patch, 1) >= 3 && played(s),
+        progress: (s) => share(has(s.patch, 'vco2.sync', 'vco1.saw'), !heardFrom(s.patch, 'vco1.') && heardFrom(s.patch, 'vco2.'), semis(s.patch, 2) - semis(s.patch, 1) >= 3),
+        hint: 'VCO 1 SAW to VCO 2 SYNC. Take VCO 1 out of the Mixer, or turn Level 1 to 0. Turn VCO 2\'s Range up one step.',
       },
       {
         type: 'question', title: 'What sync does',
-        text: 'Keep the sync patch. Hold a note and slowly turn VCO 2\'s Tune from one end to the other.',
+        text: 'Sync comes alive when VCO 2\'s pitch moves. Keep the sync patch, patch ENV 2\'s Out into VCO 2\'s FM input and turn VCO 2\'s FM Amount past 50%. Play a few notes: each one tears as ENV 2 sweeps.',
         unlocked: ALL,
-        make: (c) => ({ start: { ...cable('vco2.sync', 'vco1.saw'), ...cable('mix.in1', ''), 'osc2.range': 1 }, note: c.note }),
-        revealWhen: (s) => has(s.patch, 'vco2.sync', 'vco1.saw') && Math.abs(s.patch['osc2.tune'] - 0.08) > 2 && s.held,
-        progress: (s) => Math.min(1, Math.abs(s.patch['osc2.tune'] - 0.08) / 2),
-        hint: 'Hold a key and turn VCO 2\'s Tune knob.',
+        make: (c) => { sweptFrom = null; return { start: { ...cable('vco2.sync', 'vco1.saw'), ...cable('mix.in1', ''), ...cable('filt.cv', ''), 'osc2.range': 1, 'osc2.tune': 0, 'mix.l2': 8, 'vcf.cutoff': 6000, 'env2.d': 0.8, 'env2.s': 0 }, note: c.note }; },
+        revealWhen: (s) => {
+          if (!has(s.patch, 'vco2.sync', 'vco1.saw') || !syncSwept(s.patch)) { sweptFrom = null; return false; }
+          if (sweptFrom === null) sweptFrom = s.notes;
+          return s.notes - sweptFrom >= 2; // two notes heard with the sweep in place
+        },
+        progress: (s) => share(has(s.patch, 'vco2.sync', 'vco1.saw'), has(s.patch, 'vco2.fm', 'env2.out') || has(s.patch, 'vco2.pitch', 'env2.out'), syncSwept(s.patch), sweptFrom !== null && s.notes > sweptFrom),
+        hint: 'Drag from ENV 2 OUT to VCO 2 FM, then turn VCO 2\'s FM Amount up past halfway. Play several notes.',
         question: {
-          prompt: 'What changes as you turn VCO 2\'s Tune?',
+          prompt: 'What changes during each note, as ENV 2 sweeps VCO 2\'s pitch?',
           options: [
             { text: 'The tone, not the note: VCO 2 keeps restarting at VCO 1\'s pitch', correct: true },
             { text: 'The note goes up and down', feedback: 'Listen to the pitch itself: does the note you hear actually move?' },
@@ -89,12 +104,12 @@ export const RACK_LESSONS = [
       },
       {
         type: 'goal', title: 'FM bell',
-        text: 'Patch VCO 2\'s Tri into VCO 1\'s FM input and turn VCO 1\'s FM Amount up past 30%. Give VCO 2 a different Range from VCO 1, and make ENV 1 bell-like: Decay of a second or more, Sustain under 10%. Listen to VCO 1 alone, and play.',
+        text: 'Patch VCO 2\'s Tri into VCO 1\'s FM input and turn VCO 1\'s FM Amount up past 30%. Give VCO 2 a different Range from VCO 1, and make ENV 1 bell-like: Decay of a second or more, Sustain under 10%. Bells are high: hold a note that sounds at C5 or above (an octave over middle C), from a high key or by raising VCO 1\'s Range. Listen to VCO 1 alone.',
         unlocked: ALL,
         make: (c) => ({ start: { ...ONE_VCO, ...cable('mix.in1', 'vco1.tri') }, note: c.note }),
-        check: (s) => has(s.patch, 'vco1.fm', 'vco2.tri') && s.patch['osc1.fm'] >= 0.3 && s.patch['osc2.range'] !== s.patch['osc1.range'] && s.patch['env1.d'] >= 1 && s.patch['env1.s'] <= 0.1 && played(s),
-        progress: (s) => share(has(s.patch, 'vco1.fm', 'vco2.tri'), s.patch['osc1.fm'] >= 0.3, s.patch['osc2.range'] !== s.patch['osc1.range'], s.patch['env1.d'] >= 1, s.patch['env1.s'] <= 0.1),
-        hint: 'VCO 2 TRI to VCO 1 FM. FM Amount up. VCO 2 Range up one or two steps. ENV 1: Decay long, Sustain at 0.',
+        check: (s) => has(s.patch, 'vco1.fm', 'vco2.tri') && s.patch['osc1.fm'] >= 0.3 && s.patch['osc2.range'] !== s.patch['osc1.range'] && s.patch['env1.d'] >= 1 && s.patch['env1.s'] <= 0.1 && highNote(s) && s.held,
+        progress: (s) => share(has(s.patch, 'vco1.fm', 'vco2.tri'), s.patch['osc1.fm'] >= 0.3, s.patch['osc2.range'] !== s.patch['osc1.range'], s.patch['env1.d'] >= 1, s.patch['env1.s'] <= 0.1, highNote(s)),
+        hint: 'VCO 2 TRI to VCO 1 FM. FM Amount up. VCO 2 Range a step or two above VCO 1\'s. ENV 1: Decay long, Sustain at 0. For a high note, press X to move the computer keys up an octave, or turn VCO 1\'s Range up.',
       },
     ],
   },
@@ -146,8 +161,8 @@ export const RACK_LESSONS = [
         text: 'Take the VCOs out of the Mixer, turn Resonance fully up, and patch the Keyboard\'s Pitch into the VCF\'s Key input. Play notes an octave apart: the filter whistles in tune.',
         unlocked: ALL,
         make: (c) => ({ start: { ...cable('filt.cv', ''), 'vcf.cutoff': 262 }, note: c.note }),
-        check: (s) => !hasFrom(s.patch, 'mix.in1', 'vco') && !hasFrom(s.patch, 'mix.in2', 'vco') && s.patch['vcf.res'] >= 0.95 && has(s.patch, 'filt.key', 'kb.pitch') && s.highNote - s.lowNote >= 12,
-        progress: (s) => share(!hasFrom(s.patch, 'mix.in1', 'vco') && !hasFrom(s.patch, 'mix.in2', 'vco'), s.patch['vcf.res'] >= 0.95, has(s.patch, 'filt.key', 'kb.pitch'), s.highNote - s.lowNote >= 12),
+        check: (s) => !heardFrom(s.patch, 'vco') && s.patch['vcf.res'] >= 0.95 && has(s.patch, 'filt.key', 'kb.pitch') && s.highNote - s.lowNote >= 12,
+        progress: (s) => share(!heardFrom(s.patch, 'vco'), s.patch['vcf.res'] >= 0.95, has(s.patch, 'filt.key', 'kb.pitch'), s.highNote - s.lowNote >= 12),
         hint: 'Lift both VCO cables out of the Mixer. Resonance to the top. Keyboard PITCH to VCF KEY (the Keyboard\'s Pitch can feed several inputs).',
       },
       {
@@ -317,8 +332,8 @@ export const RACK_LESSONS = [
         text: 'Noise only: Noise Colour into Mixer In 1 and nothing else in the Mixer. Open VCA 1 by hand (Level 50%+) so it plays without a key, and patch a slow LFO (0.3 Hz or slower) into the Noise\'s Colour CV.',
         unlocked: ALL,
         make: (c) => ({ start: { ...cable('filt.cv', ''), 'vcf.cutoff': 20000 }, note: c.note }),
-        check: (s) => only(s.patch, 'mix.in1', 'noise.col') && ['mix.in2', 'mix.in3', 'mix.in4'].every((i) => !ins(s.patch, i).length) && s.patch['vca1.level'] >= 0.5 && has(s.patch, 'noise.cv', 'lfo.out') && s.patch['lfo.rate'] <= 0.3,
-        progress: (s) => share(only(s.patch, 'mix.in1', 'noise.col'), !ins(s.patch, 'mix.in2').length, s.patch['vca1.level'] >= 0.5, has(s.patch, 'noise.cv', 'lfo.out'), s.patch['lfo.rate'] <= 0.3),
+        check: (s) => heardOnly(s.patch, 'noise.col') && s.patch['vca1.level'] >= 0.5 && has(s.patch, 'noise.cv', 'lfo.out') && s.patch['lfo.rate'] <= 0.3,
+        progress: (s) => share(heardFrom(s.patch, 'noise.col'), heardOnly(s.patch, 'noise.col'), s.patch['vca1.level'] >= 0.5, has(s.patch, 'noise.cv', 'lfo.out'), s.patch['lfo.rate'] <= 0.3),
         hint: 'Lift both VCO cables from the Mixer; Noise COLOUR to IN 1. VCA 1 Level up. LFO OUT to Noise CV, LFO Rate right down.',
       },
     ],
@@ -336,8 +351,8 @@ export const RACK_LESSONS = [
         text: 'A kick is a low tone whose pitch drops fast. Use VCO 1\'s Tri alone in the Mixer, with nothing in its Pitch (so every key is the same drum) and its Range at −1 or lower. Patch ENV 2 into VCO 1\'s FM (FM Amount 40%+), make ENV 2 very short (Decay up to 0.2 s, no Sustain) and ENV 1 short too (Decay 0.2–0.6 s, no Sustain). Play.',
         unlocked: ALL,
         make: (c) => ({ start: { ...cable('filt.cv', ''), 'vcf.cutoff': 4000 }, note: c.note }),
-        check: (s) => only(s.patch, 'mix.in1', 'vco1.tri') && !ins(s.patch, 'mix.in2').length && !ins(s.patch, 'vco1.pitch').length && s.patch['osc1.range'] <= -1 && has(s.patch, 'vco1.fm', 'env2.out') && s.patch['osc1.fm'] >= 0.4 && s.patch['env2.d'] <= 0.2 && s.patch['env2.s'] <= 0.05 && s.patch['env1.d'] >= 0.2 && s.patch['env1.d'] <= 0.6 && s.patch['env1.s'] <= 0.05 && played(s),
-        progress: (s) => share(only(s.patch, 'mix.in1', 'vco1.tri') && !ins(s.patch, 'mix.in2').length, !ins(s.patch, 'vco1.pitch').length, s.patch['osc1.range'] <= -1, has(s.patch, 'vco1.fm', 'env2.out') && s.patch['osc1.fm'] >= 0.4, s.patch['env2.d'] <= 0.2 && s.patch['env2.s'] <= 0.05, s.patch['env1.d'] >= 0.2 && s.patch['env1.d'] <= 0.6 && s.patch['env1.s'] <= 0.05),
+        check: (s) => heardOnly(s.patch, 'vco1.tri') && !ins(s.patch, 'vco1.pitch').length && s.patch['osc1.range'] <= -1 && has(s.patch, 'vco1.fm', 'env2.out') && s.patch['osc1.fm'] >= 0.4 && s.patch['env2.d'] <= 0.2 && s.patch['env2.s'] <= 0.05 && s.patch['env1.d'] >= 0.2 && s.patch['env1.d'] <= 0.6 && s.patch['env1.s'] <= 0.05 && played(s),
+        progress: (s) => share(heardOnly(s.patch, 'vco1.tri'), !ins(s.patch, 'vco1.pitch').length, s.patch['osc1.range'] <= -1, has(s.patch, 'vco1.fm', 'env2.out') && s.patch['osc1.fm'] >= 0.4, s.patch['env2.d'] <= 0.2 && s.patch['env2.s'] <= 0.05, s.patch['env1.d'] >= 0.2 && s.patch['env1.d'] <= 0.6 && s.patch['env1.s'] <= 0.05),
         hint: 'Mixer: only VCO 1 TRI. Lift the Keyboard cable from VCO 1 PITCH. ENV 2 OUT to VCO 1 FM. Both envelopes: Sustain 0, short Decays.',
       },
       {
@@ -345,8 +360,8 @@ export const RACK_LESSONS = [
         text: 'Noise (any of its outputs) into the Mixer with no VCOs, VCA 1 listening to the VCF\'s HP output, Cutoff above 5 kHz, and ENV 1 very short (Decay up to 0.12 s, no Sustain). Play.',
         unlocked: ALL,
         make: (c) => ({ start: { ...cable('filt.cv', '') }, note: c.note }),
-        check: (s) => [1, 2, 3, 4].some((n) => hasFrom(s.patch, `mix.in${n}`, 'noise.')) && [1, 2, 3, 4].every((n) => !hasFrom(s.patch, `mix.in${n}`, 'vco')) && only(s.patch, 'vca1.in', 'filt.hp') && s.patch['vcf.cutoff'] >= 5000 && s.patch['env1.d'] <= 0.12 && s.patch['env1.s'] <= 0.05 && played(s),
-        progress: (s) => share([1, 2, 3, 4].some((n) => hasFrom(s.patch, `mix.in${n}`, 'noise.')), [1, 2, 3, 4].every((n) => !hasFrom(s.patch, `mix.in${n}`, 'vco')), only(s.patch, 'vca1.in', 'filt.hp'), s.patch['vcf.cutoff'] >= 5000, s.patch['env1.d'] <= 0.12 && s.patch['env1.s'] <= 0.05),
+        check: (s) => heardFrom(s.patch, 'noise.') && !heardFrom(s.patch, 'vco') && only(s.patch, 'vca1.in', 'filt.hp') && s.patch['vcf.cutoff'] >= 5000 && s.patch['env1.d'] <= 0.12 && s.patch['env1.s'] <= 0.05 && played(s),
+        progress: (s) => share(heardFrom(s.patch, 'noise.'), !heardFrom(s.patch, 'vco'), only(s.patch, 'vca1.in', 'filt.hp'), s.patch['vcf.cutoff'] >= 5000, s.patch['env1.d'] <= 0.12 && s.patch['env1.s'] <= 0.05),
         hint: 'Replace both VCO cables in the Mixer with a Noise output. VCF HP to VCA 1 IN (lift the LP cable). Cutoff high. ENV 1: tiny Decay, no Sustain.',
       },
       {
@@ -382,8 +397,8 @@ export const RACK_LESSONS = [
         text: 'VCO 1 into the Ring Mod\'s In A and VCO 2 into In B, the Ring Mod\'s Out as the only thing in the Mixer, Mix fully to A×B (90%+), and VCO 2 tuned to a non-octave interval (not a multiple of 12 semitones from VCO 1). Play.',
         unlocked: ALL,
         make: (c) => ({ start: { ...cable('filt.cv', ''), 'vcf.cutoff': 8000 }, note: c.note }),
-        check: (s) => hasFrom(s.patch, 'ring.a', 'vco1.') && hasFrom(s.patch, 'ring.b', 'vco2.') && only(s.patch, 'mix.in1', 'ring.out') && [2, 3, 4].every((n) => !ins(s.patch, `mix.in${n}`).length) && s.patch['ring.mix'] >= 0.9 && Math.abs(((semis(s.patch, 2) - semis(s.patch, 1)) % 12 + 12) % 12) >= 0.5 && played(s),
-        progress: (s) => share(hasFrom(s.patch, 'ring.a', 'vco1.') && hasFrom(s.patch, 'ring.b', 'vco2.'), only(s.patch, 'mix.in1', 'ring.out'), s.patch['ring.mix'] >= 0.9, Math.abs(((semis(s.patch, 2) - semis(s.patch, 1)) % 12 + 12) % 12) >= 0.5),
+        check: (s) => hasFrom(s.patch, 'ring.a', 'vco1.') && hasFrom(s.patch, 'ring.b', 'vco2.') && heardOnly(s.patch, 'ring.out') && s.patch['ring.mix'] >= 0.9 && Math.abs(((semis(s.patch, 2) - semis(s.patch, 1)) % 12 + 12) % 12) >= 0.5 && played(s),
+        progress: (s) => share(hasFrom(s.patch, 'ring.a', 'vco1.') && hasFrom(s.patch, 'ring.b', 'vco2.'), heardOnly(s.patch, 'ring.out'), s.patch['ring.mix'] >= 0.9, Math.abs(((semis(s.patch, 2) - semis(s.patch, 1)) % 12 + 12) % 12) >= 0.5),
         hint: 'VCO 1 to RING IN A, VCO 2 to IN B. Lift both VCO cables from the Mixer; RING OUT to Mixer IN 1. Turn VCO 2\'s Tune to something like +3 or +4.',
       },
       {
@@ -400,8 +415,8 @@ export const RACK_LESSONS = [
         text: 'The harder the Mixer is pushed in Fold mode, the more the wave folds. Put a VCA before it: VCO 1\'s Tri into VCA 2\'s In, ENV 2 into VCA 2\'s CV, and VCA 2\'s Out into Mixer In 1 (alone, at a Level of 10.5 or more). Mode on Fold. Play: each note starts bright and metallic, then smooths out.',
         unlocked: ALL,
         make: (c) => ({ start: { ...cable('filt.cv', ''), 'vcf.cutoff': 12000, 'env2.d': 0.6, 'env2.s': 0.1 }, note: c.note }),
-        check: (s) => has(s.patch, 'vca2.in', 'vco1.tri') && has(s.patch, 'vca2.cv', 'env2.out') && only(s.patch, 'mix.in1', 'vca2.out') && !ins(s.patch, 'mix.in2').length && s.patch['mix.l1'] >= 10.5 && s.patch['mix.mode'] === 'fold' && played(s),
-        progress: (s) => share(has(s.patch, 'vca2.in', 'vco1.tri'), has(s.patch, 'vca2.cv', 'env2.out'), only(s.patch, 'mix.in1', 'vca2.out') && !ins(s.patch, 'mix.in2').length, s.patch['mix.l1'] >= 10.5, s.patch['mix.mode'] === 'fold'),
+        check: (s) => has(s.patch, 'vca2.in', 'vco1.tri') && has(s.patch, 'vca2.cv', 'env2.out') && only(s.patch, 'mix.in1', 'vca2.out') && heardOnly(s.patch, 'vca2.out') && s.patch['mix.l1'] >= 10.5 && s.patch['mix.mode'] === 'fold' && played(s),
+        progress: (s) => share(has(s.patch, 'vca2.in', 'vco1.tri'), has(s.patch, 'vca2.cv', 'env2.out'), only(s.patch, 'mix.in1', 'vca2.out') && heardOnly(s.patch, 'vca2.out'), s.patch['mix.l1'] >= 10.5, s.patch['mix.mode'] === 'fold'),
         hint: 'VCO 1 TRI to VCA 2 IN; ENV 2 OUT to VCA 2 CV; Mixer IN 1: only VCA 2 OUT (and nothing in IN 2). Level 1 near 11; Mode to Fold.',
       },
     ],

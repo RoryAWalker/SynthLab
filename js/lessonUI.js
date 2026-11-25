@@ -312,8 +312,8 @@ export class LessonController {
     this.progress[this.lesson.id] = done;
     save('nf1.progress', this.progress);
     // a sound that has just been played gets heard before the congratulations
-    const run = this.runId, idx = this.index;
-    setTimeout(() => { if (this.runId === run && this.index === idx) this.celebrate(label, done); }, delay);
+    const entered = this.enteredAt;
+    setTimeout(() => { if (this.mode === 'lessons' && this.index >= 0 && this.solved && this.enteredAt === entered) this.celebrate(label, done); }, delay);
   }
 
   celebrate(label, done) {

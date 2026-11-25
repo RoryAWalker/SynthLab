@@ -543,6 +543,7 @@ const vcoHelp = (n) => {
 const envHelp = (n) => ({
   [`section:env${n}`]: { title: `ENV ${n} (Envelope)`, body: [
     'An ADSR envelope: when its Gate goes high it rises (Attack), falls to a level (Decay, Sustain) and holds there; when the Gate goes low it falls to zero (Release).',
+    n === 1 ? 'ENV 1 is curved: it moves fast at first and then eases in, as a capacitor charges. Loudness that fades this way sounds natural, so it suits a VCA.' : 'ENV 2 is linear: it moves in straight lines, at a steady speed, taking exactly the times set. Good for even sweeps of pitch or filter.',
     'Out gives the shape, 0 to 1. Inv gives the same shape upside down, 0 to −1, for sweeps that go down instead of up. There are two envelopes so that, for example, the volume and the filter (or a pitch drop) can have different shapes.'],
     tip: n === 1 ? 'Out into a VCA\'s CV shapes the volume; Inv into the VCF\'s CV makes each note start dark and open up.' : 'ENV 2 Out into a VCO\'s FM with a short Decay and no Sustain: a percussive pitch drop, the heart of a synth drum.' },
   [`env${n}.a`]: { title: 'Attack', body: ['Time to rise to full when the Gate goes high. Short: a click or pluck. Long: a slow swell.'] },

@@ -193,8 +193,8 @@ export const LAYOUT = [
     { id: 'out', title: 'Output', rows: [['out.vol']], jacks: ['jack.out.in'] },
   ],
   [
-    { id: 'env1', title: 'ENV 1', rows: [['env1.a', 'env1.d', 'env1.s', 'env1.r']], jacks: ['jack.env1.gate', 'out:env1.out', 'out:env1.inv'] },
-    { id: 'env2', title: 'ENV 2', rows: [['env2.a', 'env2.d', 'env2.s', 'env2.r']], jacks: ['jack.env2.gate', 'out:env2.out', 'out:env2.inv'] },
+    { id: 'env1', title: 'ENV 1 · Curved', rows: [['env1.a', 'env1.d', 'env1.s', 'env1.r']], jacks: ['jack.env1.gate', 'out:env1.out', 'out:env1.inv'] },
+    { id: 'env2', title: 'ENV 2 · Linear', rows: [['env2.a', 'env2.d', 'env2.s', 'env2.r']], jacks: ['jack.env2.gate', 'out:env2.out', 'out:env2.inv'] },
     { id: 'lfo', title: 'LFO', rows: [['lfo.rate', 'lfo.shape', 'lfo.rcv']], jacks: ['jack.lfo.gate', 'jack.lfo.rate', 'out:lfo.out'] },
     // the MFO's two switches share one cell, one above the other
     { id: 'mfo', title: 'MFO', rows: [['lfo2.rate', 'lfo2.shape', 'lfo2.fm', ['lfo2.fmmode', 'lfo2.pol']]], jacks: ['jack.lfo2.gate', 'jack.lfo2.fm', 'out:lfo2.out'] },
