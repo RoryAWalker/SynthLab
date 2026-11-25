@@ -26,6 +26,11 @@ const syncSwept = (p) => (has(p, 'vco2.fm', 'env2.out') && p['osc2.fm'] >= 0.5) 
 let sweptFrom = null; // how many notes had been played when the sweep was first patched
 const highNote = (s) => s.note != null && s.note + semis(s.patch, 1) >= 71.5; // VCO 1 sounding at C5 or above
 
+// 'One knob, two jobs': Out 1, as a steady voltage, moves the filter and the synced VCO
+let macro = { lo: 1, hi: -1 };
+// the LFO reaching the VCF's Freq through either Attenuverter channel, at a moderate amount
+const lfoAtt = (p) => [1, 2].some((n) => has(p, `att.in${n}`, 'lfo.out') && has(p, 'filt.cv', `att.out${n}`) && Math.abs(p[`att.a${n}`]) >= 0.1 && Math.abs(p[`att.a${n}`]) <= 0.5);
+const macroPatched = (p) => !ins(p, 'att.in1').length && has(p, 'filt.cv', 'att.out1') && has(p, 'vco2.fm', 'att.out1') && has(p, 'vco2.sync', 'vco1.saw') && Math.abs(p['vcf.cv']) >= 0.3 && p['osc2.fm'] >= 0.3;
 // 'A filter envelope': which ENV 2 shapes a new note has been played with, once the pluck is set up
 let shapes = { heard: new Set(), notes: 0 };
 const pluck = (p) => has(p, 'filt.cv', 'env2.out') && p['vcf.cv'] >= 0.5 && p['vcf.cutoff'] <= 159 && p['env2.d'] <= 0.5 && p['env2.s'] <= 0.2;
@@ -248,27 +253,30 @@ export const RACK_LESSONS = [
   // ---------------------------------------------------------------------------------------
   {
     id: 'rack-utils', number: 4, title: 'Utilities',
-    summary: 'The Attenuverter as a transposer, an inverter and a "how much" knob, and several cables into one input.',
-    doneText: 'You transposed with a steady voltage, inverted and scaled control signals, and added two modulations together in one input.',
+    summary: 'The Attenuverter as a hand-made control, an inverter and a "how much" knob, and several cables into one input.',
+    doneText: 'You swept two things with one hand-made voltage, played a mirror-image keyboard, inverted and scaled control signals, and added two modulations together, each with its own amount.',
     introUnlocked: [], scopes: SCOPES,
     challenges: [
       {
-        type: 'goal', title: 'Up an octave',
-        text: 'A steady voltage of +1 is one octave. With nothing in its In, the Attenuverter\'s Out is a steady voltage set by its Amount. Patch Out 1 into both VCOs\' Pitch inputs alongside the Keyboard\'s Pitch, set Amount 1 to +100%, and play: everything is an octave higher.',
+        type: 'goal', title: 'One knob, two jobs',
+        text: 'With nothing in its In, the Attenuverter\'s Out is a steady voltage, set by its Amount: a control signal you make by hand. VCO 2 is already synced to VCO 1. Patch Out 1 into the VCF\'s Freq and also into VCO 2\'s FM, then hold a note and sweep Amount 1 slowly from one end to the other. One knob now opens the filter and tears the sync together: a macro control.',
         unlocked: ALL,
-        make: (c) => ({ start: {}, note: c.note }),
-        check: (s) => ['vco1.pitch', 'vco2.pitch'].every((i) => has(s.patch, i, 'kb.pitch') && has(s.patch, i, 'att.out1')) && s.patch['att.a1'] >= 0.97 && !s.patch['jack.att.in1'] && played(s),
-        progress: (s) => share(has(s.patch, 'vco1.pitch', 'att.out1'), has(s.patch, 'vco2.pitch', 'att.out1'), s.patch['att.a1'] >= 0.97),
-        hint: 'Drag from Attenuverter OUT 1 to VCO 1 PITCH, then again to VCO 2 PITCH (the keyboard cables stay). Amount 1 fully right.',
+        make: (c) => { macro = { lo: 1, hi: -1 }; return { start: { ...cable('vco2.sync', 'vco1.saw'), ...cable('mix.in1', ''), ...cable('filt.cv', ''), 'mix.l2': 8, 'osc2.range': 1, 'osc2.tune': 0, 'osc2.fm': 0.6, 'vcf.cutoff': 1000, 'vcf.cv': 0.6, 'vcf.res': 0.3 }, note: c.note }; },
+        check: (s) => {
+          if (macroPatched(s.patch) && s.held) { macro.lo = Math.min(macro.lo, s.patch['att.a1']); macro.hi = Math.max(macro.hi, s.patch['att.a1']); } // how far it has been swept, heard
+          return macroPatched(s.patch) && s.held && macro.lo <= -0.8 && macro.hi >= 0.8;
+        },
+        progress: (s) => share(has(s.patch, 'filt.cv', 'att.out1'), has(s.patch, 'vco2.fm', 'att.out1'), macro.lo <= -0.8, macro.hi >= 0.8),
+        hint: 'Drag from Attenuverter OUT 1 to VCF FREQ, then again from OUT 1 to VCO 2 FM. Keep a key held and turn Amount 1 fully left, then fully right.',
       },
       {
-        type: 'goal', title: 'Up a fifth',
-        text: 'A fifth is 7 semitones: 7/12 of a volt. Keep the patch, and set Amount 1 to +58% (between 56% and 61%). Play.',
+        type: 'goal', title: 'Mirror keyboard',
+        text: 'The Attenuverter can turn a signal upside down, even the Keyboard. Patch the Keyboard\'s Pitch into In 1 and Out 1 into VCO 2\'s Pitch (instead of the Keyboard), with Amount 1 at −100%. Play up the keyboard: VCO 1 climbs while VCO 2 falls, mirrored around middle C. Play notes at least five keys apart.',
         unlocked: ALL,
-        make: (c) => ({ start: { ...cable('vco1.pitch', 'kb.pitch,att.out1'), ...cable('vco2.pitch', 'kb.pitch,att.out1'), 'att.a1': 1 }, note: c.note }),
-        check: (s) => has(s.patch, 'vco1.pitch', 'att.out1') && s.patch['att.a1'] >= 0.56 && s.patch['att.a1'] <= 0.61 && played(s),
-        progress: (s) => Math.max(0, 1 - Math.abs(s.patch['att.a1'] - 0.583) * 4),
-        hint: 'Turn on Show values and set Amount 1 to +58%.',
+        make: (c) => ({ start: { ...cable('filt.cv', ''), 'vcf.cutoff': 4000, 'osc2.tune': 0 }, note: c.note }),
+        check: (s) => has(s.patch, 'att.in1', 'kb.pitch') && only(s.patch, 'vco2.pitch', 'att.out1') && has(s.patch, 'vco1.pitch', 'kb.pitch') && s.patch['att.a1'] <= -0.97 && heardFrom(s.patch, 'vco1.') && heardFrom(s.patch, 'vco2.') && s.held && s.highNote - s.lowNote >= 5,
+        progress: (s) => share(has(s.patch, 'att.in1', 'kb.pitch'), only(s.patch, 'vco2.pitch', 'att.out1'), s.patch['att.a1'] <= -0.97, s.highNote - s.lowNote >= 5),
+        hint: 'Unplug the Keyboard from VCO 2 PITCH. Keyboard PITCH to Attenuverter IN 1 (it can feed several inputs), OUT 1 to VCO 2 PITCH. Amount 1 fully left. Try Amount 1 at +50% afterwards, too: VCO 2 plays in quarter tones.',
       },
       {
         type: 'goal', title: 'Turn a wobble over',
@@ -281,12 +289,12 @@ export const RACK_LESSONS = [
       },
       {
         type: 'goal', title: 'Two modulations in one input',
-        text: 'Several cables in one input are added together. Patch both ENV 2 and the LFO into the VCF\'s Freq, and hold a note: the envelope\'s sweep with a wobble on top.',
+        text: 'Several cables in one input are added together, but CV Amount then sets them all. ENV 2 is already in the VCF\'s Freq. Add the LFO through an Attenuverter channel (LFO Out to its In, its Out to the VCF\'s Freq as well) and set that Amount between 10% and 50%, with CV Amount above 50%. Hold a note: the envelope\'s full sweep, with a wobble on top that has its own amount. Turn each one and hear it change without the other.',
         unlocked: ALL,
-        make: (c) => ({ start: { 'vcf.cutoff': 400, 'vcf.res': 0.4, 'lfo.rate': 4 }, note: c.note }),
-        check: (s) => has(s.patch, 'filt.cv', 'env2.out') && has(s.patch, 'filt.cv', 'lfo.out') && s.held,
-        progress: (s) => share(has(s.patch, 'filt.cv', 'env2.out'), has(s.patch, 'filt.cv', 'lfo.out'), s.held),
-        hint: 'ENV 2 is already in VCF FREQ. Drag a second cable from LFO OUT to the same VCF FREQ socket.',
+        make: (c) => ({ start: { 'vcf.cutoff': 300, 'vcf.res': 0.4, 'vcf.cv': 0.7, 'env2.d': 1, 'env2.s': 0.2, 'lfo.rate': 5 }, note: c.note }),
+        check: (s) => has(s.patch, 'filt.cv', 'env2.out') && !has(s.patch, 'filt.cv', 'lfo.out') && lfoAtt(s.patch) && s.patch['vcf.cv'] >= 0.5 && s.held,
+        progress: (s) => share(has(s.patch, 'filt.cv', 'env2.out'), has(s.patch, 'att.in1', 'lfo.out') || has(s.patch, 'att.in2', 'lfo.out'), lfoAtt(s.patch) && !has(s.patch, 'filt.cv', 'lfo.out'), s.patch['vcf.cv'] >= 0.5, s.held),
+        hint: 'LFO OUT to Attenuverter IN 1, OUT 1 to VCF FREQ (ENV 2\'s cable stays there). Amount 1 about +25%. Hold a key.',
       },
       {
         type: 'goal', title: 'Half the sweep',
