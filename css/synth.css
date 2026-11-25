@@ -1044,18 +1044,18 @@ body[data-skin="modular"] .panel-footer { margin-top: 8px; }
 .jack-cell { position: relative; width: 62px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .jack-label { font-size: 10.5px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink); }
 /* outputs sit on a dark plate, the usual way modules tell outputs from inputs */
-.jack-cell.out { background: #0c0d0e; border-radius: 6px; padding: 3px 0 5px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1); }
+.jack-cell.out { background: #2c2e31; border-radius: 6px; padding: 3px 0 5px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1); }
 .jack-cell.out .jack-label { color: #f2f2f2; }
 .jack-cell.in { padding: 3px 0 5px; } /* line up with the outputs on their plates */
 .socket {
   width: 30px; height: 30px; border-radius: 50%; cursor: grab; touch-action: none;
-  /* the ring's colour is the kind of signal: sky blue for control, coral for sound (.audio) */
-  --ring: #49b6f5; --ring-hi: #a6defc; --ring-lo: #1f6c9c;
-  background: radial-gradient(circle, #050505 0 34%, var(--ring-lo) 37%, var(--ring-hi) 48%, var(--ring) 60%, var(--ring-lo) 72%);
+  /* a thin band round the metal shows the kind of signal: blue for control, coral for sound (.audio) */
+  --ring: #6a9dbd;
+  background: radial-gradient(circle, #050505 0 34%, #3b3e42 36%, #c4c7ca 47%, #7d8184 56%, #3a3d40 60%, var(--ring) 62.5%);
   box-shadow: 0 2px 3px rgba(0,0,0,0.6);
   transition: box-shadow 0.12s, transform 0.12s;
 }
-.jack-cell.audio .socket { --ring: #ff6b4a; --ring-hi: #ffc0ae; --ring-lo: #a83419; }
+.jack-cell.audio .socket { --ring: #cd7a66; }
 .socket:hover { box-shadow: 0 0 0 3px rgba(255,181,71,0.55), 0 2px 3px rgba(0,0,0,0.6); }
 body.patching { cursor: grabbing; user-select: none; }
 body.patching .socket { cursor: grabbing; }
