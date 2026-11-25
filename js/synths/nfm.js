@@ -18,11 +18,13 @@ export const OUTPUTS = {
   'env.out':  { label: 'Out', module: 'Envelope' },
   'vca.out':  { label: 'Out', module: 'VCA' },
 };
+// outputs that carry sound (the ring round their socket is coloured to match the audio inputs)
+['osc.out', 'filt.out', 'vca.out'].forEach((id) => { OUTPUTS[id].audio = true; });
 const fullName = (out) => (OUTPUTS[out] ? `${OUTPUTS[out].module} ${OUTPUTS[out].label}` : 'nothing');
 
 // an input jack; def: the output patched into it when the synth opens
 const jack = (label, def = '') => ({ type: 'jack', label, def, fmt: (v) => (v ? 'from ' + fullName(v) : 'not patched') });
-// an input meant for sound: it gets a light plate (control and modulation inputs have none)
+// an input meant for sound (its socket's ring is the audio colour; the others are the control colour)
 const audioIn = (label, def = '') => ({ ...jack(label, def), audio: true });
 
 const pick = (id, extra = {}) => ({ ...NF1_PARAMS[id], ...extra });

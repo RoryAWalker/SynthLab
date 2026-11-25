@@ -47,11 +47,14 @@ export const OUTPUTS = {
   'seq.gate': { label: 'Gate', module: 'Sequencer' },
   'seq.trig': { label: 'Trig', module: 'Sequencer' },
 };
+// outputs that carry sound (the ring round their socket is coloured to match the audio inputs)
+['vco1.saw', 'vco1.sq', 'vco1.tri', 'vco2.saw', 'vco2.sq', 'vco2.tri', 'noise.white', 'noise.pink', 'noise.col',
+  'mix.out', 'filt.out', 'filt.bp', 'filt.hp', 'ring.out', 'vca1.out', 'vca2.out'].forEach((id) => { OUTPUTS[id].audio = true; });
 const fullName = (out) => (OUTPUTS[out] ? `${OUTPUTS[out].module} ${OUTPUTS[out].label}` : 'nothing');
 // an input can hold several cables (a comma-separated list): their signals are added together
 const jack = (label, def = '') => ({ type: 'jack', label, def,
   fmt: (v) => (v ? 'from ' + String(v).split(',').filter(Boolean).map(fullName).join(' + ') : 'not patched') });
-// an input meant for sound: it gets a light plate (control and modulation inputs have none)
+// an input meant for sound (its socket's ring is the audio colour; the others are the control colour)
 const audioIn = (label, def = '') => ({ ...jack(label, def), audio: true });
 const pick = (id, extra = {}) => ({ ...NF1_PARAMS[id], ...extra });
 const level = (label, def) => ({ type: 'cont', label, min: 0, max: 1, def, curve: 'lin', fmt: fmtPct });

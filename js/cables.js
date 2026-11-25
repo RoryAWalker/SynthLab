@@ -84,9 +84,9 @@ export class Cables {
       }
       if (id.startsWith('out:')) {
         const out = id.slice(4);
-        const cell = el('div', 'jack-cell out', strip);
-        cell.dataset.help = id;
         const info = SYNTH.OUTPUTS && SYNTH.OUTPUTS[out];
+        const cell = el('div', 'jack-cell out' + (info && info.audio ? ' audio' : ''), strip);
+        cell.dataset.help = id;
         el('div', 'jack-label', cell).textContent = info ? info.label : 'Out';
         const s = el('div', 'socket', cell);
         s.dataset.out = out;

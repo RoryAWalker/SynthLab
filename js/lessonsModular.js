@@ -66,7 +66,7 @@ export const MOD_LESSONS = [
     challenges: [
       {
         type: 'goal', title: 'Your first cables',
-        text: 'A modular synth starts silent: nothing is connected until you patch it. Sound flows along cables from an output (on a dark plate) to a sound input (on a light plate). Drag a cable from the VCO\'s Out to the VCA\'s In, then another from the VCA\'s Out to the Output\'s In.',
+        text: 'A modular synth starts silent: nothing is connected until you patch it. Sound flows along cables from an output (on a dark plate) to an input. Sockets with a coral ring carry sound; blue ones carry control signals. Drag a cable from the VCO\'s Out to the VCA\'s In, then another from the VCA\'s Out to the Output\'s In.',
         unlocked: BASIC,
         make: (c) => ({ start: P_EMPTY, note: c.note }),
         check: (s) => pathIs(s.patch, 'vca.out', 'osc.out'),
