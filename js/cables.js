@@ -93,14 +93,12 @@ export class Cables {
         el('span', 'jack-lamp', cell);
         this.outs[out] = s;
         s.addEventListener('pointerdown', (e) => this.startFromOut(e, out));
-        s.addEventListener('dblclick', (e) => { e.preventDefault(); this.unplugOut(out); });
       } else {
         const j = new JackIn(id, this.getPatch()[id], (jid, v) => { this.onChange(jid, v); this.redraw(); });
         this.ins[id] = j;
         this.controls[id] = j;
         strip.appendChild(j.el);
         j.socket.addEventListener('pointerdown', (e) => this.startFromIn(e, id));
-        j.socket.addEventListener('dblclick', (e) => { e.preventDefault(); this.unplugIn(id); });
       }
     });
     return strip;
@@ -177,8 +175,19 @@ export class Cables {
   }
 
   // ---- dragging ----
+  // Two presses on the same socket in quick succession = a double-click: pull the cable out.
+  // (Detected here rather than with 'dblclick', which a trackpad tap or the redrawn cable can miss.)
+  isDouble(e, key) {
+    const now = performance.now(), last = this.lastPress;
+    this.lastPress = { key, t: now, x: e.clientX, y: e.clientY };
+    if (!last || last.key !== key || now - last.t > 450 || Math.hypot(e.clientX - last.x, e.clientY - last.y) > 12) return false;
+    this.lastPress = null;
+    return true;
+  }
+
   startFromOut(e, out) {
     e.preventDefault(); e.stopPropagation();
+    if (this.isDouble(e, 'out:' + out)) { this.cancel(); this.unplugOut(out); return; }
     this.drag = { want: 'in', from: out, anchor: this.outs[out], colour: '#d8d8d8', at: this.toStage(e.clientX, e.clientY) };
     document.body.classList.add('patching', 'patching-in');
     this.redraw();
@@ -186,6 +195,7 @@ export class Cables {
 
   startFromIn(e, id) {
     e.preventDefault(); e.stopPropagation();
+    if (this.isDouble(e, 'in:' + id)) { this.cancel(); this.unplugIn(id); return; }
     const list = listOf(this.getPatch()[id]);
     const from = list[list.length - 1]; // the most recently plugged-in cable comes out first
     if (from && this.outs[from]) {
