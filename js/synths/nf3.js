@@ -83,7 +83,7 @@ export const PARAMS = {
   'filt.mod':    sw('Filter Modulation', 'off'),
   'filt.kb1':    sw('Keyboard Control 1', 'off'),
   'filt.kb2':    sw('Keyboard Control 2', 'off'),
-  'filt.cutoff': { type: 'cont', label: 'Cutoff Frequency', min: 20, max: 20000, def: 632, // 12 o'clock: gentler on the ears than fully open
+  'filt.cutoff': { type: 'cont', label: 'Cutoff Frequency', min: 20, max: 20000, def: 2000, // on the 2k mark: gentler on the ears than fully open
                    curve: 'log', fmt: fmtHz, unit: 'Hz',
                    marks: [[20, '20'], [100, '100'], [500, '500'], [2000, '2k'], [10000, '10k'], [20000, '20k']] },
   'filt.res':    { type: 'cont', label: 'Emphasis', min: 0, max: 1, def: 0, curve: 'lin', fmt: fmtPct },
