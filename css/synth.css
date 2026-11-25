@@ -1260,3 +1260,8 @@ body .rack-side .knob-cell.small .knob-value { font-size: 10.5px; height: 14px; 
 .rack-side .stack-cell .led-cell { margin-top: -9px; position: relative; z-index: 1; }
 .rack-side .stack-cell .led-btn { width: 22px; height: 12px; border-radius: 3px; }
 .rack-side .stack-cell .led-lamp { width: 8px; height: 4px; }
+
+/* Hear target sits in the task heading, beside the challenge title, so it is not missed */
+.lb-task-head { flex-wrap: wrap; }
+.lb-btn.lb-hear { padding: 5px 12px; font-size: 12.5px; background: linear-gradient(#ffcf7a, #f0a43a); border-color: #c98a2e; color: #24180a; }
+.lb-btn.lb-hear:hover { background: linear-gradient(#ffd98f, #f5ae4a); }
