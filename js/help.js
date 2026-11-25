@@ -381,6 +381,10 @@ export const HELP = {
     title: 'Maximise',
     body: ['Makes the oscilloscope and spectrum much bigger, for looking closely at the sound. The keyboard folds away so the synth\'s controls stay in view (your computer keyboard still plays). Press RESTORE to bring the keyboard back.'],
   },
+  modmax: {
+    title: 'Maximise the modules',
+    body: ['Puts the scopes, keyboard and effects out of sight so the modules can fill the window and are easier to read. The keyboard\'s outputs stay along the bottom so you can still patch them, and your computer keyboard or a MIDI keyboard still plays. In a narrow window the modules also rearrange, if that makes them much bigger.', 'Press Restore to put everything back where it was.'],
+  },
   fxtab: { title: 'Effects', body: ['Opens or closes the effects: Chorus, Delay and Reverb. They come after the synth, so the scopes still show the synth\'s own sound.'] },
   zoom: {
     title: 'Zoom',

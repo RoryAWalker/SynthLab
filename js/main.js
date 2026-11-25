@@ -15,6 +15,8 @@ import { PatchMenu } from './patches.js';
 import { Cables } from './cables.js';
 import { startMidi } from './midi.js';
 import { WordSwitch } from './wordswitch.js';
+import { MaxModules } from './maxModules.js';
+import { Smiley } from './fireworks.js';
 
 const engine = new Engine({ module: SYNTH.module, processor: SYNTH.processor });
 document.body.dataset.skin = SYNTH.skin;
@@ -316,12 +318,15 @@ document.getElementById('zoom-in').addEventListener('click', () => zoomPan.zoomT
 document.getElementById('zoom-out').addEventListener('click', () => zoomPan.zoomTo(zoomPan.zoom / 1.25));
 document.getElementById('zoom-level').addEventListener('click', () => zoomPan.reset());
 
+let maxMods = null; // maximised modules (modular synths), set up below
 function fit() {
   // help panel overlays below the top bar; the lesson panel pins just under it
   const barH = document.querySelector('.appbar').offsetHeight;
   document.getElementById('help-panel').style.top = barH + 'px';
   document.body.style.setProperty('--appbar-h', barH + 'px');
+  if (maxMods) maxMods.layout();
   zoomPan.fit();
+  if (maxMods && maxMods.on && cables) cables.redraw();
 }
 
 // ---- boot ------------------------------------------------------------------------------------
@@ -512,7 +517,9 @@ function setScopes(on, remember = true) {
   scope.resize(); // the screens had no size while hidden
 }
 scopesBtn.addEventListener('click', () => {
-  const show = document.body.classList.contains('scopes-hidden');
+  const leaving = maxMods && maxMods.on; // the scopes are out of sight behind maximised modules: bring them back
+  if (leaving) setMaxModules(false);
+  const show = leaving || document.body.classList.contains('scopes-hidden');
   if (!show) setMaxScopes(false); // hiding the scopes also leaves the maximised view
   setScopes(show);
 });
@@ -523,12 +530,53 @@ function setMaxScopes(on) {
   document.body.classList.toggle('scopes-max', on);
   maxBtn.classList.toggle('on', on);
   maxBtn.textContent = on ? 'RESTORE' : 'MAXIMISE';
+  if (on && maxMods && maxMods.on) setMaxModules(false);
   if (on && document.body.classList.contains('scopes-hidden')) setScopes(true, false);
   fit();
   scope.resize(); // redraw the screens at their new size
 }
 maxBtn.addEventListener('click', () => setMaxScopes(!document.body.classList.contains('scopes-max')));
 setScopes(!PREVIEW && loadPref(scopesPref, '0') === '1', false);
+
+// ---- maximise the modules (modular synths): no scopes or keyboard, and the modules rearranged to fill the window ----
+const modBtn = document.getElementById('btn-modmax');
+if (SYNTH.modular && modBtn && !PREVIEW) {
+  modBtn.hidden = false;
+  maxMods = new MaxModules({
+    root: document.getElementById('sections'), sections,
+    usual: SYNTH.rack ? LAYOUT.map((row) => row.map((s) => s.id)) : [LAYOUT.flat().map((s) => s.id)], side: SIDE_SECTIONS.length ? SIDE_SECTIONS[0].id : null, kb: KEYBED_SECTIONS[0].id,
+    avail: () => zoomPan.avail(),
+  });
+  modBtn.addEventListener('click', () => setMaxModules(!maxMods.on));
+}
+function setMaxModules(on) {
+  if (!maxMods || on === maxMods.on) return;
+  if (on) setMaxScopes(false); // one or the other
+  maxMods.set(on);
+  modBtn.classList.toggle('on', on);
+  modBtn.setAttribute('aria-pressed', String(on));
+  modBtn.textContent = on ? 'Restore' : 'Maximise';
+  window.scrollTo(0, 0);
+  zoomPan.reset();
+  fit();
+  if (cables) cables.redraw();
+  if (!on) scope.resize(); // the screens had no size while out of sight
+}
+// a success while the screens are out of sight: the smiley gets a small screen of its own
+function smileyPop() {
+  const el = document.createElement('div');
+  el.className = 'smiley-pop';
+  el.innerHTML = '<canvas width="560" height="360"></canvas>';
+  document.body.appendChild(el);
+  const ctx = el.firstChild.getContext('2d'), face = new Smiley();
+  face.start();
+  (function loop() {
+    ctx.fillStyle = '#04100a';
+    ctx.fillRect(0, 0, 560, 360);
+    face.draw(ctx, 560, 360);
+    if (face.t0 < 0) el.remove(); else requestAnimationFrame(loop);
+  })();
+}
 
 // ---- effects drawer: a thin FX line below the keyboard that folds open ----
 const fxDrawer = document.getElementById('fx-drawer');
@@ -575,6 +623,7 @@ lesson = new LessonController({
   // A success: bring the screens into view so the smiley is seen, then put things back
   // (hidden again if they were hidden, the page scrolled back to the synth).
   celebrate: (seconds, restore = true) => {
+    if (maxMods && maxMods.on) { smileyPop(); return; }
     const wasHidden = document.body.classList.contains('scopes-hidden');
     const y = window.scrollY;
     if (wasHidden) setScopes(true, false);
@@ -620,6 +669,8 @@ document.getElementById('btn-synths').addEventListener('click', () => startMenu.
 // ---- lesson panel: pinned to the top of the window (see showScopes above). A question or hint
 // makes it taller and the page scrolls, rather than the synth shrinking.
 const lessonWrap = document.getElementById('lesson-wrap');
+// (with the modules maximised they always fit the room left below it, whatever its height)
+if (maxMods) new ResizeObserver(() => { if (maxMods.on) fit(); }).observe(lessonWrap);
 
 // ---- modular synths: cables over the panel, and lamps by the output jacks ----
 // The NF-Modular's Output has an Overload light: it glows while the output limiter is working
