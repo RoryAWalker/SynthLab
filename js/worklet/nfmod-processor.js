@@ -42,10 +42,10 @@ function polyBlep(t, dt) {
   return 0;
 }
 
-// ENV 1 is curved (each stage eases in, like a capacitor charging: natural for loudness).
-// ENV 2 is linear: straight lines, taking exactly the set times.
+// Curved: each stage eases in, like a capacitor charging (natural for loudness).
+// Linear: straight lines, taking exactly the set times. Each envelope can be either.
 class Envelope {
-  constructor(linear = false) { this.linear = linear; this.relFrom = 0; this.v = 0; this.stage = 0; this.tOn = 0; this.tOff = 0; this.was = 0; }
+  constructor() { this.linear = false; this.relFrom = 0; this.v = 0; this.stage = 0; this.tOn = 0; this.tOff = 0; this.was = 0; }
   // k: this envelope's fixed tolerance times this note's variation (virtual analogue)
   setTimes(a, d, s, r, sr) {
     const k = (this.tol || 1) * (this.jit || 1);
@@ -149,7 +149,7 @@ class NFModProcessor extends AudioWorkletProcessor {
     this.note = 60; this.target = 60;
     this.retrig = 0; this.trig = 0;
     this.vco1 = new VCO(); this.vco2 = new VCO();
-    this.env1 = new Envelope(); this.env2 = new Envelope(true);
+    this.env1 = new Envelope(); this.env2 = new Envelope();
     // virtual analogue: random starting points, and fixed tolerances for this run
     this.lfoPh = Math.random(); this.lfoT = 0; this.lfoGateWas = 0;
     this.lfo2Ph = Math.random(); this.lfo2GateWas = 0;
@@ -223,6 +223,7 @@ class NFModProcessor extends AudioWorkletProcessor {
     };
     const has = (k) => J[k].length > 0;
 
+    this.env1.linear = p['env1.curve'] === 'linear'; this.env2.linear = p['env2.curve'] === 'linear';
     this.env1.setTimes(p['env1.a'], p['env1.d'], p['env1.s'], p['env1.r'], sr);
     this.env2.setTimes(p['env2.a'], p['env2.d'], p['env2.s'], p['env2.r'], sr);
     const glideCoef = p['kb.glide'] > 0.0005 ? 1 - Math.exp(-4.6 / (p['kb.glide'] * sr)) : 1;

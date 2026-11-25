@@ -14,6 +14,7 @@ import { LessonController } from './lessonUI.js';
 import { PatchMenu } from './patches.js';
 import { Cables } from './cables.js';
 import { startMidi } from './midi.js';
+import { WordSwitch } from './wordswitch.js';
 
 const engine = new Engine({ module: SYNTH.module, processor: SYNTH.processor });
 document.body.dataset.skin = SYNTH.skin;
@@ -40,6 +41,8 @@ function buildSection(sec) {
   el.innerHTML = `<div class="section-title"${titleHelp}><span>${sec.title}</span></div><div class="section-grid"></div><div class="lock-veil"><span>LOCKED</span></div>`;
   const grid = el.querySelector('.section-grid');
   sections[sec.id] = el;
+  // a word in the title that is a switch (the envelopes' Curved / Linear)
+  if (sec.titleSwitch) el.querySelector('.section-title').appendChild(makeControl(sec.titleSwitch, sec));
   // a module that can fold away to a thin strip (the sequencer): a button in its title bar
   if (sec.foldable) {
     const fb = document.createElement('button');
@@ -94,6 +97,7 @@ function makeControl(id, sec) {
   const spec = PARAMS[id];
   const k = spec.ui === 'toggle' ? new Toggle(id, patch[id], onKnob)
     : spec.ui === 'led' ? new LedButton(id, patch[id], onKnob)
+    : spec.ui === 'word' ? new WordSwitch(id, patch[id], onKnob)
     : spec.type === 'wheel' ? new Wheel(id, patch[id], onKnob)
     : new Knob(id, patch[id], onKnob);
   knobs[id] = k;

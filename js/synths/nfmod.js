@@ -68,7 +68,9 @@ const mixLevel = (label, def) => ({ type: 'cont', label, min: 0, max: 11, def, c
   marks: [[0, '0'], [2, '2'], [4, '4'], [6, '6'], [8, '8'], [10, '10'], [11, '11']] });
 // VCF cutoff: stored in Hz (20 Hz - 20 kHz, log), shown as a percentage of the knob's travel
 const cutPct = (v) => Math.log(v / 20) / Math.log(1000);
-const env = (n, a, d, s, r) => ({
+// curve: the shape of the stages, switched by clicking the word in the module's title
+const env = (n, a, d, s, r, curve) => ({
+  [`env${n}.curve`]: { type: 'step', ui: 'word', label: `ENV ${n} shape`, def: curve, options: [{ v: 'curved', label: 'Curved' }, { v: 'linear', label: 'Linear' }] },
   [`env${n}.a`]: pick('aenv.a', { def: a }), [`env${n}.d`]: pick('aenv.d', { def: d }),
   [`env${n}.s`]: pick('aenv.s', { def: s }), [`env${n}.r`]: pick('aenv.r', { def: r }),
 });
@@ -110,8 +112,8 @@ export const PARAMS = {
   'att.a1': bipolar('Amount 1'),
   'att.a2': bipolar('Amount 2'),
 
-  ...env(1, 0.005, 0.3, 0.7, 0.25),
-  ...env(2, 0.005, 0.5, 0.2, 0.3),
+  ...env(1, 0.005, 0.3, 0.7, 0.25, 'curved'),
+  ...env(2, 0.005, 0.5, 0.2, 0.3, 'linear'),
 
   // LFO 1: the classic one, up to 30 Hz, its speed movable by the Rate input
   'lfo.rate': pick('lfo.rate', { def: 5 }),
@@ -193,8 +195,8 @@ export const LAYOUT = [
     { id: 'out', title: 'Output', rows: [['out.vol']], jacks: ['jack.out.in'] },
   ],
   [
-    { id: 'env1', title: 'ENV 1 · Curved', rows: [['env1.a', 'env1.d', 'env1.s', 'env1.r']], jacks: ['jack.env1.gate', 'out:env1.out', 'out:env1.inv'] },
-    { id: 'env2', title: 'ENV 2 · Linear', rows: [['env2.a', 'env2.d', 'env2.s', 'env2.r']], jacks: ['jack.env2.gate', 'out:env2.out', 'out:env2.inv'] },
+    { id: 'env1', title: 'ENV 1', titleSwitch: 'env1.curve', rows: [['env1.a', 'env1.d', 'env1.s', 'env1.r']], jacks: ['jack.env1.gate', 'out:env1.out', 'out:env1.inv'] },
+    { id: 'env2', title: 'ENV 2', titleSwitch: 'env2.curve', rows: [['env2.a', 'env2.d', 'env2.s', 'env2.r']], jacks: ['jack.env2.gate', 'out:env2.out', 'out:env2.inv'] },
     { id: 'lfo', title: 'LFO', rows: [['lfo.rate', 'lfo.shape', 'lfo.rcv']], jacks: ['jack.lfo.gate', 'jack.lfo.rate', 'out:lfo.out'] },
     // the MFO's two switches share one cell, one above the other
     { id: 'mfo', title: 'MFO', rows: [['lfo2.rate', 'lfo2.shape', 'lfo2.fm', ['lfo2.fmmode', 'lfo2.pol']]], jacks: ['jack.lfo2.gate', 'jack.lfo2.fm', 'out:lfo2.out'] },
@@ -263,7 +265,7 @@ export const PRESETS = {
     ...cable('mix.in1', 'vco1.tri'), ...cable('mix.in2', ''), ...cable('vco1.pitch', 'env2.out'), ...cable('vco1.fm', 'env2.out'), ...cable('vco1.sync', 'kb.trig'),
     ...cable('filt.cv', ''), 'osc1.range': -2, 'osc1.tune': -5, 'osc1.fm': 1, 'mix.l1': 10, 'mix.mode': 'drive',
     'vcf.cutoff': 3000, 'vcf.res': 0, 'vcf.cv': 0, 'out.vol': 1,
-    'env1.a': 0.001, 'env1.d': 0.5, 'env1.s': 0, 'env1.r': 0.45, 'env2.a': 0.001, 'env2.d': 0.07, 'env2.s': 0, 'env2.r': 0.07,
+    'env1.a': 0.001, 'env1.d': 0.27, 'env1.s': 0, 'env1.r': 0.45, 'env2.a': 0.001, 'env2.d': 0.034, 'env2.s': 0, 'env2.r': 0.07,
   },
   // noise, plus a metallic clang from two high squares ring-modulated, through the high-pass
   'Hi-Hat': {

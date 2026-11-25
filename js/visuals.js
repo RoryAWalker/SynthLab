@@ -116,7 +116,7 @@ function intervalName(st) {
 const attackAt = (t, A) => Math.min(1, 1.3 * (1 - Math.exp((-1.466 * t) / A)));
 const decayAt = (t, D, S) => S + (1 - S) * Math.exp((-4.6 * t) / D);
 const releaseAt = (t, R, v0) => v0 * Math.exp((-4.6 * t) / R);
-// the NF-Modular's ENV 2 is linear: straight lines
+// the NF-Modular's envelopes can be switched to linear: straight lines
 const LINEAR = { attack: (t, A) => Math.min(1, t / A), decay: (t, D, S) => S + (1 - S) * Math.max(0, 1 - t / D), release: (t, R, v0) => v0 * Math.max(0, 1 - t / R) };
 const CURVED = { attack: attackAt, decay: decayAt, release: releaseAt };
 
@@ -295,7 +295,7 @@ export class Overlay {
 
     // curve, one stage at a time so the adjusted stage can be highlighted
     const strokeStage = (name, fn, x0, wpx, dur, dashed) => {
-      const hi = stage === name || stage === 'amt';
+      const hi = stage === name || stage === 'amt' || stage === 'curve';
       ctx.save();
       ctx.strokeStyle = hi ? HI : AMBER;
       ctx.lineWidth = hi ? 3 : 2;
@@ -312,7 +312,8 @@ export class Overlay {
       ctx.restore();
     };
     const [ax, aw] = segs.a, [dx, dw] = segs.d, [rx, rw] = segs.r;
-    const shape = envN && envN[1] === '2' ? LINEAR : CURVED;
+    const linear = p[pre + 'curve'] === 'linear';
+    const shape = linear ? LINEAR : CURVED;
     strokeStage('a', (t) => shape.attack(t, A), ax, aw, A);
     strokeStage('d', (t) => shape.decay(t, D, S), dx, dw, D);
     if (loudStyle) {
@@ -338,7 +339,7 @@ export class Overlay {
 
     // title
     // on the modular synths an envelope can go anywhere, so it is named for itself, not for loudness
-    let title = envN ? `ENV ${envN[1]} (${envN[1] === '2' ? 'linear' : 'curved'})   ·   the shape at its Out (Inv: upside down)`
+    let title = envN ? `ENV ${envN[1]} (${linear ? 'linear' : 'curved'})   ·   the shape at its Out (Inv: upside down)`
       : loud && PARAMS['jack.env.gate'] ? 'ENV   ·   the shape at its Out'
       : loud ? 'LOUDNESS ENVELOPE' : 'FILTER ENVELOPE';
     if (!loud) title += `   ·   ${PARAMS['filt.env'].label} ${formatValue('filt.env', amt)}`;
