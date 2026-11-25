@@ -65,7 +65,7 @@ export const PARAMS = {
   'jack.osc.pitch': jack('Pitch', 'kb.pitch'),
   'jack.osc.fm':    jack('FM'),
   'jack.filt.in':   jack('In', 'osc.out'),
-  'jack.filt.cv':   jack('CV'),
+  'jack.filt.cv':   jack('Freq'),
   'jack.env.gate':  jack('Gate', 'kb.gate'),
   'jack.vca.in':    jack('In', 'filt.out'),
   'jack.vca.cv':    jack('CV', 'env.out'),
