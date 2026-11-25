@@ -102,7 +102,9 @@ export class LessonController {
   }
 
   // ---- intro / navigation ---------------------------------------------------------------------
-  showIntro() {
+  // keep: at the end of a lesson, leave the student's last sound (and the controls) alone
+  // so they can carry on playing it under the fireworks
+  showIntro(keep = false) {
     this.index = -1;
     this.runId = (this.runId || 0) + 1;
     this.busy = false;
@@ -110,12 +112,14 @@ export class LessonController {
     this.d.keyboard.markTarget(null);
     this.d.scope.clearTarget();
     // the intro shows the lesson's starting point (NF-1: Init, with only Oscillator 1 open)
-    this.lockFor(this.lesson.introUnlocked || ['osc1']);
-    this.d.setPatch(this.lesson.base || {});
+    if (!keep) {
+      this.lockFor(this.lesson.introUnlocked || ['osc1']);
+      this.d.setPatch(this.lesson.base || {});
+    }
     // Scopes: the NF-1's lessons (no 'scopes' setting) show them in full, since matching by ear
     // leans on them. The NF-MiniModular's lessons choose: false = off, true = on, under the panel.
     const sc = this.lesson.scopes;
-    if (this.d.showScopes && this.mode === 'lessons') this.d.showScopes(sc !== false, sc === undefined);
+    if (!keep && this.d.showScopes && this.mode === 'lessons') this.d.showScopes(sc !== false, sc === undefined);
     const started = this.done.some(Boolean);
     const total = this.lesson.challenges.length;
     const complete = this.done.filter(Boolean).length === total;
@@ -340,7 +344,7 @@ export class LessonController {
     $('lm-next').classList.toggle('soon', !nextLesson);
     $('lm-replay').textContent = `Replay lesson ${this.lesson.number}`;
     setTimeout(() => { $('lesson-modal').hidden = false; }, 900);
-    this.showIntro();
+    this.showIntro(true);
   }
 
   closeModal() { $('lesson-modal').hidden = true; }
