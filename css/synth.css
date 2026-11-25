@@ -313,6 +313,8 @@ body.zoomed .zoom-ctl .zoom-level { color: var(--accent); }
   opacity: 0; transition: opacity 0.12s;
   white-space: nowrap; font-variant-numeric: tabular-nums;
 }
+/* the knob in use gets its own layer while it turns: otherwise each step redraws the whole panel */
+.knob-cell:hover .knob, .knob-cell.active .knob, .knob-cell.active .knob-value { will-change: transform; }
 .knob-cell:hover .knob-value,
 .knob-cell.active .knob-value,
 .knob-cell:focus-within .knob-value,
@@ -748,6 +750,7 @@ body[data-skin="vintage"] .perf { padding: 8px 10px; }
 /* overload light by the Feedback pot */
 .overload-led { position: absolute; top: 40px; right: -26px; display: flex; flex-direction: column; align-items: center; gap: 3px; }
 .overload-lamp {
+  will-change: opacity; /* its own layer, as for the jack lamps */
   --glow: 0; --hue: 52;
   width: 12px; height: 12px; border-radius: 50%;
   background: radial-gradient(circle at 40% 35%,
@@ -1062,8 +1065,11 @@ body.patching .socket { cursor: grabbing; }
 /* while dragging, the sockets that can take the cable glow */
 body.patching-in .socket[data-jack], body.patching-out .socket[data-out] { box-shadow: 0 0 0 3px rgba(255,181,71,0.35), 0 2px 3px rgba(0,0,0,0.6); }
 .socket.hover { box-shadow: 0 0 0 4px #ffb547, 0 0 14px rgba(255,181,71,0.8) !important; transform: scale(1.08); }
-/* lamp by each output: lights with the signal leaving it */
+/* lamp by each output in use: lights with the signal leaving it */
+.jack-cell.out.patched .jack-lamp { display: block; }
 .jack-lamp {
+  display: none; /* shown only on an output with a cable in it */
+  will-change: opacity; /* its own layer: otherwise every flicker redraws the whole panel */
   position: absolute; top: 5px; right: 5px; width: 7px; height: 7px; border-radius: 50%;
   --glow: 0;
   background: rgb(calc(70 + 185 * var(--glow)), calc(20 + 40 * var(--glow)), 20);

@@ -90,7 +90,7 @@ export class Cables {
         el('div', 'jack-label', cell).textContent = info ? info.label : 'Out';
         const s = el('div', 'socket', cell);
         s.dataset.out = out;
-        el('span', 'jack-lamp', cell);
+        s._lamp = el('span', 'jack-lamp', cell);
         this.outs[out] = s;
         s.addEventListener('pointerdown', (e) => this.startFromOut(e, out));
       } else {
@@ -146,6 +146,7 @@ export class Cables {
     L.setAttribute('height', this.stage.offsetHeight);
     L.replaceChildren();
     const p = this.getPatch();
+    this.markPatched(p);
     for (const id in this.ins) {
       listOf(p[id]).forEach((from, k) => {
         if (!this.outs[from]) return;
@@ -277,15 +278,30 @@ export class Cables {
     this.redraw();
   }
 
+  // a lamp only where a cable is plugged into the output
+  markPatched(p) {
+    const used = new Set();
+    for (const id in this.ins) listOf(p[id]).forEach((out) => used.add(out));
+    for (const out in this.outs) {
+      const s = this.outs[out], on = used.has(out);
+      if (s._patched === on) continue;
+      s._patched = on;
+      s.parentNode.classList.toggle('patched', on);
+      s._lamp._v = 0; s._lamp._glow = null; // starts dark
+    }
+  }
+
   // light each output socket's lamp with what it is sending (from the sound engine's live state)
   showLevels(outs) {
     for (const id in this.outs) {
+      const s = this.outs[id], lamp = s._lamp;
+      if (!s._patched) continue; // an output with no cable shows no lamp
       const v = outs ? Math.min(1, outs[id] || 0) : 0; // the keyboard's Pitch lamp lights while a key is down
-      const lamp = this.outs[id].parentNode.querySelector('.jack-lamp');
-      if (!lamp) continue;
-      const shown = Math.max(v, (lamp._v || 0) * 0.85); // light quickly, fade slowly
-      lamp._v = shown;
-      lamp.style.setProperty('--glow', shown.toFixed(3));
+      lamp._v = Math.max(v, (lamp._v || 0) * 0.85); // light quickly, fade slowly
+      const glow = lamp._v.toFixed(2);
+      if (glow === lamp._glow) continue; // nothing to redraw
+      lamp._glow = glow;
+      lamp.style.setProperty('--glow', glow);
     }
   }
 }
