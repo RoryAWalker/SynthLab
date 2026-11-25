@@ -51,6 +51,8 @@ const fullName = (out) => (OUTPUTS[out] ? `${OUTPUTS[out].module} ${OUTPUTS[out]
 // an input can hold several cables (a comma-separated list): their signals are added together
 const jack = (label, def = '') => ({ type: 'jack', label, def,
   fmt: (v) => (v ? 'from ' + String(v).split(',').filter(Boolean).map(fullName).join(' + ') : 'not patched') });
+// an input meant for sound: it gets a light plate (control and modulation inputs have none)
+const audioIn = (label, def = '') => ({ ...jack(label, def), audio: true });
 const pick = (id, extra = {}) => ({ ...NF1_PARAMS[id], ...extra });
 const level = (label, def) => ({ type: 'cont', label, min: 0, max: 1, def, curve: 'lin', fmt: fmtPct });
 const bipolar = (label, def = 0) => ({ type: 'cont', label, min: -1, max: 1, def, curve: 'lin', unit: '%',
@@ -154,14 +156,14 @@ export const PARAMS = {
   // envelope on the VCA and a second envelope opening the filter
   'jack.vco1.pitch': jack('Pitch', 'kb.pitch'), 'jack.vco1.fm': jack('FM'), 'jack.vco1.pwm': jack('PWM'), 'jack.vco1.sync': jack('Sync'),
   'jack.vco2.pitch': jack('Pitch', 'kb.pitch'), 'jack.vco2.fm': jack('FM'), 'jack.vco2.pwm': jack('PWM'), 'jack.vco2.sync': jack('Sync'),
-  'jack.mix.in1': jack('In 1', 'vco1.saw'), 'jack.mix.in2': jack('In 2', 'vco2.saw'), 'jack.mix.in3': jack('In 3'), 'jack.mix.in4': jack('In 4'),
-  'jack.filt.in': jack('In', 'mix.out'), 'jack.filt.cv': jack('Freq', 'env2.out'), 'jack.filt.key': jack('Pitch'), 'jack.filt.res': jack('Res'),
-  'jack.ring.a': jack('In A'), 'jack.ring.b': jack('In B'),
-  'jack.vca1.in': jack('In', 'filt.out'), 'jack.vca1.cv': jack('CV', 'env1.out'),
-  'jack.vca2.in': jack('In'), 'jack.vca2.cv': jack('CV'),
+  'jack.mix.in1': audioIn('In 1', 'vco1.saw'), 'jack.mix.in2': audioIn('In 2', 'vco2.saw'), 'jack.mix.in3': audioIn('In 3'), 'jack.mix.in4': audioIn('In 4'),
+  'jack.filt.in': audioIn('In', 'mix.out'), 'jack.filt.cv': jack('Freq', 'env2.out'), 'jack.filt.key': jack('Pitch'), 'jack.filt.res': jack('Res'),
+  'jack.ring.a': audioIn('In A'), 'jack.ring.b': audioIn('In B'),
+  'jack.vca1.in': audioIn('In', 'filt.out'), 'jack.vca1.cv': jack('CV', 'env1.out'),
+  'jack.vca2.in': audioIn('In'), 'jack.vca2.cv': jack('CV'),
   'jack.att.in1': jack('In'), 'jack.att.in2': jack('In'),
   'jack.noise.cv': jack('CV'),
-  'jack.out.in': jack('In', 'vca1.out'),
+  'jack.out.in': audioIn('In', 'vca1.out'),
   'jack.env1.gate': jack('Gate', 'kb.gate'), 'jack.env2.gate': jack('Gate', 'kb.gate'),
   'jack.lfo.gate': jack('Gate'), 'jack.lfo.rate': jack('Rate'), 'jack.lfo2.gate': jack('Gate'), 'jack.lfo2.fm': jack('FM'),
   'jack.sh.in': jack('In'), 'jack.sh.clock': jack('Clock'),

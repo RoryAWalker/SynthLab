@@ -22,6 +22,8 @@ const fullName = (out) => (OUTPUTS[out] ? `${OUTPUTS[out].module} ${OUTPUTS[out]
 
 // an input jack; def: the output patched into it when the synth opens
 const jack = (label, def = '') => ({ type: 'jack', label, def, fmt: (v) => (v ? 'from ' + fullName(v) : 'not patched') });
+// an input meant for sound: it gets a light plate (control and modulation inputs have none)
+const audioIn = (label, def = '') => ({ ...jack(label, def), audio: true });
 
 const pick = (id, extra = {}) => ({ ...NF1_PARAMS[id], ...extra });
 
@@ -64,12 +66,12 @@ export const PARAMS = {
   'jack.lfo.gate':  jack('Gate'),
   'jack.osc.pitch': jack('Pitch', 'kb.pitch'),
   'jack.osc.fm':    jack('FM'),
-  'jack.filt.in':   jack('In', 'osc.out'),
+  'jack.filt.in':   audioIn('In', 'osc.out'),
   'jack.filt.cv':   jack('Freq'),
   'jack.env.gate':  jack('Gate', 'kb.gate'),
-  'jack.vca.in':    jack('In', 'filt.out'),
+  'jack.vca.in':    audioIn('In', 'filt.out'),
   'jack.vca.cv':    jack('CV', 'env.out'),
-  'jack.out.in':    jack('In', 'vca.out'),
+  'jack.out.in':    audioIn('In', 'vca.out'),
 };
 
 // Panel: one module per section. 'jacks' is the row of sockets along the bottom of a module:

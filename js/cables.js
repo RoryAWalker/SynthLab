@@ -33,7 +33,7 @@ class JackIn {
     this.id = id;
     this.spec = PARAMS[id];
     this.onChange = onChange;
-    this.el = el('div', 'jack-cell in');
+    this.el = el('div', 'jack-cell in' + (this.spec.audio ? ' audio' : ''));
     this.el.dataset.param = id;
     this.el.dataset.help = id;
     el('div', 'jack-label', this.el).textContent = this.spec.label;
