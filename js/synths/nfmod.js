@@ -263,9 +263,9 @@ export const PRESETS = {
   // Pitch, so every key is the same drum; Trig into Sync starts the wave at the same point every time.
   'Kick': {
     ...cable('mix.in1', 'vco1.tri'), ...cable('mix.in2', ''), ...cable('vco1.pitch', 'env2.out'), ...cable('vco1.fm', 'env2.out'), ...cable('vco1.sync', 'kb.trig'),
-    ...cable('filt.cv', ''), 'osc1.range': -2, 'osc1.tune': -5, 'osc1.fm': 1, 'mix.l1': 10, 'mix.mode': 'drive',
+    ...cable('filt.cv', ''), 'osc1.range': -2, 'osc1.tune': -7, 'osc1.fm': 1, 'mix.l1': 10, 'mix.mode': 'drive',
     'vcf.cutoff': 3000, 'vcf.res': 0, 'vcf.cv': 0, 'out.vol': 1,
-    'env1.a': 0.001, 'env1.d': 0.27, 'env1.s': 0, 'env1.r': 0.45, 'env2.a': 0.001, 'env2.d': 0.034, 'env2.s': 0, 'env2.r': 0.07,
+    'env1.a': 0.001, 'env1.d': 0.27, 'env1.s': 0, 'env1.r': 0.373, 'env2.a': 0.001, 'env2.d': 0.034, 'env2.s': 0, 'env2.r': 0.006,
   },
   // noise, plus a metallic clang from two high squares ring-modulated, through the high-pass
   'Hi-Hat': {
