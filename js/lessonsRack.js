@@ -271,12 +271,12 @@ export const RACK_LESSONS = [
       },
       {
         type: 'goal', title: 'Mirror keyboard',
-        text: 'The Attenuverter can turn a signal upside down, even the Keyboard. Patch the Keyboard\'s Pitch into In 1 and Out 1 into VCO 2\'s Pitch (instead of the Keyboard), with Amount 1 at −100%. Play up the keyboard: VCO 1 climbs while VCO 2 falls, mirrored around middle C. Play notes at least five keys apart.',
+        text: 'The Attenuverter can turn a signal upside down, even the Keyboard. Patch the Keyboard\'s Pitch into In 1 and Out 1 into VCO 2\'s Pitch (instead of the Keyboard), with Amount 1 at −100%. Play up the keyboard: VCO 1 climbs while VCO 2 falls, mirrored around middle C. Play notes at least five keys apart. Then try other Amounts, for microtonality (notes between the piano\'s keys): at +50% each key moves VCO 2 only a quarter tone, half the usual semitone.',
         unlocked: ALL,
         make: (c) => ({ start: { ...cable('filt.cv', ''), 'vcf.cutoff': 4000, 'osc2.tune': 0 }, note: c.note }),
         check: (s) => has(s.patch, 'att.in1', 'kb.pitch') && only(s.patch, 'vco2.pitch', 'att.out1') && has(s.patch, 'vco1.pitch', 'kb.pitch') && s.patch['att.a1'] <= -0.97 && heardFrom(s.patch, 'vco1.') && heardFrom(s.patch, 'vco2.') && s.held && s.highNote - s.lowNote >= 5,
         progress: (s) => share(has(s.patch, 'att.in1', 'kb.pitch'), only(s.patch, 'vco2.pitch', 'att.out1'), s.patch['att.a1'] <= -0.97, s.highNote - s.lowNote >= 5),
-        hint: 'Unplug the Keyboard from VCO 2 PITCH. Keyboard PITCH to Attenuverter IN 1 (it can feed several inputs), OUT 1 to VCO 2 PITCH. Amount 1 fully left. Try Amount 1 at +50% afterwards, too: VCO 2 plays in quarter tones.',
+        hint: 'Unplug the Keyboard from VCO 2 PITCH. Keyboard PITCH to Attenuverter IN 1 (it can feed several inputs), OUT 1 to VCO 2 PITCH. Amount 1 fully left. To hear the quarter tones afterwards, set Amount 1 to +50% and turn VCO 1 down in the Mixer.',
       },
       {
         type: 'goal', title: 'Turn a wobble over',
