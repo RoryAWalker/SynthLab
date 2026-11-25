@@ -363,12 +363,12 @@ export const RACK_LESSONS = [
     challenges: [
       {
         type: 'goal', title: 'Kick',
-        text: 'A kick is a low tone whose pitch drops fast. Use VCO 1\'s Tri alone in the Mixer, with nothing in its Pitch (so every key is the same drum) and its Range at −1 or lower. Patch ENV 2 into VCO 1\'s FM (FM Amount 40%+), make ENV 2 very short (Decay up to 0.2 s, no Sustain) and ENV 1 short too (Decay 0.2–0.6 s, no Sustain). Play.',
+        text: 'A kick is a low tone whose pitch drops fast. Use VCO 1\'s Tri alone in the Mixer, with nothing in its Pitch (so every key is the same drum) and its Range at −1 or lower. Patch ENV 2 into VCO 1\'s FM (FM Amount 40%+), make ENV 2 very short (Decay up to 0.2 s, no Sustain) and ENV 1 short too (Decay 0.2–0.6 s, no Sustain). Then set the Mixer\'s Mode to Drive, which thickens it. Play.',
         unlocked: ALL,
         make: (c) => ({ start: { ...cable('filt.cv', ''), 'vcf.cutoff': 4000 }, note: c.note }),
-        check: (s) => heardOnly(s.patch, 'vco1.tri') && !ins(s.patch, 'vco1.pitch').length && s.patch['osc1.range'] <= -1 && has(s.patch, 'vco1.fm', 'env2.out') && s.patch['osc1.fm'] >= 0.4 && s.patch['env2.d'] <= 0.2 && s.patch['env2.s'] <= 0.05 && s.patch['env1.d'] >= 0.2 && s.patch['env1.d'] <= 0.6 && s.patch['env1.s'] <= 0.05 && played(s),
-        progress: (s) => share(heardOnly(s.patch, 'vco1.tri'), !ins(s.patch, 'vco1.pitch').length, s.patch['osc1.range'] <= -1, has(s.patch, 'vco1.fm', 'env2.out') && s.patch['osc1.fm'] >= 0.4, s.patch['env2.d'] <= 0.2 && s.patch['env2.s'] <= 0.05, s.patch['env1.d'] >= 0.2 && s.patch['env1.d'] <= 0.6 && s.patch['env1.s'] <= 0.05),
-        hint: 'Mixer: only VCO 1 TRI. Lift the Keyboard cable from VCO 1 PITCH. ENV 2 OUT to VCO 1 FM. Both envelopes: Sustain 0, short Decays.',
+        check: (s) => heardOnly(s.patch, 'vco1.tri') && !ins(s.patch, 'vco1.pitch').length && s.patch['osc1.range'] <= -1 && has(s.patch, 'vco1.fm', 'env2.out') && s.patch['osc1.fm'] >= 0.4 && s.patch['env2.d'] <= 0.2 && s.patch['env2.s'] <= 0.05 && s.patch['env1.d'] >= 0.2 && s.patch['env1.d'] <= 0.6 && s.patch['env1.s'] <= 0.05 && s.patch['mix.mode'] === 'drive' && played(s),
+        progress: (s) => share(heardOnly(s.patch, 'vco1.tri'), !ins(s.patch, 'vco1.pitch').length, s.patch['osc1.range'] <= -1, has(s.patch, 'vco1.fm', 'env2.out') && s.patch['osc1.fm'] >= 0.4, s.patch['env2.d'] <= 0.2 && s.patch['env2.s'] <= 0.05, s.patch['env1.d'] >= 0.2 && s.patch['env1.d'] <= 0.6 && s.patch['env1.s'] <= 0.05, s.patch['mix.mode'] === 'drive'),
+        hint: 'Mixer: only VCO 1 TRI. Lift the Keyboard cable from VCO 1 PITCH. ENV 2 OUT to VCO 1 FM. Both envelopes: Sustain 0, short Decays. Mixer Mode: Drive (turn Level 1 up for more of it).',
       },
       {
         type: 'goal', title: 'Hi-hat',
