@@ -412,7 +412,7 @@ export const NF3_LESSONS = [
         unlocked: ALL,
         make: (c) => ({ start: {}, note: c.note }),
         check: (s) => s.patch['perf.glideon'] === 'on' && s.patch['ctrl.glide'] >= 0.05 && s.patch['ctrl.glide'] <= 0.4 && s.patch['mix.osc2'] >= 0.4 && Math.abs(s.patch['osc2.freq']) >= 0.03 && Math.abs(s.patch['osc2.freq']) <= 0.3 && s.patch['filt.cutoff'] >= 1500 && s.highNote - s.lowNote >= 5,
-        progress: (s) => share(s.patch['perf.glideon'] === 'on', s.patch['ctrl.glide'] >= 0.05 && s.patch['ctrl.glide'] <= 0.4, s.patch['mix.osc2'] >= 0.4, Math.abs(s.patch['osc2.freq']) >= 0.03 && Math.abs(s.patch['osc2.freq']) <= 0.3, s.highNote - s.lowNote >= 5),
+        progress: (s) => share(s.patch['perf.glideon'] === 'on', s.patch['ctrl.glide'] >= 0.05 && s.patch['ctrl.glide'] <= 0.4, s.patch['mix.osc2'] >= 0.4, Math.abs(s.patch['osc2.freq']) >= 0.03 && Math.abs(s.patch['osc2.freq']) <= 0.3, s.patch['filt.cutoff'] >= 1500, s.highNote - s.lowNote >= 5),
         hint: 'The Glide switch is left of the keys; the Glide time knob is in Controllers.',
       },
       {

@@ -308,6 +308,7 @@ export class LessonController {
     this.progress[this.lesson.id] = done;
     save('nf1.progress', this.progress);
     this.smileys.forEach((s) => s.start());
+    if (this.d.celebrate) this.d.celebrate(3, done.filter(Boolean).length < this.lesson.challenges.length);
     this.renderSteps();
     this.setStatus(label, 'matched');
     const total = this.lesson.challenges.length;

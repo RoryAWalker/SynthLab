@@ -211,7 +211,11 @@ function ensureAudio() {
 }
 
 function onKnob(id, value) {
+  const before = { ...patch };
   patch[id] = value;
+  // a control that moves another (e.g. Osc 3 Frequency snapping to 0 when Osc 3 becomes an oscillator)
+  const extra = SYNTH.linked && SYNTH.linked(id, before, patch);
+  if (extra) for (const k in extra) { if (patch[k] !== extra[k]) { onKnob(k, extra[k]); if (knobs[k]) knobs[k].set(extra[k]); } }
   // modular synths: a patch can sound without a key (a drone), so any change may start the audio
   if (SYNTH.modular && !engine.running) ensureAudio();
   refreshScales();
@@ -525,6 +529,7 @@ if (fxTab) fxTab.addEventListener('click', () => setFxOpen(!fxDrawer.classList.c
 // always starts closed, so the synth fits the screen
 
 // ---- lessons ----
+let celebrateTimer = 0;
 lesson = new LessonController({
   getPatch: () => ({ ...patch }), setPatch, engine, scope, keyboard, lockSection, ensureAudio,
   onModeChange: (mode) => {
@@ -545,6 +550,21 @@ lesson = new LessonController({
       const pinned = document.querySelector('.appbar').offsetHeight + lessonWrap.offsetHeight;
       window.scrollTo(0, on && !visible ? Math.max(0, synthTop - pinned - 12) : 0);
     });
+  },
+  // A success: bring the screens into view so the smiley is seen, then put things back
+  // (hidden again if they were hidden, the page scrolled back to the synth).
+  celebrate: (seconds, restore = true) => {
+    const wasHidden = document.body.classList.contains('scopes-hidden');
+    const y = window.scrollY;
+    if (wasHidden) setScopes(true, false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    clearTimeout(celebrateTimer);
+    if (!restore) return;
+    celebrateTimer = setTimeout(() => {
+      if (lesson.mode !== 'lessons') return;
+      if (wasHidden) setScopes(false, false);
+      requestAnimationFrame(() => window.scrollTo({ top: wasHidden ? 0 : y, behavior: 'smooth' }));
+    }, seconds * 1000);
   },
 });
 document.querySelectorAll('#mode-switch button').forEach((b) => b.addEventListener('click', () => lesson.setMode(b.dataset.mode)));
