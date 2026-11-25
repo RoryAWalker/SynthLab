@@ -26,6 +26,10 @@ const syncSwept = (p) => (has(p, 'vco2.fm', 'env2.out') && p['osc2.fm'] >= 0.5) 
 let sweptFrom = null; // how many notes had been played when the sweep was first patched
 const highNote = (s) => s.note != null && s.note + semis(s.patch, 1) >= 71.5; // VCO 1 sounding at C5 or above
 
+// 'A filter envelope': which ENV 2 shapes a new note has been played with, once the pluck is set up
+let shapes = { heard: new Set(), notes: 0 };
+const pluck = (p) => has(p, 'filt.cv', 'env2.out') && p['vcf.cv'] >= 0.5 && p['vcf.cutoff'] <= 159 && p['env2.d'] <= 0.5 && p['env2.s'] <= 0.2;
+
 const ALL = ['seq', 'vco1', 'vco2', 'noise', 'mix', 'filt', 'ring', 'vca', 'att', 'out', 'env1', 'env2', 'lfo', 'mfo', 'sh', 'kb'];
 const SCOPES = true;
 
@@ -181,17 +185,20 @@ export const RACK_LESSONS = [
   {
     id: 'rack-envvca', number: 3, title: 'Two Envelopes, Two VCAs',
     summary: 'Separate envelopes for volume and tone, the inverted envelope, and the big idea: a VCA can control a modulation, not just a sound.',
-    doneText: 'You gave the filter its own envelope, swept it backwards with Inv, made vibrato that fades in using a VCA, and layered tremolo over an envelope with both VCAs.',
+    doneText: 'You gave the filter its own envelope, heard how Linear and Exponential shapes differ, swept it backwards with Inv, made vibrato that fades in using a VCA, and layered tremolo over an envelope with both VCAs.',
     introUnlocked: [], scopes: SCOPES,
     challenges: [
       {
         type: 'goal', title: 'A filter envelope',
-        text: 'Nothing is moving the filter. Patch ENV 2 into the VCF\'s CV, turn CV Amount past 50% and Cutoff below 30%, and make ENV 2 short (Decay under 0.5 s, Sustain under 20%). Play: a pluck.',
+        text: 'Nothing is moving the filter. Patch ENV 2 into the VCF\'s CV, turn CV Amount past 50% and Cutoff below 30%, and make ENV 2 short (Decay under 0.5 s, Sustain under 20%). Play: a pluck. ENV 2 is Linear, falling at a steady speed. Now click the word Linear in its title to make it Exponential, fast at first and then easing off, and play again: the same times, a snappier pluck.',
         unlocked: ALL,
-        make: (c) => ({ start: { ...cable('filt.cv', '') }, note: c.note }),
-        check: (s) => has(s.patch, 'filt.cv', 'env2.out') && s.patch['vcf.cv'] >= 0.5 && s.patch['vcf.cutoff'] <= 159 && s.patch['env2.d'] <= 0.5 && s.patch['env2.s'] <= 0.2 && played(s),
-        progress: (s) => share(has(s.patch, 'filt.cv', 'env2.out'), s.patch['vcf.cv'] >= 0.5, s.patch['vcf.cutoff'] <= 159, s.patch['env2.d'] <= 0.5 && s.patch['env2.s'] <= 0.2),
-        hint: 'ENV 2 OUT to VCF CV. CV Amount past +50%. Cutoff low. ENV 2 Decay short and Sustain low.',
+        make: (c) => { shapes = { heard: new Set(), notes: 0 }; return { start: { ...cable('filt.cv', '') }, note: c.note }; },
+        check: (s) => {
+          if (s.notes > shapes.notes) { shapes.notes = s.notes; if (pluck(s.patch)) shapes.heard.add(s.patch['env2.curve']); } // a new note
+          return pluck(s.patch) && shapes.heard.size === 2;
+        },
+        progress: (s) => share(has(s.patch, 'filt.cv', 'env2.out'), s.patch['vcf.cv'] >= 0.5, s.patch['vcf.cutoff'] <= 159, s.patch['env2.d'] <= 0.5 && s.patch['env2.s'] <= 0.2, shapes.heard.size >= 1, shapes.heard.size === 2),
+        hint: 'ENV 2 OUT to VCF CV. CV Amount past +50%. Cutoff low. ENV 2 Decay short and Sustain low. Play a note, click the word LINEAR beside ENV 2 so it says EXPONENTIAL, and play another.',
       },
       {
         type: 'goal', title: 'Backwards',
@@ -366,12 +373,12 @@ export const RACK_LESSONS = [
       },
       {
         type: 'goal', title: 'Snare',
-        text: 'A snare is two layers with their own envelopes. VCA 1: a VCO into its In, ENV 1 into its CV. VCA 2: Noise into its In, ENV 2 into its CV. Both VCA Outs into the Output (both cables in its In). Give both envelopes no Sustain and short Decays (up to 0.3 s). Play.',
+        text: 'A snare is two layers with their own envelopes. VCA 1: a VCO into its In, ENV 1 into its CV. VCA 2: Noise into its In, ENV 2 into its CV. Both VCA Outs into the Output (both cables in its In). Give both envelopes no Sustain and short Decays (up to 0.3 s). Set ENV 2 to Exponential as well (click the word in its title): loudness that fades exponentially sounds natural, like a real drum dying away. Play.',
         unlocked: ALL,
         make: (c) => ({ start: { ...cable('filt.cv', '') }, note: c.note }),
-        check: (s) => hasFrom(s.patch, 'vca1.in', 'vco') && has(s.patch, 'vca1.cv', 'env1.out') && hasFrom(s.patch, 'vca2.in', 'noise.') && has(s.patch, 'vca2.cv', 'env2.out') && has(s.patch, 'out.in', 'vca1.out') && has(s.patch, 'out.in', 'vca2.out') && s.patch['env1.s'] <= 0.05 && s.patch['env2.s'] <= 0.05 && s.patch['env1.d'] <= 0.3 && s.patch['env2.d'] <= 0.3 && played(s),
-        progress: (s) => share(hasFrom(s.patch, 'vca1.in', 'vco'), hasFrom(s.patch, 'vca2.in', 'noise.') && has(s.patch, 'vca2.cv', 'env2.out'), has(s.patch, 'out.in', 'vca1.out') && has(s.patch, 'out.in', 'vca2.out'), s.patch['env1.s'] <= 0.05 && s.patch['env2.s'] <= 0.05, s.patch['env1.d'] <= 0.3 && s.patch['env2.d'] <= 0.3),
-        hint: 'Lift the VCF cable from VCA 1 IN and patch a VCO Tri there. Noise to VCA 2 IN, ENV 2 to VCA 2 CV, VCA 2 OUT into the Output\'s IN as well as VCA 1. Then the envelopes.',
+        check: (s) => hasFrom(s.patch, 'vca1.in', 'vco') && has(s.patch, 'vca1.cv', 'env1.out') && hasFrom(s.patch, 'vca2.in', 'noise.') && has(s.patch, 'vca2.cv', 'env2.out') && has(s.patch, 'out.in', 'vca1.out') && has(s.patch, 'out.in', 'vca2.out') && s.patch['env1.s'] <= 0.05 && s.patch['env2.s'] <= 0.05 && s.patch['env1.d'] <= 0.3 && s.patch['env2.d'] <= 0.3 && s.patch['env1.curve'] === 'curved' && s.patch['env2.curve'] === 'curved' && played(s),
+        progress: (s) => share(hasFrom(s.patch, 'vca1.in', 'vco'), hasFrom(s.patch, 'vca2.in', 'noise.') && has(s.patch, 'vca2.cv', 'env2.out'), has(s.patch, 'out.in', 'vca1.out') && has(s.patch, 'out.in', 'vca2.out'), s.patch['env1.s'] <= 0.05 && s.patch['env2.s'] <= 0.05, s.patch['env1.d'] <= 0.3 && s.patch['env2.d'] <= 0.3, s.patch['env1.curve'] === 'curved' && s.patch['env2.curve'] === 'curved'),
+        hint: 'Lift the VCF cable from VCA 1 IN and patch a VCO Tri there. Noise to VCA 2 IN, ENV 2 to VCA 2 CV, VCA 2 OUT into the Output\'s IN as well as VCA 1. Then the envelopes: no Sustain, short Decays, and both saying EXPONENTIAL.',
       },
     ],
   },
