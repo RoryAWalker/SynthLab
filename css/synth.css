@@ -1265,3 +1265,9 @@ body .rack-side .knob-cell.small .knob-value { font-size: 10.5px; height: 14px; 
 .lb-task-head { flex-wrap: wrap; }
 .lb-btn.lb-hear { padding: 5px 12px; font-size: 12.5px; background: linear-gradient(#ffcf7a, #f0a43a); border-color: #c98a2e; color: #24180a; }
 .lb-btn.lb-hear:hover { background: linear-gradient(#ffd98f, #f5ae4a); }
+
+/* MIDI light in the top bar: shown while a MIDI keyboard is connected */
+.midi-light { display: inline-flex; align-items: center; gap: 6px; font: 700 11px var(--font); letter-spacing: 0.1em; color: #9fe0b4; padding: 5px 9px; border: 1px solid #2f5a3e; border-radius: 6px; background: #17241c; }
+.midi-light[hidden] { display: none; }
+.midi-light i { width: 7px; height: 7px; border-radius: 50%; background: #49c07c; box-shadow: 0 0 6px #49c07c; }
+.midi-light.hit i { background: #b8ffd0; box-shadow: 0 0 10px #8affb3; }

@@ -351,6 +351,10 @@ export const HELP = {
     body: ['Shows the target sound as a dashed amber trace on the oscilloscope and spectrum. Turn it off to match by ear alone.'],
   },
   synths: { title: 'Menu', body: ['Opens the start menu to choose a different synth. Each synth has its own panel, sound and saved patches.'] },
+  midi: {
+    title: 'MIDI keyboard',
+    body: ['A MIDI keyboard is connected and plays the synth: its keys light the keys on screen, and lessons hear them too. On the NiniFoog its pitch bend and mod wheels move the Pitch and Mod wheels.', 'Plug one in at any time (Chrome, Edge or Firefox; Safari has no MIDI). Rest here to see its name.'],
+  },
   scopes: {
     title: 'Scopes',
     body: ['Shows or hides the oscilloscope and spectrum analyser. Hidden, the synth grows to fill the screen; shown, you can see the waveform and harmonics of everything you play, along with the teaching graphs.', 'Lessons that play a target sound switch them on, because the target is drawn on them.'],

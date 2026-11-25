@@ -13,6 +13,7 @@ import { ZoomPan } from './zoom.js';
 import { LessonController } from './lessonUI.js';
 import { PatchMenu } from './patches.js';
 import { Cables } from './cables.js';
+import { startMidi } from './midi.js';
 
 const engine = new Engine({ module: SYNTH.module, processor: SYNTH.processor });
 document.body.dataset.skin = SYNTH.skin;
@@ -345,6 +346,22 @@ const keyboard = new Keyboard(document.getElementById('keys'), {
   onOctave: (o) => (document.getElementById('oct-readout').textContent = 'C' + o),
 });
 if (SYNTH.keyboard) document.querySelector('.oct-hint').textContent = 'Play with A–K on your computer keyboard';
+// ---- MIDI keyboard: plays through the on-screen keyboard; bend and mod wheel where the synth has them ----
+startMidi({
+  keyboard,
+  setControl: (id, v) => { if (knobs[id]) knobs[id].commit(v); },
+  onDevices: (names) => {
+    const light = document.getElementById('midi-light');
+    light.hidden = !names || !names.length;
+    if (names && names.length) light.title = 'MIDI: ' + names.join(', ');
+  },
+  onActivity: () => { // the light flickers as notes arrive
+    const light = document.getElementById('midi-light');
+    light.classList.add('hit');
+    clearTimeout(light._t);
+    light._t = setTimeout(() => light.classList.remove('hit'), 90);
+  },
+});
 document.getElementById('oct-down').addEventListener('click', () => keyboard.shiftOctave(-1));
 document.getElementById('oct-up').addEventListener('click', () => keyboard.shiftOctave(1));
 
@@ -585,7 +602,7 @@ if (knobs['mix.feedback']) {
     requestAnimationFrame(loop);
     const l = engine.live;
     const drive = l && engine.running ? l.drive || 0 : 0;
-    const level = Math.min(1, Math.max(0, (drive - 0.8) / 1.0)); // 0 below 0.8, full red by 1.8
+    const level = Math.min(1, Math.max(0, (drive - 1.9) / 1.1)); // dark up to two oscillators at full (peaks ~1.8); Feedback lights it, red by 3.0
     shown = Math.max(level, shown * 0.93); // light quickly, fade slowly
     lamp.style.setProperty('--glow', shown.toFixed(3));
     lamp.style.setProperty('--hue', String(Math.round(52 - 52 * shown))); // yellow -> red

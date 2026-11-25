@@ -301,12 +301,18 @@ export class LessonController {
     }
   }
 
-  success(label) {
+  success(label, delay = 1500) {
     this.solved = true;
     const done = this.done.slice();
     done[this.index] = true;
     this.progress[this.lesson.id] = done;
     save('nf1.progress', this.progress);
+    // a sound that has just been played gets heard before the congratulations
+    const run = this.runId, idx = this.index;
+    setTimeout(() => { if (this.runId === run && this.index === idx) this.celebrate(label, done); }, delay);
+  }
+
+  celebrate(label, done) {
     this.smileys.forEach((s) => s.start());
     if (this.d.celebrate) this.d.celebrate(3, done.filter(Boolean).length < this.lesson.challenges.length);
     this.renderSteps();
@@ -375,7 +381,7 @@ export class LessonController {
       $('lb-question').querySelectorAll('.lb-answer').forEach((b) => { b.disabled = true; });
       fb.textContent = this.challenge.question.explain;
       fb.className = 'lb-feedback right';
-      this.success('Correct!');
+      this.success('Correct!', 0);
     } else {
       btn.classList.add('wrong');
       btn.disabled = true;
