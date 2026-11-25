@@ -2,6 +2,7 @@
 //
 //   Drag from an output to an input (or from an input to an output) to connect them.
 //   Drag a plugged-in cable off an input to move it elsewhere; drop it anywhere else to remove it.
+//   Double-click a plug (either end) to pull that cable out.
 //
 // Each input jack is a patch setting whose value is the output plugged into it ('' = none),
 // so cables save, load and reset with the rest of the patch. Cables are drawn in an SVG
@@ -92,12 +93,14 @@ export class Cables {
         el('span', 'jack-lamp', cell);
         this.outs[out] = s;
         s.addEventListener('pointerdown', (e) => this.startFromOut(e, out));
+        s.addEventListener('dblclick', (e) => { e.preventDefault(); this.unplugOut(out); });
       } else {
         const j = new JackIn(id, this.getPatch()[id], (jid, v) => { this.onChange(jid, v); this.redraw(); });
         this.ins[id] = j;
         this.controls[id] = j;
         strip.appendChild(j.el);
         j.socket.addEventListener('pointerdown', (e) => this.startFromIn(e, id));
+        j.socket.addEventListener('dblclick', (e) => { e.preventDefault(); this.unplugIn(id); });
       }
     });
     return strip;
@@ -240,6 +243,21 @@ export class Cables {
 
   remove(input, out) {
     this.ins[input].commit(listOf(this.getPatch()[input]).filter((x) => x !== out).join(','));
+  }
+
+  // double-click a plug: pull out the most recent cable at that input,
+  // or (at an output) the most recently drawn cable leaving it
+  unplugIn(id) {
+    const list = listOf(this.getPatch()[id]);
+    if (list.length) this.remove(id, list[list.length - 1]);
+    this.redraw();
+  }
+
+  unplugOut(out) {
+    const p = this.getPatch();
+    const ids = Object.keys(this.ins).filter((id) => listOf(p[id]).includes(out));
+    if (ids.length) this.remove(ids[ids.length - 1], out);
+    this.redraw();
   }
 
   cancel() {

@@ -13,6 +13,7 @@ import { UNPATCHED } from './synths/nfm.js';
 // ---- reading a patch ----------------------------------------------------------------------
 const J = (p, input) => p['jack.' + input] || '';
 const is = (p, input, output) => J(p, input) === output;
+let unplugged = false; // 'Unplug and replug': has the cable been pulled out yet in this attempt?
 // The audio path that reaches the Output, followed backwards along the cables:
 // e.g. ['vca.out', 'filt.out', 'osc.out'] for VCO -> VCF -> VCA -> Output.
 function audioPath(p) {
@@ -71,6 +72,15 @@ export const MOD_LESSONS = [
         check: (s) => pathIs(s.patch, 'vca.out', 'osc.out'),
         progress: (s) => share(is(s.patch, 'vca.in', 'osc.out'), is(s.patch, 'out.in', 'vca.out')),
         hint: 'Press on the socket marked OUT in the VCO, hold, and drag to the socket marked IN in the VCA. Let go. Then do the same from the VCA\'s OUT to the Output\'s IN.',
+      },
+      {
+        type: 'goal', title: 'Unplug and replug',
+        text: 'Cables come out as easily as they go in. Pull the cable out of the Output\'s In: double-click its plug, or drag the plug off and let go over an empty part of the panel. Then patch it back in, from the VCA\'s Out to the Output\'s In.',
+        unlocked: BASIC,
+        make: (c) => { unplugged = false; return { start: P_VCA, note: c.note }; },
+        check: (s) => { if (!J(s.patch, 'out.in')) unplugged = true; return unplugged && pathIs(s.patch, 'vca.out', 'osc.out'); },
+        progress: (s) => share(unplugged || !J(s.patch, 'out.in'), unplugged && is(s.patch, 'out.in', 'vca.out')),
+        hint: 'Double-click the plug in the Output module\'s IN socket: the cable disappears. Then drag from the VCA\'s OUT to the Output\'s IN again.',
       },
       {
         type: 'goal', title: 'Open the VCA',
