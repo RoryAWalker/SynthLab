@@ -257,6 +257,22 @@ export const PRESETS = {
     ...cable('vca2.in', 'vca1.out'), ...cable('vca2.cv', 'lfo.out'), ...cable('out.in', 'vca2.out'),
     'vca2.level': 0.6, 'vca2.cv': 0.4, 'lfo.rate': 5, 'lfo.shape': 'sine', 'env1.a': 0.3, 'env1.r': 0.6, 'vcf.cutoff': 1800,
   },
+  // one low triangle whose pitch falls three octaves in an instant (ENV 2 into Pitch and FM). No keyboard
+  // Pitch, so every key is the same drum; Trig into Sync starts the wave at the same point every time.
+  'Kick': {
+    ...cable('mix.in1', 'vco1.tri'), ...cable('mix.in2', ''), ...cable('vco1.pitch', 'env2.out'), ...cable('vco1.fm', 'env2.out'), ...cable('vco1.sync', 'kb.trig'),
+    ...cable('filt.cv', ''), 'osc1.range': -2, 'osc1.tune': -5, 'osc1.fm': 1, 'mix.l1': 10, 'mix.mode': 'drive',
+    'vcf.cutoff': 3000, 'vcf.res': 0, 'vcf.cv': 0, 'out.vol': 1,
+    'env1.a': 0.001, 'env1.d': 0.5, 'env1.s': 0, 'env1.r': 0.45, 'env2.a': 0.001, 'env2.d': 0.07, 'env2.s': 0, 'env2.r': 0.07,
+  },
+  // noise, plus a metallic clang from two high squares ring-modulated, through the high-pass
+  'Hi-Hat': {
+    ...cable('mix.in1', 'noise.col'), ...cable('mix.in2', 'ring.out'), ...cable('ring.a', 'vco1.sq'), ...cable('ring.b', 'vco2.sq'),
+    ...cable('vco1.pitch', ''), ...cable('vco2.pitch', ''), ...cable('filt.cv', ''), ...cable('vca1.in', 'filt.hp'),
+    'osc1.range': 2, 'osc1.tune': 1.3, 'osc2.range': 2, 'osc2.tune': 6.7, 'noise.colour': 0.5, 'mix.l1': 9, 'mix.l2': 6,
+    'vcf.cutoff': 7500, 'vcf.res': 0.2, 'vcf.cv': 0, 'out.vol': 0.5,
+    'env1.a': 0.001, 'env1.d': 0.1, 'env1.s': 0, 'env1.r': 0.08,
+  },
   // two layers with their own envelopes (tone + noise), mixed: the classic analogue snare
   'Snare': {
     ...cable('vca1.in', 'vco1.tri'), ...cable('vca1.cv', 'env1.out'), ...cable('vca2.in', 'noise.col'), ...cable('vca2.cv', 'env2.out'),
