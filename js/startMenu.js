@@ -38,6 +38,7 @@ export class StartMenu {
   }
 
   close() {
+    document.documentElement.classList.remove('choosing');
     this.el.hidden = true;
     document.body.classList.remove('start-open');
   }

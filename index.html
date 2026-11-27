@@ -17,6 +17,8 @@
   <meta property="og:image:alt" content="SynthLab: the NF-1, NiniFoog, NF-MiniModular and NF-Modular synths">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="stylesheet" href="css/synth.css">
+  <!-- no synth chosen yet: the start menu shows from the first moment, not after the app has loaded -->
+  <script>if (!/[?&]synth=/.test(location.search)) document.documentElement.classList.add('choosing');</script>
 </head>
 <body data-skin="classic">
   <header class="appbar">
