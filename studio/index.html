@@ -8,8 +8,16 @@
   <title>StudioLab</title>
   <link rel="stylesheet" href="../css/synth.css">
   <link rel="stylesheet" href="css/studio.css">
-  <!-- ../index.html also has link-preview tags (description, og:*, twitter:card, share picture).
-       StudioLab is not public yet, so they are left out: add StudioLab's own when it is released. -->
+  <!-- what a link to StudioLab shows when it is shared (messages, email, social media) -->
+  <meta name="description" content="The NF-C1: learn what a compressor does by ear, with live screens and step-by-step lessons, free in your browser.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="StudioLab">
+  <meta property="og:title" content="StudioLab: the NF-C1 compressor">
+  <meta property="og:description" content="Learn what a compressor does by ear, with live screens and step-by-step lessons, free in your browser.">
+  <meta property="og:url" content="https://roryawalker.github.io/SynthLab/studio/">
+  <meta property="og:image" content="https://roryawalker.github.io/SynthLab/studio/img/preview-nfc1.png">
+  <meta property="og:image:alt" content="The NF-C1 compressor and its loop player">
+  <meta name="twitter:card" content="summary_large_image">
   <!-- After an update, a browser may still hold an old copy of one of the app's files, and an old
        file mixed with new ones can stop the app starting (a blank page). If that happens, fetch
        every file fresh and reload, once a minute at most. The same in index.html and studio/index.html. -->
@@ -35,7 +43,8 @@
     })();
   </script>
   <!-- no unit chosen yet: the start menu shows from the first moment, not after the app has loaded -->
-  <script>if (!/[?&]synth=/.test(location.search)) document.documentElement.classList.add('choosing');</script>
+  <!-- (on the public site there is only one unit, so no start menu: see js/boot.js) -->
+  <script>if (!/[?&]synth=/.test(location.search) && !/github\.io$/.test(location.hostname) && !/[?&]public/.test(location.search)) document.documentElement.classList.add('choosing');</script>
 </head>
 <body data-skin="classic">
   <header class="appbar">
