@@ -1,8 +1,9 @@
-import { HELP, HELP_NF3, HELP_NFM, HELP_NFMOD, helpKeyFor } from './help.js';
+import { HELP, HELP_NF3, HELP_NFM, HELP_NFMOD, HELP_MODRACK, helpKeyFor } from './help.js';
 import { EXT } from './lab.js';
 import { PARAMS, ALL_SECTIONS, formatValue, SYNTH } from './params.js';
 
-const HELP_FOR_SYNTH = { nf3: HELP_NF3, nfm: HELP_NFM, nfmod: HELP_NFMOD, ...(EXT.help || {}) }[SYNTH.helpAs || SYNTH.id] || {};
+const HELP_FOR_SYNTH = { ...{ nf3: HELP_NF3, nfm: HELP_NFM, nfmod: HELP_NFMOD, ...(EXT.help || {}) }[SYNTH.helpAs || SYNTH.id] };
+if (SYNTH.id === 'modrack') Object.assign(HELP_FOR_SYNTH, HELP_MODRACK); // (a copy: HELP_NFMOD itself is untouched)
 // (the NF-ModRack's modules share the NF-Modular's help: SYNTH.helpKey finds the entry, e.g. vco3.tune -> osc1.tune)
 const direct = (k) => HELP_FOR_SYNTH[k] || HELP[k];
 const lookup = (k) => {

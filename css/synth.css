@@ -1427,3 +1427,5 @@ body[data-skin="modular"] .section[data-type="mfo"] { --mod: #d99a2b; }
 body[data-skin="modular"] .section[data-type="sh"] { --mod: #c4508f; }
 /* the sequencer column is exactly as tall as the three rows of the rack */
 .panel-sections.rack > .rack-side { height: auto !important; align-self: stretch; }
+body[data-skin="modular"] .section[data-type="reso"] { --mod: #5b62c9; } /* Resonator: indigo */
+body[data-skin="modular"] .section[data-type="reso"].even { --mod: #7a80dc; }
