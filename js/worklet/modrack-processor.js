@@ -734,6 +734,82 @@ class WaveVCO extends Module {
   }
 }
 
+// Bounce: a ball dropped onto a hard floor. It falls from Height, taking Time to land, and each
+// bounce keeps Bounce of its speed (0: it stops dead; 0.98: a super-ball), until it comes to rest.
+// Out: its height. Hit: a trigger at each bounce, as strong as the impact (1 for the first). End: a
+// trigger when it comes to rest. Once: dropped when the Gate rises. Loop: dropped again when it
+// comes to rest. Swing: bounces to rest, then plays backwards (the ball gaining height), and again.
+// Worked out exactly, bounce by bounce (each flight is a parabola), so it can run backwards too.
+const MAX_BOUNCES = 400;
+class Bounce extends Module {
+  static OUTS = ['out', 'hit', 'end'];
+  static INS = ['gate', 'time', 'bounce'];
+  constructor(id) {
+    super(id);
+    this.segs = []; this.t = 0; this.dir = 1; this.idle = true; this.h = 0; this.gateWas = 0;
+    this.hitN = 0; this.hitV = 0; this.endN = 0; this.seg = 0; this.n = 0; this.key = '';
+  }
+  begin(p, sr) {
+    this.mode = this.q(p, 'mode'); this.timeK = this.q(p, 'time'); this.bounceK = this.q(p, 'bounce'); this.H = this.q(p, 'height');
+    this.sr = sr; this.trigN = Math.round(TRIG_SECONDS * sr);
+  }
+  // the flights from a height h0 and upward speed v0: start times and the speed off the floor
+  plan(h0, v0) {
+    const g = this.g, segs = [{ t: 0, h: h0, v: v0 }];
+    let t = (v0 + Math.sqrt(v0 * v0 + 2 * g * h0)) / g, u = Math.sqrt(v0 * v0 + 2 * g * h0) * this.e;
+    const tiny = this.vmax * 0.003;
+    let land = Math.sqrt(v0 * v0 + 2 * g * h0); // (the speed of the last landing)
+    while (u > tiny && segs.length < MAX_BOUNCES) { segs.push({ t, h: 0, v: u }); t += 2 * u / g; land = u; u *= this.e; }
+    this.segs = segs; this.D = t; this.t = 0; this.seg = 0; this.land = land;
+  }
+  // gravity and bounciness from the knobs and inputs (Time input: 1 V = 4 times as fast; Bounce: 1 V = +1)
+  physics() {
+    let T = this.timeK * Math.pow(4, -this.r('time')); T = T < 0.005 ? 0.005 : T > 30 ? 30 : T;
+    let e = this.bounceK + this.r('bounce'); e = e < 0 ? 0 : e > 0.98 ? 0.98 : e;
+    const H = Math.max(0.01, this.H);
+    this.g = 2 * H / (T * T); this.vmax = this.g * T; this.e = e;
+  }
+  height(t) { const s = this.segs[this.seg], dt = t - s.t; return Math.max(0, s.h + s.v * dt - 0.5 * this.g * dt * dt); }
+  drop() { this.physics(); this.plan(Math.max(0.01, this.H), 0); this.dir = 1; this.idle = false; }
+  tick(S) {
+    const g = this.r('gate') > 0.5 ? 1 : 0, rise = g && !this.gateWas;
+    this.gateWas = g;
+    if (rise || (this.idle && this.mode !== 'once')) this.drop(); // (Loop and Swing run by themselves)
+    // Time or Bounce changed while it flies (by hand or by an input): carry on from here with the new ones
+    if (!this.idle && this.dir > 0 && (this.n++ & 63) === 0) {
+      const key = this.timeK.toFixed(4) + this.bounceK.toFixed(4) + this.H.toFixed(4) + this.r('time').toFixed(3) + this.r('bounce').toFixed(3);
+      if (key !== this.key) {
+        const was = this.key; this.key = key;
+        if (was) {
+          const s = this.segs[this.seg], dt = this.t - s.t, h = this.height(this.t), v = s.v - this.g * dt;
+          this.physics(); this.plan(h, v);
+        }
+      }
+    }
+    if (!this.idle) {
+      const dt = this.dir / this.sr, segs = this.segs;
+      this.t += dt;
+      // crossing into the next (or, backwards, the previous) flight is a bounce
+      if (this.dir > 0) { while (this.seg < segs.length - 1 && this.t >= segs[this.seg + 1].t) { this.seg++; this.hitN = this.trigN; this.hitV = segs[this.seg].v / this.e / this.vmax; } }
+      else { while (this.seg > 0 && this.t < segs[this.seg].t) { this.hitN = this.trigN; this.hitV = segs[this.seg].v / this.e / this.vmax; this.seg--; } }
+      if (this.t >= this.D) { // at rest: the last landing is a hit too (with Bounce at 0, the only one: a thud)
+        this.t = this.D; this.endN = this.trigN;
+        if (this.dir > 0) { this.hitN = this.trigN; this.hitV = this.land / this.vmax; }
+        if (this.mode === 'loop') this.drop();
+        else if (this.mode === 'swing') { this.dir = -1; this.hitN = this.trigN; this.hitV = segs[this.seg].v / this.vmax; }
+        else { this.idle = true; this.h = 0; }
+      } else if (this.t <= 0) { this.t = 0; this.drop(); } // (Swing: back at the top: drop again)
+      if (!this.idle) this.h = this.height(this.t);
+    }
+    const o = this.o;
+    S[o] = this.h;
+    S[o + 1] = this.hitN > 0 ? Math.min(1, this.hitV) : 0;
+    S[o + 2] = this.endN > 0 ? 1 : 0;
+    if (this.hitN > 0) this.hitN--;
+    if (this.endN > 0) this.endN--;
+  }
+}
+
 // Draw: a shape you draw (nodes joined by lines that can bend; see js/drawShape.js, which has the
 // same sums), played over Time. Once: start to end when the Gate rises (holding at the sustain node
 // while the Gate stays high), a custom envelope. Loop: round and round (the end jumps back to the
@@ -861,7 +937,7 @@ class Seq extends Module {
   }
 }
 
-const TYPES = { vco: VCO, noise: Noise, mix: Mixer, vcf: VCF, ring: Ring, vca: VCA, att: Att, env: Env, lfo: LFO, mfo: MFO, sh: SH, ping: Ping, string: StringRes, draw: Draw, formant: Formant, xy: XY, wave: WaveVCO };
+const TYPES = { vco: VCO, noise: Noise, mix: Mixer, vcf: VCF, ring: Ring, vca: VCA, att: Att, env: Env, lfo: LFO, mfo: MFO, sh: SH, ping: Ping, string: StringRes, draw: Draw, formant: Formant, xy: XY, wave: WaveVCO, bounce: Bounce };
 const typeOf = (id) => (id === 'out' ? Out : id === 'seq' ? Seq : TYPES[(/^([a-z]+)\d+$/.exec(id) || [])[1]]);
 
 class ModRackProcessor extends AudioWorkletProcessor {
@@ -996,6 +1072,7 @@ class ModRackProcessor extends AudioWorkletProcessor {
         lfo: this.lfo ? S[this.lfo.o] : 0, lfoT: 0, beat: 0, outs,
         seqStep: seq ? seq.step : 0, seqRun: seq ? seq.run : false,
         draws: Object.fromEntries(order.filter((m) => m instanceof Draw).map((m) => [m.id, m.ph])), // the Draw modules' play positions
+        bounces: Object.fromEntries(order.filter((m) => m instanceof Bounce).map((m) => [m.id, m.h])), // the Bounce modules' balls
         xys: Object.fromEntries(order.filter((m) => m instanceof XY).map((m) => [m.id, [m.sx, m.sy, m.ph]])), // the XY pads' outputs (0..1) and play positions
         over: this.over, resets: this.resets,
       });

@@ -1463,3 +1463,8 @@ body[data-skin="modular"] .panel .section.jacks-beside .side-col .jack-strip { m
 .side-col .xy-bar { width: auto; justify-content: center; }
 body[data-skin="modular"] .section[data-type="wave"] { --mod: #2f7fb8; } /* Wave VCO: a VCO blue, deeper */
 body[data-skin="modular"] .section[data-type="wave"].even { --mod: #4a98cf; }
+/* NF-ModRack: the Bounce module's screen */
+body[data-skin="modular"] .section[data-type="bounce"] { --mod: #8a6bb8; } /* Bounce: lavender */
+body[data-skin="modular"] .section[data-type="bounce"].even { --mod: #a386cc; }
+.bounce-cell { display: flex; padding: 2px 0 2px 2px; }
+.bounce-screen { display: block; border-radius: 5px; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.1); }

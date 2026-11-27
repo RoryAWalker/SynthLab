@@ -25,6 +25,7 @@ function sectionOf(paramId) {
 function rangeText(id) {
   const p = PARAMS[id];
   if (p.type === 'nodes') return 'any shape, up to 64 nodes';
+  if (p.type === 'view') return 'a screen';
   if (p.type === 'step') return p.options.map((o) => o.label).join(' · ');
   if (p.type === 'wheel') return `${p.fmt(p.min)} to ${p.fmt(p.max)}`;
   return `${p.fmt(p.min)} to ${p.fmt(p.max)}`;

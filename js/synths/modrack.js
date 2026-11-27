@@ -61,6 +61,8 @@ export const TYPES = {
     params: ['vowel', 'shift', 'res', 'mix'], ins: ['in', 'vowel', 'shift'], outs: ['out'] },
   xy: { name: 'XY', desc: 'A pad to play two control signals at once by hand, and record your movements to loop them.', w: 480, p: 'xy', j: 'xy', help: 'xy',
     params: ['mode', 'path', 'x', 'y', 'touch', 'rate', 'smooth', 'pol'], ins: ['gate'], outs: ['x', 'y', 'gate'] },
+  bounce: { name: 'Bounce', desc: 'A bouncing ball: its height as a control signal, and a trigger at every bounce. Loops, or swings back and forth.', w: 498, p: 'bounce', j: 'bounce', help: 'bounce',
+    params: ['mode', 'view', 'time', 'bounce', 'height'], ins: ['gate', 'time', 'bounce'], outs: ['out', 'hit', 'end'] },
   draw: { name: 'Draw', desc: 'Draw any shape: a custom envelope (Once), or loop it round or bounce it back and forth as an LFO.', w: 682, p: 'draw', j: 'draw', help: 'draw',
     params: ['mode', 'nodes', 'time', 'amt', 'pol'], ins: ['gate', 'time'], outs: ['out', 'end'] },
 };
@@ -168,6 +170,21 @@ TYPES.wave.specs = {
   ins: { pitch: { ...NFP['jack.vco1.pitch'] }, fm: { ...NFP['jack.vco1.fm'] }, sync: { ...NFP['jack.vco1.sync'] } },
   outs: { out: { label: 'Out', audio: true } },
 };
+// Bounce: Time (the first fall), Bounce (how much speed each bounce keeps), Height (where it is
+// dropped from); its screen (view) shows the ball and where it has been
+TYPES.bounce.specs = {
+  params: {
+    mode: { type: 'step', ui: 'word', label: 'Bounce mode', def: 'once', options: [{ v: 'once', label: 'Once' }, { v: 'loop', label: 'Loop' }, { v: 'swing', label: 'Swing' }] },
+    view: { type: 'view', ui: 'bounce', label: 'Ball', def: '', fmt: () => '' },
+    time: { type: 'cont', label: 'Time', min: 0.02, max: 5, def: 0.5, curve: 'log', unit: 'sec', fmt: (v) => (v < 1 ? Math.round(v * 1000) + ' ms' : v.toFixed(2) + ' s'),
+      marks: [[0.02, '.02'], [0.1, '.1'], [0.5, '.5'], [2, '2'], [5, '5']] },
+    bounce: { type: 'cont', label: 'Bounce', min: 0, max: 0.98, def: 0.7, curve: 'lin', unit: '%', fmt: (v) => (v < 0.005 ? 'dead (no bounce)' : pct(v)),
+      marks: [[0, 'dead'], [0.5, '50'], [0.98, 'super']] },
+    height: { type: 'cont', label: 'Height', min: 0.05, max: 1, def: 1, curve: 'lin', unit: '%', fmt: pct, marks: [[0.05, '5'], [0.5, '50'], [1, '100']] },
+  },
+  ins: { gate: { ...NFP['jack.env1.gate'] }, time: { ...NFP['jack.vco1.fm'], label: 'Time' }, bounce: { ...NFP['jack.vco1.fm'], label: 'Bounce' } },
+  outs: { out: { label: 'Out' }, hit: { label: 'Hit' }, end: { label: 'End' } },
+};
 // Draw: the shape (nodes), how long it takes (Time: 1 ms to 30 s, so it is an envelope or an LFO),
 // Amount, and Uni (0..1) or Bi (-1..1)
 const fmtTime = (v) => (v < 1 ? (v < 0.01 ? (v * 1000).toFixed(1) : Math.round(v * 1000)) + ' ms' : v.toFixed(v < 10 ? 2 : 1) + ' s');
@@ -192,7 +209,7 @@ TYPES.string.specs = {
   outs: { out: { label: 'Out', audio: true } },
 };
 // The order of the drawer: sources, shaping, modulation
-export const DRAWER = [['Sources', ['vco', 'wave', 'noise', 'ping', 'string', 'mix']], ['Shaping', ['vcf', 'formant', 'ring', 'vca', 'att']], ['Modulation', ['env', 'draw', 'xy', 'lfo', 'mfo', 'sh']]];
+export const DRAWER = [['Sources', ['vco', 'wave', 'noise', 'ping', 'string', 'mix']], ['Shaping', ['vcf', 'formant', 'ring', 'vca', 'att']], ['Modulation', ['env', 'draw', 'bounce', 'xy', 'lfo', 'mfo', 'sh']]];
 // always in the rack: the Output (in a row, and can be moved), the Keyboard (on the keyboard) and
 // the Sequencer (its own column)
 const OUT_W = 100;
@@ -217,6 +234,7 @@ const PANELS = {
   xy: { titleSwitch: 'mode', screen: 'path', jacksBeside: true, rows: [['rate', 'smooth', 'pol']], jacks: ['gate', 'out:x', 'out:y', 'out:gate'] },
   formant: { rows: [['vowel', 'shift', 'res', 'mix']], jacks: ['in', 'vowel', 'shift', 'out:out'] },
   wave: { screen: 'nodes', rows: [['range', 'tune', 'fm']], jacks: ['pitch', 'fm', 'sync', 'out:out'] },
+  bounce: { titleSwitch: 'mode', screen: 'view', rows: [['time', 'bounce', 'height']], jacks: ['gate', 'time', 'bounce', 'out:out', 'out:hit', 'out:end'] },
   // the drawing screen on the left, its knobs beside it
   draw: { titleSwitch: 'mode', screen: 'nodes', rows: [['time', 'amt', 'pol']], jacks: ['gate', 'time', 'out:out', 'out:end'] },
 };
@@ -399,6 +417,12 @@ export const PRESETS = {
     ...C('env1.gate', 'kb.gate'), ...C('out.in', 'vca1.out'),
     'vco2.tune': 0.1, 'mix1.l1': 7, 'mix1.l2': 6, 'vcf1.cutoff': 700, 'vcf1.res': 0.45, 'vcf1.cv': 0.45,
     'xy1.mode': 'loop', 'xy1.path': CIRCLE, 'xy1.smooth': 0.05, 'env1.a': 0.02, 'env1.s': 0.9, 'env1.r': 0.5,
+  },
+  // every note drops a ball onto a bell: each bounce strikes the Ping, softer and faster
+  'Bouncing Bell': {
+    'rack.layout': 'ping1|bounce1,out|',
+    ...C('ping1.pitch', 'kb.pitch'), ...C('ping1.strike', 'bounce1.hit'), ...C('bounce1.gate', 'kb.gate'), ...C('out.in', 'ping1.out'),
+    'ping1.partials': 5, 'ping1.stretch': 1.4, 'ping1.tone': 0.6, 'ping1.decay': 1.2, 'bounce1.time': 0.35, 'bounce1.bounce': 0.75, 'out.vol': 0.9,
   },
   // a 16-step on/off pattern drawn with Snap, looping on the VCA: hold a chord and it chops it in rhythm
   'Drawn Gate': {
