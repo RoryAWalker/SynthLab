@@ -350,3 +350,35 @@ body[data-synth="nf4"] .section[data-section="mtr"] .toggle-cell { width: 120px;
 .meter-ladder i.hold.ref { background: #f4f1e6; opacity: 0.75; }
 .meter-ladder i.hold.amber { background: #ffc23a; opacity: 0.8; }
 .meter-ladder i.hold.red { background: #ff3b2f; opacity: 0.9; }
+
+/* ---- NF-Mix4: bigger pots and lettering, using the room the compact right side freed ---- */
+body[data-synth="nf4"] { --cell-w: 84px; }
+body[data-synth="nf4"] .knob-cell.small { width: 84px; }
+body[data-synth="nf4"] .knob-cell.small .knob-label { font-size: 10.5px; height: 13px; }
+body[data-synth="nf4"] .knob-cell.small .dial { width: 76px; height: 54px; }
+body[data-synth="nf4"] .knob-cell.small .knob { width: 36px; height: 36px; margin: -18px 0 0 -18px; }
+body[data-synth="nf4"] .knob-cell.small .knob-cap { inset: 6px; }
+body[data-synth="nf4"] .knob-cell.small .knob-pointer { height: 10px; }
+body[data-synth="nf4"] .knob-cell.small .knob-value { font-size: 11px; }
+body[data-synth="nf4"] .zigzag .section-grid { grid-template-columns: 132px !important; }
+body[data-synth="nf4"] .zigzag .knob-cell.small { width: 84px; }
+body[data-synth="nf4"] .zigzag .knob-cell.zz-l { transform: translateX(-23px); }
+body[data-synth="nf4"] .zigzag .knob-cell.zz-r { transform: translateX(23px); }
+body[data-synth="nf4"] .strip .section-title span { font-size: 17px; }
+body[data-synth="nf4"] .section-title { font-size: 13px; }
+body[data-synth="nf4"] .strip .toggle-label { font-size: 10.5px; }
+body[data-synth="nf4"] .led-cell.wide .led-word { font-size: 10.5px; }
+body[data-synth="nf4"] .panel .jack-label { font-size: 9.5px; }
+body[data-synth="nf4"] .strip .scribble b { font-size: 15px; }
+/* centred in the strip: the insert sockets, pan and the routing button */
+body[data-synth="nf4"] .zigzag .stack-cell:has(.jack-cell) { justify-content: center; justify-self: center; width: 100%; }
+body[data-synth="nf4"] .zigzag .knob-cell[data-param$=".pan"] { transform: none; margin-top: 12px; }
+body[data-synth="nf4"] .zigzag .stack-cell:has([data-param$=".main"]) { justify-self: center; width: 100%; }
+/* Mute and Solo: small M and S buttons */
+body[data-synth="nf4"] .zigzag .stack-cell:has([data-param$=".mute"]) .led-cell.wide .led-btn { width: 34px; height: 20px; gap: 4px; }
+body[data-synth="nf4"] .zigzag .stack-cell:has([data-param$=".mute"]) .led-word { letter-spacing: 0; font-size: 11px; }
+/* the Aux strip: the FX Return set apart under its own heading */
+body[data-synth="nf4"] .section[data-section="aux"] .row-title { margin: 26px -6px 6px; height: auto; font-size: 10.5px; white-space: nowrap; letter-spacing: 0.08em; }
+body[data-synth="nf4"] .section[data-section="aux"] .row-title span { padding: 0 2px; }
+/* no Hold button on the console's screens */
+body[data-synth="nf4"] .scope-controls { display: none; }

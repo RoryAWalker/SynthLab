@@ -79,7 +79,8 @@ function nf4Channel(n) {
   return {
     [`section:ch${n}`]: { title: `Channel ${n}`, body: [
       'One channel strip: everything one source goes through, read from top to bottom in the order the sound flows. Input and gain, the high-pass filter and EQ, the insert point, the two aux sends and pan, routing, mute and solo, and finally the fader.',
-      'The meter beside the fader shows the level before the fader: the level the gain and EQ have left it at. Set the gain by that meter first, then use the fader to mix.'] },
+      'The meter beside the fader shows the level before the fader: the level the gain and EQ have left it at. Set the gain by that meter first, then use the fader to mix.',
+      'The desk starts zeroed, as engineers leave it: inputs on Line, no 48 V, gains and faders down, pans centred, EQ flat, sends and masters down. Nothing is heard until you set it up (the Patch menu\'s "Ready to mix" does it all at once). Double-click a knob to put it back; double-click a fader for 0 dB.'] },
     [k + 'in']: { title: 'Mic / Line', body: [
       'Which input the source comes in through. A microphone puts out a tiny signal (mic level, about 50 dB quieter than line level), so the Mic input has a preamp with lots of gain. Keyboards, DI boxes and other gear put out line level, which needs little or no gain.',
       'The wrong choice is a classic mistake: a line-level source on the Mic input is far too hot and distorts; a mic on the Line input is far too quiet, and turning it up brings up hiss.'],
