@@ -1461,3 +1461,5 @@ body[data-skin="modular"] .panel .section.jacks-beside .side-col .jack-strip { m
 .section.jacks-beside .screen-row { align-items: stretch; flex: 1; }
 .section.jacks-beside .side-col { justify-content: space-between; }
 .side-col .xy-bar { width: auto; justify-content: center; }
+body[data-skin="modular"] .section[data-type="wave"] { --mod: #2f7fb8; } /* Wave VCO: a VCO blue, deeper */
+body[data-skin="modular"] .section[data-type="wave"].even { --mod: #4a98cf; }

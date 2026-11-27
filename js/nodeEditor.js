@@ -53,6 +53,9 @@ export class NodeEditor {
     this.cv.addEventListener('pointerup', (e) => this.up(e));
     this.cv.addEventListener('pointercancel', () => { this.drag = null; this.draw(); });
     this.cv.addEventListener('dblclick', (e) => e.preventDefault());
+    // a waveform (the Wave VCO): one cycle, no sustain node
+    this.cycle = !!this.spec.cycle;
+    if (this.cycle) { this.susBtn.hidden = true; this.cv.classList.add('cycle'); }
     this.setTool('edit');
     this.set(value);
     this.loop();
@@ -253,8 +256,14 @@ export class NodeEditor {
 
     const { nodes, sus } = this.shape;
     const mode = NodeEditor.mode(this.inst);
+    if (this.cycle) { // the waveform's 0 line, and +1 / -1
+      ctx.fillStyle = 'rgba(120, 220, 160, 0.5)';
+      ctx.font = '700 9px "Helvetica Neue", Arial, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('+1', 2, PAD + 7); ctx.fillText('0', 2, H / 2 - 2); ctx.fillText('−1', 2, H - PAD - 1);
+    }
     // the sustain node (Once mode): a dashed line and S
-    if (sus >= 0) {
+    if (sus >= 0 && !this.cycle) {
       const [sx] = this.px(nodes[sus]);
       ctx.save();
       ctx.strokeStyle = mode === 'once' ? 'rgba(140, 220, 255, 0.7)' : 'rgba(140, 220, 255, 0.25)';
@@ -266,7 +275,7 @@ export class NodeEditor {
       ctx.textAlign = 'center';
       ctx.fillText(mode === 'once' ? 'SUS' : 'SUS (Once only)', sx, H - 1);
     }
-    // the shape: filled underneath, and its line
+    // the shape: filled underneath (to the 0 line, for a waveform), and its line
     const path = new Path2D();
     const steps = 2;
     let [x, y] = this.px(nodes[0]);
@@ -282,7 +291,8 @@ export class NodeEditor {
       if (bx === ax) path.lineTo(bx, this.px(b)[1]);
     }
     const fill = new Path2D(path);
-    fill.lineTo(W - PAD, H - PAD); fill.lineTo(PAD, H - PAD); fill.closePath();
+    const base = this.cycle ? H / 2 : H - PAD;
+    fill.lineTo(W - PAD, base); fill.lineTo(PAD, base); fill.closePath();
     ctx.fillStyle = 'rgba(255, 181, 71, 0.12)';
     ctx.fill(fill);
     ctx.strokeStyle = '#ffb547';
@@ -305,7 +315,7 @@ export class NodeEditor {
       ctx.stroke();
     }
     // where it is playing
-    if (this.ph !== undefined && NodeEditor.live()) {
+    if (this.ph !== undefined && NodeEditor.live() && !this.cycle) {
       const [px] = this.px({ x: this.ph, y: 0 }), [, py] = this.px({ x: 0, y: valueAt(nodes, this.ph) });
       ctx.save();
       ctx.fillStyle = '#fff';

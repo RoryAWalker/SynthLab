@@ -55,6 +55,8 @@ export const TYPES = {
     params: ['range', 'tune', 'decay', 'partials', 'stretch', 'tone', 'drive', 'fb'], ins: ['pitch', 'strike', 'in', 'fb', 'stretch', 'drive'], outs: ['out'] },
   string: { name: 'String', desc: 'Pluck it: a string modelled as a wave going round a tuned loop, with feedback.', w: 520, p: 'string', j: 'string', help: 'string',
     params: ['range', 'tune', 'decay', 'tone', 'drive', 'fb'], ins: ['pitch', 'strike', 'in', 'fb', 'drive'], outs: ['out'] },
+  wave: { name: 'Wave VCO', desc: 'An oscillator whose waveform you draw: one cycle, freehand or with nodes.', w: 682, p: 'wave', j: 'wave', help: 'wave',
+    params: ['nodes', 'range', 'tune', 'fm'], ins: ['pitch', 'fm', 'sync'], outs: ['out'] },
   formant: { name: 'Formant', desc: 'Makes any sound talk: three filters tuned like a voice, sweeping A, E, I, O, U.', w: 352, p: 'formant', j: 'formant', help: 'formant',
     params: ['vowel', 'shift', 'res', 'mix'], ins: ['in', 'vowel', 'shift'], outs: ['out'] },
   xy: { name: 'XY', desc: 'A pad to play two control signals at once by hand, and record your movements to loop them.', w: 480, p: 'xy', j: 'xy', help: 'xy',
@@ -155,6 +157,17 @@ TYPES.xy.specs = {
   ins: { gate: { ...NFP['jack.env1.gate'] } },
   outs: { x: { label: 'X' }, y: { label: 'Y' }, gate: { label: 'Gate' } },
 };
+// Wave VCO: one cycle of the waveform, drawn (the middle line is 0; the top +1, the bottom -1)
+export const DEFAULT_WAVE = '-1;0,0.5,-0.35;0.25,1,0.35;0.5,0.5,-0.35;0.75,0,0.35;1,0.5,0';
+TYPES.wave.specs = {
+  params: {
+    nodes: { type: 'nodes', ui: 'nodes', cycle: true, label: 'Waveform', def: DEFAULT_WAVE, valid: validShape,
+      fmt: (v) => { const s = parseShape(v); return s ? `${s.nodes.length} nodes` : 'waveform'; } },
+    range: { ...NFP['osc1.range'] }, tune: { ...NFP['osc1.tune'] }, fm: { ...NFP['osc1.fm'] },
+  },
+  ins: { pitch: { ...NFP['jack.vco1.pitch'] }, fm: { ...NFP['jack.vco1.fm'] }, sync: { ...NFP['jack.vco1.sync'] } },
+  outs: { out: { label: 'Out', audio: true } },
+};
 // Draw: the shape (nodes), how long it takes (Time: 1 ms to 30 s, so it is an envelope or an LFO),
 // Amount, and Uni (0..1) or Bi (-1..1)
 const fmtTime = (v) => (v < 1 ? (v < 0.01 ? (v * 1000).toFixed(1) : Math.round(v * 1000)) + ' ms' : v.toFixed(v < 10 ? 2 : 1) + ' s');
@@ -179,7 +192,7 @@ TYPES.string.specs = {
   outs: { out: { label: 'Out', audio: true } },
 };
 // The order of the drawer: sources, shaping, modulation
-export const DRAWER = [['Sources', ['vco', 'noise', 'ping', 'string', 'mix']], ['Shaping', ['vcf', 'formant', 'ring', 'vca', 'att']], ['Modulation', ['env', 'draw', 'xy', 'lfo', 'mfo', 'sh']]];
+export const DRAWER = [['Sources', ['vco', 'wave', 'noise', 'ping', 'string', 'mix']], ['Shaping', ['vcf', 'formant', 'ring', 'vca', 'att']], ['Modulation', ['env', 'draw', 'xy', 'lfo', 'mfo', 'sh']]];
 // always in the rack: the Output (in a row, and can be moved), the Keyboard (on the keyboard) and
 // the Sequencer (its own column)
 const OUT_W = 100;
@@ -203,6 +216,7 @@ const PANELS = {
   // the pad on the left, its knobs and sockets beside it
   xy: { titleSwitch: 'mode', screen: 'path', jacksBeside: true, rows: [['rate', 'smooth', 'pol']], jacks: ['gate', 'out:x', 'out:y', 'out:gate'] },
   formant: { rows: [['vowel', 'shift', 'res', 'mix']], jacks: ['in', 'vowel', 'shift', 'out:out'] },
+  wave: { screen: 'nodes', rows: [['range', 'tune', 'fm']], jacks: ['pitch', 'fm', 'sync', 'out:out'] },
   // the drawing screen on the left, its knobs beside it
   draw: { titleSwitch: 'mode', screen: 'nodes', rows: [['time', 'amt', 'pol']], jacks: ['gate', 'time', 'out:out', 'out:end'] },
 };

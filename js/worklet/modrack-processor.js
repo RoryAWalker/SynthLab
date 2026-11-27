@@ -641,6 +641,99 @@ class XY extends Module {
   }
 }
 
+// ---- band-limited single-cycle tables (the Wave VCO; the wavetable oscillator too) -------------
+// One cycle of 2048 samples is turned into 11 copies, each with fewer harmonics (1024, 512, ... 1),
+// so that whatever note it plays, nothing goes above the top of hearing to fold back down as
+// harsh, out-of-tune whistles (aliasing). Made with a fast Fourier transform.
+const TABLE = 2048, LEVELS = 11;
+function fft(re, im, inverse) {
+  const n = re.length;
+  for (let i = 1, j = 0; i < n; i++) {
+    let bit = n >> 1;
+    for (; j & bit; bit >>= 1) j ^= bit;
+    j ^= bit;
+    if (i < j) { let t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; }
+  }
+  for (let len = 2; len <= n; len <<= 1) {
+    const ang = (inverse ? 2 : -2) * Math.PI / len, wr = Math.cos(ang), wi = Math.sin(ang);
+    for (let i = 0; i < n; i += len) {
+      let cr = 1, ci = 0;
+      for (let k = 0; k < len / 2; k++) {
+        const ar = re[i + k + len / 2] * cr - im[i + k + len / 2] * ci, ai = re[i + k + len / 2] * ci + im[i + k + len / 2] * cr;
+        re[i + k + len / 2] = re[i + k] - ar; im[i + k + len / 2] = im[i + k] - ai;
+        re[i + k] += ar; im[i + k] += ai;
+        const t = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = t;
+      }
+    }
+  }
+  if (inverse) for (let i = 0; i < n; i++) { re[i] /= n; im[i] /= n; }
+}
+// one cycle (TABLE samples) -> its band-limited copies [level][sample], scaled to peak at 1, no DC
+function bandLimit(cycle) {
+  const re = Float64Array.from(cycle), im = new Float64Array(TABLE);
+  fft(re, im, false);
+  re[0] = im[0] = 0; // (no DC: the wave centred on 0)
+  const levels = [];
+  let scale = 0;
+  for (let L = 0; L < LEVELS; L++) {
+    const top = TABLE / 2 >> L, r = new Float64Array(TABLE), i2 = new Float64Array(TABLE);
+    for (let h = 1; h < top; h++) { r[h] = re[h]; i2[h] = im[h]; r[TABLE - h] = re[TABLE - h]; i2[TABLE - h] = im[TABLE - h]; }
+    fft(r, i2, true);
+    const t = new Float32Array(TABLE + 1);
+    for (let k = 0; k < TABLE; k++) t[k] = r[k];
+    t[TABLE] = t[0]; // (so reading between the last sample and the first needs no wrap)
+    if (L === 0) for (let k = 0; k < TABLE; k++) scale = Math.max(scale, Math.abs(t[k]));
+    levels.push(t);
+  }
+  const g = scale > 1e-6 ? 1 / scale : 0;
+  levels.forEach((t) => { for (let k = 0; k <= TABLE; k++) t[k] *= g; });
+  return levels;
+}
+// the copy for a frequency (the most harmonics that stay below 45% of the sample rate), read at phase ph
+function readTable(levels, f, ph, sr) {
+  const allowed = (0.45 * sr) / f;
+  let L = 0;
+  while (L < LEVELS - 1 && (TABLE / 2 >> L) > allowed) L++;
+  const t = levels[L], x = ph * TABLE, i = x | 0, fr = x - i;
+  return t[i] + (t[i + 1] - t[i]) * fr;
+}
+
+// Wave VCO: a drawn cycle (nodes, as the Draw module's; the middle is 0) played as an oscillator.
+class WaveVCO extends Module {
+  static OUTS = ['out'];
+  static INS = ['pitch', 'fm', 'sync'];
+  constructor(id) { super(id); this.ph = Math.random(); this.syncWas = 0; this.shapeStr = null; this.levels = null; }
+  begin(p, sr) {
+    const str = this.q(p, 'nodes');
+    if (str !== this.shapeStr) {
+      this.shapeStr = str;
+      const sh = parseShape(str), cyc = new Float64Array(TABLE);
+      let j = 0;
+      for (let k = 0; k < TABLE; k++) {
+        const x = k / TABLE;
+        while (j < sh.xs.length - 2 && x >= sh.xs[j + 1]) j++;
+        const w = sh.xs[j + 1] - sh.xs[j];
+        let t = w > 0 ? (x - sh.xs[j]) / w : 1; t = t < 0 ? 0 : t > 1 ? 1 : t;
+        cyc[k] = 2 * (sh.ys[j] + (sh.ys[j + 1] - sh.ys[j]) * bendCurve(t, sh.cs[j])) - 1;
+      }
+      this.levels = bandLimit(cyc);
+    }
+    this.oct = this.q(p, 'range') + this.q(p, 'tune') / 12;
+    this.fm = this.q(p, 'fm') * FM_OCTAVES;
+    this.sr = sr;
+  }
+  tick(S) {
+    let f = C4 * Math.pow(2, this.oct + this.r('pitch') + this.r('fm') * this.fm);
+    f = f > this.sr * 0.45 ? this.sr * 0.45 : f < 0.01 ? 0.01 : f;
+    const sync = this.r('sync');
+    if (sync > 0 && this.syncWas <= 0) this.ph = 0;
+    this.syncWas = sync;
+    S[this.o] = readTable(this.levels, f, this.ph, this.sr);
+    this.ph += f / this.sr;
+    if (this.ph >= 1) this.ph -= Math.floor(this.ph);
+  }
+}
+
 // Draw: a shape you draw (nodes joined by lines that can bend; see js/drawShape.js, which has the
 // same sums), played over Time. Once: start to end when the Gate rises (holding at the sustain node
 // while the Gate stays high), a custom envelope. Loop: round and round (the end jumps back to the
@@ -768,7 +861,7 @@ class Seq extends Module {
   }
 }
 
-const TYPES = { vco: VCO, noise: Noise, mix: Mixer, vcf: VCF, ring: Ring, vca: VCA, att: Att, env: Env, lfo: LFO, mfo: MFO, sh: SH, ping: Ping, string: StringRes, draw: Draw, formant: Formant, xy: XY };
+const TYPES = { vco: VCO, noise: Noise, mix: Mixer, vcf: VCF, ring: Ring, vca: VCA, att: Att, env: Env, lfo: LFO, mfo: MFO, sh: SH, ping: Ping, string: StringRes, draw: Draw, formant: Formant, xy: XY, wave: WaveVCO };
 const typeOf = (id) => (id === 'out' ? Out : id === 'seq' ? Seq : TYPES[(/^([a-z]+)\d+$/.exec(id) || [])[1]]);
 
 class ModRackProcessor extends AudioWorkletProcessor {
