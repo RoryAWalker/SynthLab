@@ -12,8 +12,16 @@ Choose a synth from the start menu:
 - **NiniFoog**, a three-oscillator monosynth laid out in the style of the classic 1970s three-oscillator synths: Oscillator 3 doubles as a modulation source, noise, a feedback loop with an overload light, a ladder filter with keyboard tracking, legato playing, pitch and mod wheels, and free-running, gently drifting oscillators. Its names and artwork are SynthLab's own.
 - **NF-MiniModular**, a first modular synth: one LFO, oscillator, filter, envelope and VCA, plus the keyboard's Pitch and Gate, all joined by patch cables you drag between the jacks (double-click a plug to pull it out). It opens with a simple patch already in place, so it plays straight away; pull cables out and re-patch to hear what each connection does.
 - **NF-Modular**, the full rack: two VCOs (saw, pulse and triangle outputs, pulse width, FM, PWM and sync), noise, a four-input mixer with drive and wavefolding, a multimode VCF (low-pass, band-pass, high-pass, width, Freq, Pitch and Res inputs), a ring modulator, two envelopes (each switchable between exponential and linear) with inverted outputs, an LFO, an audio-rate MFO, sample & hold, two VCAs, two attenuverters, an eight-step sequencer and the keyboard's Pitch, Gate and Trigger. Several cables can go into one input, and they add together.
+- **NF-ModRack**, an open modular rack: you choose what goes in it. Open the **Module drawer**, rest on a module to see it, and drag it into any of the three rows (or click it): as many oscillators, filters, envelopes and so on as fit, and the rack can be made wider (**+** at its end) and scrolled sideways. The Keyboard, Sequencer and Output are always there. Alongside the NF-Modular's modules it has its own:
+  - **Ping** (a bank of tuned resonators struck like a bar, drum or bell, with Partials and Stretch) and **String** (a plucked string), both with Drive and a Feedback that sings on, or goes too far on purpose;
+  - **Wave VCO** (draw one cycle of the waveform) and **Wavetable** (built-in tables, or load an audio file to make one);
+  - **Formant** (a vowel filter, A E I O U) and **Shaper** (draw the distortion curve, clip or fold);
+  - **Draw** (draw a shape and play it as an envelope, or loop or bounce it as an LFO), **Bounce** (a bouncing ball, with a trigger at every bounce), **XY** (a pad, with recorded movements), **Quantizer** (pitches snapped to a scale) and **Chance** (a coin toss for every gate);
+  - **Poly**, for chords (paraphonic, or polyphonic built by hand), and **Probe**, an oscilloscope to patch in anywhere.
 
-On both modular synths, the ring round each socket shows what it carries (coral for sound, blue for control), outputs sit on a dark plate, and a lamp lights by every output in use. **Maximise** clears the screens and keyboard away so the modules fill the window.
+  Its patches keep their modules and their wiring; it comes with factory patches that show what each new module can do.
+
+On all the modular synths, the ring round each socket shows what it carries (coral for sound, blue for control), outputs sit on a dark plate, and a lamp lights by every output in use. **Maximise** clears the screens and keyboard away so the modules fill the window.
 
 All the synths share:
 
@@ -51,7 +59,8 @@ Then open http://localhost:8660.
 | Path | What it is |
 | --- | --- |
 | `index.html`, `css/synth.css` | Page and styling |
-| `js/synths/` | Each synth's controls, panel layout and factory patches |
+| `js/synths/` | Each synth's controls, panel layout and factory patches (`modrack.js`: the NF-ModRack's modules) |
+| `js/rackEdit.js` | The NF-ModRack's module drawer, and moving modules round the rack |
 | `js/params.js` | The synth in use, and helpers shared by all synths |
 | `js/worklet/` | The sound engines (AudioWorklets): one per synth |
 | `js/lessons.js`, `js/lessonsNiniFoog.js`, `js/lessonsModular.js`, `js/lessonsRack.js` | Lessons and challenges for the NF-1, NiniFoog, NF-MiniModular and NF-Modular |
@@ -60,7 +69,7 @@ Then open http://localhost:8660.
 
 Help text and lessons are kept in their own files so teachers can edit them without touching the rest of the code.
 
-The start-menu pictures in `img/` are captured from the running app. After changing a synth's look, start the local server and run `sh tools/make-previews.sh` to refresh them (needs Google Chrome).
+The start-menu pictures in `img/` are captured from the running app. After changing a synth's look, start the local server and run `sh tools/make-previews.sh` to refresh them (needs Google Chrome). The NF-ModRack's module drawer has a picture of each module in `img/modules/`: refresh those with `node tools/make-module-pictures.mjs`.
 
 ## Licence
 

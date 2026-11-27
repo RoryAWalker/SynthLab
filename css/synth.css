@@ -1503,3 +1503,5 @@ body[data-skin="modular"] .section[data-type="probe"] { --mod: #3a3f46; } /* Pro
 .sc-menu { font: 700 11px/1 inherit; font-family: inherit; letter-spacing: 0.04em; color: #ececec; background: #1a1c1f; border: 1px solid rgba(255,255,255,0.18);
   border-radius: 4px; padding: 4px 6px; cursor: pointer; max-width: 100%; }
 .sc-menu:focus-visible { outline: 1px solid #ffb547; }
+body[data-skin="modular"] .section[data-type="chance"] { --mod: #b08a2e; } /* Chance: gold */
+body[data-skin="modular"] .section[data-type="chance"].even { --mod: #c7a24a; }

@@ -772,6 +772,14 @@ export const HELP_MODRACK = {
     [`out:poly.p${n}`, { title: `Poly: Pitch ${n}`, body: [`The note on channel ${n}, at 1 volt per octave (gliding with the Keyboard\'s Glide). It stays on the note after the key is let go, so a release tail keeps its pitch.`] }],
     [`out:poly.g${n}`, { title: `Poly: Gate ${n}`, body: [`High while the note on channel ${n} is held. Into an ENV\'s Gate, it gives that channel its own envelope.`] }],
   ])),
+  'section:chance': { title: 'Chance (coin toss)', body: [
+    'A weighted coin toss for every gate or trigger that comes in. Each one goes either to Out, with the chance you set, or to Else. The whole gate goes, at its own level, so a held note stays held and a soft hit stays soft.',
+    'With only Out patched, some gates simply go missing: a steady rhythm becomes a looser, living one. With Out and Else going to two different sounds, one steady pulse becomes a pattern that never quite repeats.'],
+    tip: 'The Sequencer\'s Trig into In, Out into a Ping\'s Strike and Else into a String\'s Strike: the Chance Bells preset.' },
+  'chance.chance': { title: 'Chance', body: ['How likely each gate is to go to Out: at 100% every one does, at 50% about half, at 0% none (they all go to Else). Each toss is new: there is no pattern to it.'] },
+  'jack.chance.in': { title: 'Chance: In', body: ['Gates or triggers: from the Keyboard, the Sequencer, an LFO\'s square, a Bounce\'s Hit… Any rise counts, however small.'] },
+  'out:chance.out': { title: 'Chance: Out', body: ['The gates that won the toss.'] },
+  'out:chance.else': { title: 'Chance: Else', body: ['The gates that lost the toss: everything that did not go to Out.'] },
   'section:probe': { title: 'Probe (oscilloscope)', body: [
     'A small oscilloscope for the rack: patch any signal into A (and another into B, drawn in blue) to see what it is doing at that point of the patch. Thru passes A on unchanged, so the Probe can sit in the middle of a cable\'s path.',
     'Time is how much the screen shows, from 1 ms to 10 s. Up to 0.1 s it shows a steady picture of a sound\'s waveform, each one starting where A rises through 0 (as a scope "triggers"); longer, it scrolls, for envelopes, LFOs and sequences. Scale sets the top and bottom of the screen.'],

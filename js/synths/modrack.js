@@ -67,6 +67,8 @@ export const TYPES = {
     params: ['curve', 'drive', 'edge', 'mix'], ins: ['in', 'drive'], outs: ['out'] },
   quant: { name: 'Quantizer', desc: 'Snaps a pitch to the notes of a scale, so random or hand-played pitches play in tune.', w: 496, p: 'quant', j: 'quant', help: 'quant',
     params: ['mask', 'root'], ins: ['in'], outs: ['out', 'trig'] },
+  chance: { name: 'Chance', desc: 'A coin toss for every gate or trigger: it goes to Out, or (if it loses) to Else.', w: 186, p: 'chance', j: 'chance', help: 'chance',
+    params: ['chance'], ins: ['in'], outs: ['out', 'else'] },
   probe: { name: 'Probe', desc: 'A small oscilloscope: patch any signal in to see it (two traces), and on through Thru.', w: 496, p: 'probe', j: 'probe', help: 'probe',
     params: ['view', 'time', 'scale'], ins: ['a', 'b'], outs: ['thru'] },
   table: { name: 'Wavetable', desc: 'An oscillator that sweeps through a table of waves: built-in ones, or any audio file you load.', w: 662, p: 'table', j: 'table', help: 'table',
@@ -204,6 +206,15 @@ TYPES.quant.specs = {
   ins: { in: { ...NFP['jack.vco1.pitch'], label: 'In' } },
   outs: { out: { label: 'Out' }, trig: { label: 'Trig' } },
 };
+// Chance: how likely each gate is to go to Out (the rest go to Else)
+TYPES.chance.specs = {
+  params: {
+    chance: { type: 'cont', label: 'Chance', min: 0, max: 1, def: 0.5, curve: 'lin', unit: '%', fmt: (v) => Math.round(v * 100) + '% to Out',
+      marks: [[0, '0'], [0.25, '25'], [0.5, '50'], [0.75, '75'], [1, '100']] },
+  },
+  ins: { in: { ...NFP['jack.env1.gate'], label: 'In' } },
+  outs: { out: { label: 'Out' }, else: { label: 'Else' } },
+};
 // Probe: Time (what the screen spans: 1 ms to 10 s) and Scale (the screen's top and bottom: +-0.5 to +-10)
 TYPES.probe.specs = {
   params: {
@@ -285,7 +296,7 @@ TYPES.string.specs = {
   outs: { out: { label: 'Out', audio: true } },
 };
 // The order of the drawer: sources, shaping, modulation
-export const DRAWER = [['Sources', ['poly', 'vco', 'wave', 'table', 'noise', 'ping', 'string', 'mix']], ['Shaping', ['vcf', 'formant', 'shaper', 'ring', 'vca', 'att']], ['Modulation', ['env', 'draw', 'bounce', 'xy', 'lfo', 'mfo', 'sh', 'quant']], ['Tools', ['probe']]];
+export const DRAWER = [['Sources', ['poly', 'vco', 'wave', 'table', 'noise', 'ping', 'string', 'mix']], ['Shaping', ['vcf', 'formant', 'shaper', 'ring', 'vca', 'att']], ['Modulation', ['env', 'draw', 'bounce', 'xy', 'lfo', 'mfo', 'sh', 'quant', 'chance']], ['Tools', ['probe']]];
 // always in the rack: the Output (in a row, and can be moved), the Keyboard (on the keyboard) and
 // the Sequencer (its own column)
 const OUT_W = 100;
@@ -311,6 +322,7 @@ const PANELS = {
   formant: { rows: [['vowel', 'shift', 'res', 'mix']], jacks: ['in', 'vowel', 'shift', 'out:out'] },
   shaper: { screen: 'curve', jacksBeside: true, rows: [['drive', 'mix', 'edge']], jacks: ['in', 'drive', 'out:out'] },
   quant: { screen: 'mask', jacksBeside: true, rows: [['root']], jacks: ['in', 'out:out', 'out:trig'] },
+  chance: { rows: [['chance']], jacks: ['in', 'out:out', 'out:else'] },
   probe: { screen: 'view', jacksBeside: true, rows: [['time', 'scale']], jacks: ['a', 'b', 'out:thru'] },
   // its outputs in two rows: the four Pitches over the four Gates
   poly: { titleSwitch: 'voices', rows: [], jacks: [['out:p1', 'out:p2', 'out:p3', 'out:p4'], ['out:g1', 'out:g2', 'out:g3', 'out:g4']] },
@@ -617,6 +629,46 @@ export const PRESETS = {
     ...C('mix1.in1', 'vca1.out'), ...C('mix1.in2', 'vca2.out'), ...C('out.in', 'mix1.out'),
     'poly1.voices': 2, 'mix1.l1': 7, 'mix1.l2': 7, 'env1.a': 0.01, 'env1.d': 0.8, 'env1.s': 0.5, 'env1.r': 0.9,
     'env2.a': 0.01, 'env2.d': 0.8, 'env2.s': 0.5, 'env2.r': 0.9, 'env2.curve': 'curved', 'out.vol': 0.8,
+  },
+  // the Sequencer's steady pulse, split by a coin toss between a bell (Ping) and a pluck (String):
+  // a pattern that never quite repeats
+  'Chance Bells': {
+    'rack.layout': 'ping1,string1|chance1,mix1,out|',
+    ...C('chance1.in', 'seq.trig'), ...C('ping1.strike', 'chance1.out'), ...C('string1.strike', 'chance1.else'),
+    ...C('ping1.pitch', 'seq.pitch'), ...C('string1.pitch', 'seq.pitch'), ...C('mix1.in1', 'ping1.out'), ...C('mix1.in2', 'string1.out'), ...C('out.in', 'mix1.out'),
+    'chance1.chance': 0.6, 'ping1.partials': 4, 'ping1.stretch': 1.4, 'ping1.decay': 1.2, 'string1.decay': 0.8, 'string1.tone': 0.6, 'string1.range': -1,
+    'mix1.l1': 7, 'mix1.l2': 7, 'seq.run': 'run', 'seq.rate': 6, 'seq.s1': 0, 'seq.s2': 7, 'seq.s3': 3, 'seq.s4': 10, 'seq.s5': 12, 'seq.s6': 7, 'seq.s7': 5, 'seq.s8': 3, 'out.vol': 0.8,
+  },
+  // random notes from the S&H, snapped to A minor pentatonic by the Quantizer; each new note plays
+  'Quantized Wander': {
+    'rack.layout': 'vco1,quant1|vcf1,vca1,out|env1,env2,sh1',
+    ...C('quant1.in', 'sh1.out'), ...C('vco1.pitch', 'quant1.out'), ...C('env1.gate', 'quant1.trig'), ...C('env2.gate', 'quant1.trig'),
+    ...C('vcf1.in', 'vco1.saw'), ...C('vcf1.cv', 'env2.out'), ...C('vca1.in', 'vcf1.lp'), ...C('vca1.cv', 'env1.out'), ...C('out.in', 'vca1.out'),
+    'quant1.mask': '100101010010', 'quant1.root': 9, 'sh1.rate': 5, 'vco1.range': -1,
+    'vcf1.cutoff': 500, 'vcf1.res': 0.5, 'vcf1.cv': 0.55, 'env1.a': 0.002, 'env1.d': 0.25, 'env1.s': 0, 'env1.r': 0.2, 'env2.a': 0.001, 'env2.d': 0.15, 'env2.s': 0, 'env2.r': 0.1,
+  },
+  // a triangle folded by the Shaper; an envelope on its Drive: each note starts bright and metallic, then softens
+  'Folded Lead': {
+    'rack.layout': 'vco1,shaper1|vcf1,vca1,out|env1,env2',
+    ...C('vco1.pitch', 'kb.pitch'), ...C('shaper1.in', 'vco1.tri'), ...C('shaper1.drive', 'env2.out'), ...C('vcf1.in', 'shaper1.out'),
+    ...C('vca1.in', 'vcf1.lp'), ...C('vca1.cv', 'env1.out'), ...C('env1.gate', 'kb.gate'), ...C('env2.gate', 'kb.gate'), ...C('out.in', 'vca1.out'),
+    'shaper1.edge': 'fold', 'shaper1.drive': 1.5, 'vcf1.cutoff': 6000, 'vcf1.cv': 0,
+    'env1.a': 0.003, 'env1.s': 0.8, 'env1.r': 0.4, 'env2.a': 0.001, 'env2.d': 0.7, 'env2.s': 0.15, 'env2.r': 0.4, 'out.vol': 0.7,
+  },
+  // a saw through a staircase drawn in the Shaper (eight steps): a gritty, bit-crushed bass
+  'Bit-Crushed Bass': {
+    'rack.layout': 'vco1,shaper1|vcf1,vca1,out|env1',
+    ...C('vco1.pitch', 'kb.pitch'), ...C('shaper1.in', 'vco1.saw'), ...C('vcf1.in', 'shaper1.out'), ...C('vca1.in', 'vcf1.lp'),
+    ...C('vca1.cv', 'env1.out'), ...C('env1.gate', 'kb.gate'), ...C('out.in', 'vca1.out'),
+    'shaper1.curve': steps([0, 1, 2, 3, 4, 5, 6, 7].map((i) => i / 7)), 'vco1.range': -1, 'vcf1.cutoff': 2200, 'vcf1.res': 0.25, 'vcf1.cv': 0,
+    'env1.a': 0.002, 'env1.d': 0.3, 'env1.s': 0.7, 'env1.r': 0.15, 'out.vol': 0.65,
+  },
+  // a teaching patch: the Probe shows the envelope (A, amber) and the sound it shapes (B, blue) as you play
+  'See the Envelope': {
+    'rack.layout': 'vco1,probe1|vcf1,vca1,out|env1',
+    ...C('vco1.pitch', 'kb.pitch'), ...C('vcf1.in', 'vco1.saw'), ...C('vca1.in', 'vcf1.lp'), ...C('vca1.cv', 'env1.out'),
+    ...C('env1.gate', 'kb.gate'), ...C('out.in', 'vca1.out'), ...C('probe1.a', 'env1.out'), ...C('probe1.b', 'vca1.out'),
+    'probe1.time': 2, 'probe1.scale': 1, 'vcf1.cutoff': 1800, 'vcf1.cv': 0, 'env1.a': 0.3, 'env1.d': 0.4, 'env1.s': 0.6, 'env1.r': 0.8,
   },
   // a 16-step on/off pattern drawn with Snap, looping on the VCA: hold a chord and it chops it in rhythm
   'Drawn Gate': {

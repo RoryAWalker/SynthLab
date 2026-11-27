@@ -1029,6 +1029,24 @@ class Probe extends Module {
   }
 }
 
+// Chance: a weighted coin toss for each gate or trigger. When In rises (by any amount: a soft
+// Bounce hit counts too), it goes to Out with the Chance set, else to Else; the whole gate goes
+// there, at its own level, until In falls again.
+class Chance extends Module {
+  static OUTS = ['out', 'else'];
+  static INS = ['in'];
+  constructor(id) { super(id); this.side = -1; this.was = 0; }
+  begin(p) { this.chance = this.q(p, 'chance'); }
+  tick(S) {
+    const x = this.r('in');
+    if (x > 0.001 && this.was <= 0.001) this.side = Math.random() < this.chance ? 0 : 1; // (the toss)
+    else if (x <= 0.001) this.side = -1;
+    this.was = x;
+    S[this.o] = this.side === 0 ? x : 0;
+    S[this.o + 1] = this.side === 1 ? x : 0;
+  }
+}
+
 // Draw: a shape you draw (nodes joined by lines that can bend; see js/drawShape.js, which has the
 // same sums), played over Time. Once: start to end when the Gate rises (holding at the sustain node
 // while the Gate stays high), a custom envelope. Loop: round and round (the end jumps back to the
@@ -1156,7 +1174,7 @@ class Seq extends Module {
   }
 }
 
-const TYPES = { vco: VCO, noise: Noise, mix: Mixer, vcf: VCF, ring: Ring, vca: VCA, att: Att, env: Env, lfo: LFO, mfo: MFO, sh: SH, ping: Ping, string: StringRes, draw: Draw, formant: Formant, xy: XY, wave: WaveVCO, bounce: Bounce, table: Wavetable, poly: Poly, shaper: Shaper, quant: Quantizer, probe: Probe };
+const TYPES = { vco: VCO, noise: Noise, mix: Mixer, vcf: VCF, ring: Ring, vca: VCA, att: Att, env: Env, lfo: LFO, mfo: MFO, sh: SH, ping: Ping, string: StringRes, draw: Draw, formant: Formant, xy: XY, wave: WaveVCO, bounce: Bounce, table: Wavetable, poly: Poly, shaper: Shaper, quant: Quantizer, probe: Probe, chance: Chance };
 const typeOf = (id) => (id === 'out' ? Out : id === 'seq' ? Seq : TYPES[(/^([a-z]+)\d+$/.exec(id) || [])[1]]);
 
 class ModRackProcessor extends AudioWorkletProcessor {
