@@ -14,10 +14,53 @@ body.processor .panel-footer { margin-top: 10px; }
 body.processor .synth-body { border-radius: 0 0 6px 6px; }
 
 
-/* load your own sound */
-.load-own { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-top: auto; padding: 6px 4px 2px; }
-.load-btn { font-size: 11px; padding: 5px 10px; white-space: nowrap; }
-.load-name { font-size: 10px; color: var(--ink-dim); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-height: 12px; }
+/* ==========================================================================
+   The loop player: a slim separate unit racked above the NF-C1, in black, with a little
+   green display. It feeds the compressor; it is not part of it.
+   ========================================================================== */
+.player-unit { display: flex; align-items: stretch; margin-bottom: 14px; filter: drop-shadow(0 12px 16px rgba(0,0,0,0.55)); }
+.player-face {
+  width: 1240px; box-sizing: border-box; height: 66px; padding: 0 20px !important;
+  display: flex; align-items: center; gap: 18px;
+  background: repeating-linear-gradient(90deg, rgba(255,255,255,0.02) 0 1px, transparent 1px 3px), linear-gradient(180deg, #24262a, #17181b 60%, #121315);
+  border-top: 1px solid rgba(255,255,255,0.12); border-bottom: 1px solid #000;
+}
+.player-unit .cheek { width: 34px; background-image:
+    radial-gradient(ellipse 7px 4.5px at 50% 50%, #0b0c0e 60%, transparent 66%),
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0 1px, transparent 1px 3px),
+    linear-gradient(90deg, #2b2d31, #45484d 45%, #313337 75%, #232528); }
+.player-brand { display: flex; flex-direction: column; line-height: 1.05; color: #e9ebee; flex: none; }
+.player-brand .brand-mark { font-size: 17px; }
+.player-name { font-size: 10px; font-weight: 800; letter-spacing: 0.24em; text-transform: uppercase; color: #a9b2bc; }
+.player-face .led-cell.wide .led-btn { width: 104px; height: 34px; }
+.player-face .led-cell.wide .led-btn.on .led-lamp { background: #49e07a; box-shadow: 0 0 8px rgba(73, 224, 122, 0.9); }
+.player-face .led-word { font-size: 13px; }
+/* the display: what is playing, and how far through the loop */
+.player-display {
+  flex: none; width: 230px; height: 40px; box-sizing: border-box; padding: 5px 10px 6px; border-radius: 4px;
+  background: linear-gradient(180deg, #0a120d, #07100a); box-shadow: inset 0 1px 4px rgba(0,0,0,0.9), 0 1px 0 rgba(255,255,255,0.06);
+  display: flex; flex-direction: column; justify-content: space-between; color: #4f7d5d; font: 700 14px var(--font);
+}
+.player-display.playing { color: #8dffb0; text-shadow: 0 0 6px rgba(141,255,176,0.45); }
+.pd-row { display: flex; gap: 8px; white-space: nowrap; overflow: hidden; }
+.pd-state { flex: none; width: 12px; }
+.pd-now { overflow: hidden; text-overflow: ellipsis; }
+.pd-bar { height: 4px; border-radius: 2px; background: rgba(141,255,176,0.12); overflow: hidden; }
+.pd-bar i { display: block; height: 100%; background: currentColor; transform-origin: 0 50%; transform: scaleX(0); }
+/* the sounds: a row of buttons, the chosen one lit */
+.choice { display: flex; gap: 0; border-radius: 5px; overflow: hidden; border: 1px solid #000; box-shadow: 0 1px 0 rgba(255,255,255,0.07); flex: none; }
+.choice-btn {
+  font: 700 13px var(--font); letter-spacing: 0.04em; color: #c9ced4; padding: 0 14px; height: 34px; cursor: pointer;
+  border: none; border-left: 1px solid #000; background: linear-gradient(#34373c, #222428);
+}
+.choice-btn:first-child { border-left: none; }
+.choice-btn:hover { color: #fff; background: linear-gradient(#3d4046, #2a2c31); }
+.choice-btn.on { color: #1a1206; background: linear-gradient(#ffc76a, #f0a53a); }
+/* load your own sound: the file's name shows in the display */
+.load-own { display: flex; align-items: center; margin-left: auto; }
+.load-btn { font-size: 13px; padding: 0 14px; height: 34px; white-space: nowrap; }
+.load-name { display: none; }
+.player-face .lock-veil { inset: 0; }
 
 /* level meters */
 .meters { display: flex; gap: 10px; align-items: stretch; padding: 8px 14px 6px; flex: 1; }
@@ -33,13 +76,38 @@ body.processor .synth-body { border-radius: 0 0 6px 6px; }
 .meter-gr .meter-clip { visibility: hidden; }
 .meter-label { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; color: var(--ink); }
 .meter-scale { display: flex; flex-direction: column; justify-content: space-between; font-size: 9px; color: var(--ink-dim); padding: 15px 0 22px; text-align: right; width: 22px; }
-/* wider than its four modules need, so the two screens above have room to teach from */
+/* NF-C1: one row of six big pots, then the meters; as wide as the screens above */
 body.processor .synth-body { width: 1240px; }
 body.processor .panel-sections { justify-content: stretch; }
 body.processor .panel-column { flex: 1 1 auto; }
-body.processor .panel-column:has(.section[data-section="comp"]) { flex-grow: 2; }
 body.processor .panel-column:has(.section[data-section="meters"]) { flex-grow: 0; }
-body.processor .section[data-section="comp"] .section-grid { justify-content: space-evenly; }
+body[data-synth="nfc1"] { --cell-w: 158px; }
+body[data-synth="nfc1"] .section[data-section="comp"] .section-grid { justify-content: space-evenly; }
+body[data-synth="nfc1"] .dial { width: 150px; height: 150px; margin-top: -6px; }
+body[data-synth="nfc1"] .knob { width: 80px; height: 80px; margin: -40px 0 0 -40px; }
+body[data-synth="nfc1"] .knob-cap { inset: 14px; }
+body[data-synth="nfc1"] .knob-pointer { height: 20px; top: 4px; width: 3px; margin-left: -1.5px; }
+body[data-synth="nfc1"] .knob-body::after { height: 13px; width: 3px; margin-left: -1.5px; }
+body[data-synth="nfc1"] .knob-label { font-size: 15px; height: 19px; margin: 4px 0 8px; }
+body[data-synth="nfc1"] .knob-value { font-size: 14.5px; height: 20px; margin-top: -10px; }
+body[data-synth="nfc1"] .scale .num { font-size: 12px; }
+body[data-synth="nfc1"] .scale .unit { font-size: 11px; }
+body[data-synth="nfc1"] .section-title { font-size: 14px; margin-bottom: 4px; }
+body[data-synth="nfc1"] .panel { padding: 12px 20px 6px; }
+body[data-synth="nfc1"] .panel-footer { margin-top: 4px; padding-top: 6px; }
+/* Makeup with its Auto button underneath; the pot dims while Auto is on (it is not used) */
+body[data-synth="nfc1"] .section[data-section="comp"] .stack-cell { display: flex; flex-direction: column; align-items: center; }
+body[data-synth="nfc1"] .section[data-section="comp"] .stack-cell .led-cell.wide .led-btn { width: 92px; height: 28px; margin-top: -2px; }
+body[data-synth="nfc1"] .section[data-section="comp"] .stack-cell .led-cell.wide .led-btn.on .led-lamp { background: #ffc23a; box-shadow: 0 0 8px rgba(255, 194, 58, 0.9); }
+body[data-synth="nfc1"] .stack-cell:has([data-param="comp.auto"] .led-btn.on) .knob-cell { opacity: 0.35; filter: grayscale(1); pointer-events: none; }
+/* meters: as tall as the pots beside them, Bypass on top */
+body[data-synth="nfc1"] .section[data-section="meters"] .section-head { margin: 4px 0 2px; }
+body[data-synth="nfc1"] .section[data-section="meters"] .led-cell.wide .led-btn { width: 140px; height: 30px; }
+body[data-synth="nfc1"] .section[data-section="meters"] .led-word { font-size: 12.5px; }
+body[data-synth="nfc1"] .meters { padding: 4px 10px 0; }
+body[data-synth="nfc1"] .meter-ladder { min-height: 120px; }
+body[data-synth="nfc1"] .meter-label { font-size: 12px; }
+body[data-synth="nfc1"] .meter-scale { font-size: 10.5px; }
 
 /* ==========================================================================
    Studio skin (the processors): one brushed faceplate in one colour, between metal rack

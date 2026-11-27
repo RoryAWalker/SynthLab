@@ -18,6 +18,9 @@ const AMBER = '#ffb547';
 const RED = '#ff5a4a';
 const INK = 'rgba(220, 255, 230, 0.85)';
 const DIM = 'rgba(220, 255, 230, 0.5)';
+// the makeup in use: the pot, or with Auto on the rule the engine uses (comp-processor.js)
+const autoMakeup = (T, ratio) => Math.max(0, (-T / 2) * (1 - 1 / ratio));
+const makeupOf = (p) => (p['comp.auto'] === 'on' ? autoMakeup(p['comp.thresh'], p['comp.ratio']) : p['comp.makeup']);
 
 const SECONDS = 4; // shown on the levels screen
 const LO = -60, HI = 12; // dB range on both screens
@@ -57,9 +60,9 @@ const FOCUS_TEXT = {
   'comp.knee': (p) => (p['comp.knee'] < 0.5 ? 'Hard knee: the compression starts all at once at the threshold.' : `Soft knee: the compression fades in gradually over ${Math.round(p['comp.knee'])} dB around the threshold.`),
   'comp.attack': (p) => `Attack: how quickly the gain reduction comes in when the sound goes over the threshold (${p['comp.attack'] < 10 ? p['comp.attack'].toFixed(1) : Math.round(p['comp.attack'])} ms).`,
   'comp.release': (p) => `Release: how quickly the gain reduction lets go once the sound drops back (${Math.round(p['comp.release'])} ms).`,
-  'comp.makeup': (p) => `Makeup turns everything back up by ${fmtDb(p['comp.makeup'])}, to win back the loudness the compression took away.`,
-  'src.in': (p) => `Input: how hard the sound hits the compressor (${fmtDb(p['src.in'])}). More input means more of it goes over the threshold.`,
-  'comp.on': (p) => (p['comp.on'] === 'out' ? 'Bypassed: you hear the sound without compression (the meters still show what it would do).' : 'Compressor in: you hear the compressed sound.'),
+  'comp.makeup': (p) => (p['comp.auto'] === 'on' ? `Auto makeup is on, so the Makeup pot is not used: the unit is turning everything back up by ${fmtDb(makeupOf(p))} by itself.` : `Makeup turns everything back up by ${fmtDb(p['comp.makeup'])}, to win back the loudness the compression took away.`),
+  'comp.auto': (p) => (p['comp.auto'] === 'on' ? `Auto makeup: ${fmtDb(makeupOf(p))}, worked out from the Threshold and Ratio. Move them and watch it change.` : 'Auto makeup is off: the Makeup pot sets the makeup.'),
+  'comp.bypass': (p) => (p['comp.bypass'] === 'on' ? 'Bypassed: you hear the sound without compression (the meters still show what it would do).' : 'Compressing: you hear the compressed sound. Press Bypass to compare.'),
 };
 
 export class CompScope {
@@ -102,7 +105,7 @@ export class CompScope {
 
   // light up a control's part of the screens (hover help, or turning it)
   focus(id) {
-    if (!FOCUS_TEXT[id] && !['src.sound', 'mon.vol'].includes(id)) return;
+    if (!FOCUS_TEXT[id] && !['src.sound'].includes(id)) return;
     this.focusId = id;
     this.focusAt = performance.now();
   }
@@ -176,7 +179,7 @@ export class CompScope {
       }
       return Number.isFinite(m) ? m : null;
     };
-    const inGlow = this.glow('src.in');
+    const inGlow = this.glow('src.sound');
     // input: shaded
     ctx.fillStyle = `rgba(141, 255, 176, ${0.22 + 0.25 * inGlow})`;
     ctx.beginPath();
@@ -186,7 +189,7 @@ export class CompScope {
     ctx.closePath();
     ctx.fill();
     // output: amber line
-    const outGlow = this.glow('comp.makeup', 'comp.on');
+    const outGlow = this.glow('comp.makeup', 'comp.bypass');
     ctx.strokeStyle = AMBER;
     ctx.lineWidth = 1.5 + outGlow * 1.5;
     ctx.beginPath();
@@ -209,7 +212,7 @@ export class CompScope {
     label(ctx, `Threshold ${fmtDb(p['comp.thresh'])}`, left + 4, yT - 4, tg ? '#fff' : INK, 'left', 9.5 + tg, 700);
     // gain reduction: red bars hanging from 0
     const arGlow = this.glow('comp.attack', 'comp.release', 'comp.ratio');
-    ctx.fillStyle = p['comp.on'] === 'out' ? 'rgba(255, 90, 74, 0.35)' : `rgba(255, 90, 74, ${0.75 + 0.25 * arGlow})`;
+    ctx.fillStyle = p['comp.bypass'] === 'on' ? 'rgba(255, 90, 74, 0.35)' : `rgba(255, 90, 74, ${0.75 + 0.25 * arGlow})`;
     for (let x = right; x >= left; x--) {
       const g = col(x, this.gr, 'max');
       if (g === null) break;
@@ -238,7 +241,7 @@ export class CompScope {
     key('out', AMBER, false);
     key('in', 'rgba(141, 255, 176, 0.5)', true);
     const g = this.live.gr || 0;
-    label(ctx, `GAIN REDUCTION${p['comp.on'] === 'out' ? ' (bypassed: not applied)' : ''}`, left + 4, grTop - 3, RED, 'left', 9, 700);
+    label(ctx, `GAIN REDUCTION${p['comp.bypass'] === 'on' ? ' (bypassed: not applied)' : ''}`, left + 4, grTop - 3, RED, 'left', 9, 700);
     label(ctx, g > 0.05 ? '−' + g.toFixed(1) + ' dB' : '0 dB', right - 4, grTop - 3, RED, 'right', 10, 700);
     if (arGlow && this.focusId !== 'comp.ratio') {
       const txt = this.focusId === 'comp.attack' ? 'Attack: how fast the red comes in when the level jumps' : 'Release: how fast the red falls away when the level drops';
@@ -251,7 +254,7 @@ export class CompScope {
   drawCurve(ctx, w, h, p) {
     ctx.fillStyle = '#050c07';
     ctx.fillRect(0, 0, w, h);
-    const T = p['comp.thresh'], R = p['comp.ratio'], W = p['comp.knee'], M = p['comp.makeup'];
+    const T = p['comp.thresh'], R = p['comp.ratio'], W = p['comp.knee'], M = makeupOf(p);
     const pad = { l: 34, t: 18, b: 22 };
     const size = Math.max(60, Math.min(h - pad.t - pad.b, w * 0.55));
     const x0 = pad.l, y0 = pad.t, x1 = x0 + size, y1 = y0 + size;
@@ -297,7 +300,7 @@ export class CompScope {
 
     // the curve, the part above the threshold brighter when Ratio is in focus
     const rg = this.glow('comp.ratio');
-    const mg = this.glow('comp.makeup');
+    const mg = this.glow('comp.makeup', 'comp.auto');
     ctx.save();
     ctx.beginPath(); ctx.rect(x0, y0, size, size); ctx.clip();
     if (M > 0.05 && mg) { // makeup: the curve before it, faint, with an arrow up
@@ -343,9 +346,9 @@ export class CompScope {
     if (playing && live.det > LO) {
       const xd = xOf(live.det);
       const target = out(live.det);
-      const actual = live.det - (p['comp.on'] === 'out' ? 0 : live.gr) + (p['comp.on'] === 'out' ? 0 : M);
+      const actual = live.det - (p['comp.bypass'] === 'on' ? 0 : live.gr) + (p['comp.bypass'] === 'on' ? 0 : M);
       ctx.fillStyle = AMBER;
-      ctx.beginPath(); ctx.arc(xd, yOf(p['comp.on'] === 'out' ? live.det : target), 4.5, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(xd, yOf(p['comp.bypass'] === 'on' ? live.det : target), 4.5, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = '#fff';
       ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.arc(xd, yOf(actual), 6.5, 0, Math.PI * 2); ctx.stroke();
@@ -362,8 +365,8 @@ export class CompScope {
     row('THRESHOLD', fmtDb(T), tg > 0);
     row('RATIO', fmtRatio(R), rg > 0);
     row('KNEE', W < 0.5 ? 'hard' : Math.round(W) + ' dB', kg > 0);
-    row('MAKEUP', fmtDb(M), mg > 0);
-    row('REDUCING BY', p['comp.on'] === 'out' ? 'bypassed' : (live.gr > 0.05 ? fmtDb(-live.gr) : '0 dB'), false);
+    row(p['comp.auto'] === 'on' ? 'MAKEUP (AUTO)' : 'MAKEUP', fmtDb(M), mg > 0);
+    row('REDUCING BY', p['comp.bypass'] === 'on' ? 'bypassed' : (live.gr > 0.05 ? fmtDb(-live.gr) : '0 dB'), false);
     y += 4;
     label(ctx, '● where the curve wants the sound', tx, y, AMBER, 'left', 9, 600); y += 13;
     label(ctx, '○ where it is (after attack/release)', tx, y, '#fff', 'left', 9, 600); y += 16;

@@ -15,16 +15,13 @@ export const HELP_NFC1 = {
     tip: 'Turn the Ratio slowly from 1 to 20 and watch the line above the threshold flatten. At 20:1 it is almost flat: a limiter.' },
 
   // ---- source
-  'section:src': { title: 'Source', body: [
-    'The sound going into the compressor. A compressor does nothing on its own: it reacts to whatever you put through it, so the choice of sound matters a lot.',
+  'section:src': { title: 'Loop player', body: [
+    'A separate unit that plays the sound going into the compressor, over and over. A compressor does nothing on its own: it reacts to whatever you put through it, so the choice of sound matters a lot.',
     'Drums have big, short peaks: good for hearing Attack and Release. Bass and Keys have loud and soft notes: good for hearing how a compressor evens out levels. The Full band is all three playing together, the way a compressor across a whole mix hears them. The Test tone simply steps between quiet and loud, the clearest way to see what each control does.'] },
   'src.play': { title: 'Play / Stop', body: ['Starts and stops the sound, looping. The space bar does the same.'] },
   'src.sound': { title: 'Sound', body: [
     'Which sound to play through the compressor. Drums, Bass and Keys are recorded loops with plenty of difference between loud and soft notes, and the Full band is the three of them together. The Test tone steps between a quiet level (−30 dB) and a loud one (−6 dB) every second.',
-    'Your file plays a sound you have loaded with Load your own… (it stays on your computer).'] },
-  'src.in': { title: 'Input', body: [
-    'How loud the sound is when it reaches the compressor. Turning it up pushes more of the sound over the threshold, so the compressor works harder, just as turning the threshold down would.',
-    'On many hardware compressors this is the main control: the threshold is fixed and you drive the input into it.'] },
+    'Your file plays a sound you have loaded with Load your own… (it stays on your computer). The display shows which sound is playing and how far through the loop it is.'] },
   loadown: { title: 'Load your own', body: [
     'Play your own recording through the compressor: a WAV, MP3, AIFF or similar from your computer. It is read in the browser and is never uploaded anywhere. Long files are trimmed to the first minute.',
     'Mixed and mastered music is usually compressed already, so there may be little left to do. Raw recordings (a single vocal, a drum kit, an acoustic guitar) show the effect best.'] },
@@ -32,7 +29,7 @@ export const HELP_NFC1 = {
   // ---- compressor
   'section:comp': { title: 'Compressor', body: [
     'A compressor is an automatic volume control. When the sound gets louder than the threshold it turns it down; when it falls back below, it lets it come back up. The result: the loud parts are brought closer to the quiet parts (less dynamic range).',
-    'Threshold says where it starts, Ratio says how hard it turns down, Knee says how gently it starts, and Attack and Release say how fast it reacts.'] },
+    'Threshold says where it starts, Ratio says how hard it turns down, Knee says how gently it starts, Attack and Release say how fast it reacts, and Makeup turns the result back up.'] },
   'comp.thresh': { title: 'Threshold', body: [
     'The level where compression starts. Anything quieter than the threshold passes through untouched; only the part above it is turned down.',
     'Lower the threshold and more of the sound goes over it, so more of it is compressed. On the Levels screen it is the dashed line; on the transfer curve it is where the line bends.'],
@@ -53,20 +50,21 @@ export const HELP_NFC1 = {
     'A fast release recovers quickly, which keeps things lively but can make the volume flutter, or even distort low notes. A slow release holds the reduction on, which sounds smoother, but if it is too slow the quiet parts after a loud hit stay turned down. Long release with lots of reduction gives the "pumping" sound, where the whole mix ducks and swells with the beat.'],
     tip: 'Load the Pumping patch and turn the Release from 600 ms down to 50 ms: the breathing in and out gets faster and then disappears.' },
 
-  // ---- output
-  'section:out': { title: 'Output', body: ['After compression: Makeup gain, the bypass button, and how loud you hear it.'] },
-  'comp.on': { title: 'Compressor In / Bypass', body: [
-    'Lit: you hear the compressed sound. Off (bypassed): you hear the sound as it goes in, without the compressor, so you can compare.',
+  'comp.auto': { title: 'Auto makeup', body: [
+    'Lit: the compressor sets the makeup gain for you, from the Threshold and Ratio, and the Makeup pot is not used. The transfer-curve screen shows how much it is adding.',
+    'Its rule of thumb: put back the turn-down that a sound halfway between the threshold and 0 dB would get. Lower the threshold or raise the ratio and it adds more. It is only an estimate: the real loudness depends on the sound.'],
+    tip: 'Turn Auto on, then press Bypass on and off. The two should sound about equally loud, so you hear what the compression does to the sound rather than just a change in volume.' },
+  'comp.bypass': { title: 'Bypass', body: [
+    'Off (the usual setting): you hear the compressed sound. Press it and the light comes on: you hear the sound as it goes in, without the compressor, so you can compare.',
     'The screens and the GR meter keep showing what the compressor would do, even while it is bypassed.'],
-    tip: 'Louder almost always sounds "better" to our ears. When you compare in and out, set the Makeup so both are equally loud first, or you will just be choosing the louder one.' },
+    tip: 'Louder almost always sounds "better" to our ears. When you compare, set the Makeup so both are equally loud first, or you will just be choosing the louder one.' },
   'comp.makeup': { title: 'Makeup', body: [
     'Turns the whole sound back up after compression. Compression only turns things down, so a compressed sound is quieter; makeup wins that level back.',
     'Because the loud peaks have been brought down, the sound can now be turned up further before it reaches the top: that is why compressed sounds seem louder and denser.'] },
-  'mon.vol': { title: 'Listen', body: ['How loud you hear it. It comes after everything else and does not change the meters or the screens: it is only your listening level.'] },
 
   // ---- meters
   'section:meters': { title: 'Meters', body: ['In shows the level going in, Out the level coming out, and GR in between shows the gain reduction: how many dB the compressor is turning the sound down right now.'] },
-  'meter-in': { title: 'In meter', body: ['The peak level going into the compressor, after the Input knob. The lamp at the top lights if it reaches 0 dB.'] },
+  'meter-in': { title: 'In meter', body: ['The peak level going into the compressor. The lamp at the top lights if it reaches 0 dB.'] },
   'meter-gr': { title: 'GR meter (gain reduction)', body: ['How far the compressor is turning the sound down, lighting from the top downwards: each light is about 1.2 dB, so a full meter is 24 dB of reduction.', 'This is the most useful meter on any compressor. A few dB on the loudest moments is gentle control; 10 dB or more all the time is heavy compression.'] },
   'meter-out': { title: 'Out meter', body: ['The peak level coming out, after Makeup. The lamp at the top lights if it reaches 0 dB, the most a digital system can take: too much Makeup will distort.'] },
 };

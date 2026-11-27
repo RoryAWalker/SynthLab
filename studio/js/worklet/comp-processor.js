@@ -2,8 +2,9 @@
 // clean feed-forward compressor, and reports its levels so the panel can draw what it is doing.
 //
 // The signal path, in order:
-//   source -> Input (gain) -> [level detector -> gain computer -> attack/release smoothing]
-//          -> gain reduction -> Makeup -> output meters -> Listen level -> speakers
+//   source -> [level detector -> gain computer -> attack/release smoothing]
+//          -> gain reduction -> Makeup -> output meters -> speakers (with a little headroom)
+// Bypass skips the gain reduction and Makeup, so you hear the sound as it went in.
 //
 // Detector: the peak level of the signal (both channels linked: the louder one counts), in dB.
 // It jumps up at once and falls back over 20 ms, so it reads the peaks of a wave rather than
@@ -15,6 +16,12 @@
 
 const dbToLin = (db) => Math.pow(10, db / 20);
 const linToDb = (x) => (x > 1e-6 ? 20 * Math.log10(x) : -120);
+// what reaches the speakers: 3 dB down, so a loud source plus some Makeup has headroom (the
+// computer's own volume sets how loud you hear it; the meters read before this)
+const OUT_LEVEL = 0.7;
+// Auto makeup: win back the turn-down a sound halfway between the threshold and 0 dB would get.
+// A rule of thumb that roughly matches the loudness with Bypass. (Same rule in compScope.js.)
+const autoMakeup = (T, ratio) => Math.max(0, (-T / 2) * (1 - 1 / ratio));
 
 class CompProcessor extends AudioWorkletProcessor {
   constructor() {
@@ -52,15 +59,14 @@ class CompProcessor extends AudioWorkletProcessor {
     const playing = p['src.play'] === 'play' && !!src;
     const fade = 1 / (0.006 * sampleRate);
 
-    const inGain = dbToLin(p['src.in'] ?? 0);
     const T = p['comp.thresh'] ?? -20;
     const ratio = p['comp.ratio'] ?? 4;
     const W = p['comp.knee'] ?? 0;
     const atk = Math.exp(-1 / (Math.max(0.05, p['comp.attack'] ?? 10) * 0.001 * sampleRate));
     const rel = Math.exp(-1 / (Math.max(1, p['comp.release'] ?? 150) * 0.001 * sampleRate));
-    const makeup = p['comp.makeup'] ?? 0;
-    const on = p['comp.on'] !== 'out';
-    const listen = p['mon.vol'] ?? 0.8;
+    const makeup = p['comp.auto'] === 'on' ? autoMakeup(T, ratio) : (p['comp.makeup'] ?? 0);
+    const on = p['comp.bypass'] !== 'on';
+    const listen = OUT_LEVEL;
     const slope = 1 / ratio - 1;
     const peakFall = Math.exp(-1 / (0.02 * sampleRate));
 
@@ -74,7 +80,7 @@ class CompProcessor extends AudioWorkletProcessor {
         if (playing || this.playGain > 0) this.pos++;
       }
       this.playGain = playing ? Math.min(1, this.playGain + fade) : Math.max(0, this.playGain - fade);
-      a *= this.playGain * inGain; b *= this.playGain * inGain;
+      a *= this.playGain; b *= this.playGain;
 
       // detector: peak level, channels linked
       const lvl = Math.max(Math.abs(a), Math.abs(b));

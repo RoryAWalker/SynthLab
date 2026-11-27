@@ -3,6 +3,7 @@ import { Knob } from './knob.js';
 import { Toggle } from './toggle.js';
 import { Wheel } from './wheel.js';
 import { LedButton } from './ledbutton.js';
+import { Choice } from './choice.js';
 import { StartMenu } from './startMenu.js';
 import { Engine } from './engine.js';
 import { Scope, TIMEBASES } from './scope.js';
@@ -155,6 +156,7 @@ function makeControl(id, sec) {
     : spec.ui === 'led' ? new LedButton(id, patch[id], onKnob)
     : spec.ui === 'fader' ? new Fader(id, patch[id], onKnob)
     : spec.ui === 'word' ? new WordSwitch(id, patch[id], onKnob)
+    : spec.ui === 'choice' ? new Choice(id, patch[id], onKnob)
     : spec.type === 'wheel' ? new Wheel(id, patch[id], onKnob)
     : new Knob(id, patch[id], onKnob);
   knobs[id] = k;
@@ -392,6 +394,7 @@ document.querySelector('.np-model').innerHTML = nameHtml(SYNTH.name); // name pl
 document.querySelector('.brand-sub').textContent = SYNTH.brandSub;
 document.title = `${LAB_NAME} · ${SYNTH.name}`;
 buildPanel();
+if (SYNTH.PLAYER) buildPlayer();
 refreshScales(); // e.g. Osc 3 Frequency starts in Hz when Osc 3 is an LFO
 alignRows();
 buildToolbar();
@@ -790,7 +793,7 @@ function sendSource() {
   Promise.resolve(ensureAudio()).then(async () => {
     if (sentSources.has(id)) return;
     if (id === 'user' && !userFileName()) {
-      if (patch['src.play'] === 'play') patchMenu.toast('Load a sound file first: Load your own… under the Source.');
+      if (patch['src.play'] === 'play') patchMenu.toast('Load a sound file first: Load your own… on the player.');
       return;
     }
     let chans;
@@ -829,6 +832,35 @@ function buildLoadButton() {
     }
   });
   return wrap;
+}
+
+// The loop player (NF-C1): a separate slim unit above the processor, playing the sound that goes
+// into it: Play, a display (what is playing, how far through the loop), the sounds, Load your own.
+function buildPlayer() {
+  const P = SYNTH.PLAYER;
+  const unit = document.createElement('section');
+  unit.className = 'player-unit';
+  unit.innerHTML = `<div class="cheek left"></div><div class="player-face section" data-section="${P.id}">
+    <div class="player-brand" data-help="section:${P.id}"><span class="brand-mark">NoFoe</span><span class="player-name">${P.title}</span></div>
+    <div class="player-display" data-help="${P.sound}"><div class="pd-row"><span class="pd-state"></span><span class="pd-now"></span></div><div class="pd-bar"><i></i></div></div>
+    <div class="lock-veil"><span>LOCKED</span></div></div><div class="cheek right"></div>`;
+  const face = unit.querySelector('.player-face'), display = unit.querySelector('.player-display');
+  sections[P.id] = face;
+  display.before(makeControl(P.play, {}));
+  display.after(makeControl(P.sound, {}), buildLoadButton());
+  document.querySelector('#stage > .synth').before(unit);
+  // the display follows what the engine is playing
+  const state = display.querySelector('.pd-state'), now = display.querySelector('.pd-now'), bar = display.querySelector('.pd-bar i');
+  let shown = '';
+  (function tick() {
+    requestAnimationFrame(tick);
+    const id = patch[P.sound], opt = PARAMS[P.sound].options.find((o) => o.v === id);
+    const name = id === 'user' ? (userFileName() || 'No file loaded') : (opt ? opt.label : '');
+    const live = engine.live || {}, playing = patch[P.play] === 'play' && engine.running && live.playing;
+    const text = `${playing ? '▶' : '■'}|${name}`;
+    if (text !== shown) { shown = text; state.textContent = playing ? '▶' : '■'; now.textContent = name; now.title = name; display.classList.toggle('playing', !!playing); }
+    bar.style.transform = `scaleX(${playing || live.pos ? Math.min(1, live.pos || 0) : 0})`;
+  })();
 }
 
 // Level meters: In, Gain Reduction, Out. Segmented ladders, like a hardware unit.
