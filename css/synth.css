@@ -1468,3 +1468,7 @@ body[data-skin="modular"] .section[data-type="bounce"] { --mod: #8a6bb8; } /* Bo
 body[data-skin="modular"] .section[data-type="bounce"].even { --mod: #a386cc; }
 .bounce-cell { display: flex; padding: 2px 0 2px 2px; }
 .bounce-screen { display: block; border-radius: 5px; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.1); }
+/* NF-ModRack: the Wavetable's screen */
+body[data-skin="modular"] .section[data-type="table"] { --mod: #2c8f9e; } /* Wavetable: deep teal-blue */
+body[data-skin="modular"] .section[data-type="table"].even { --mod: #44a8b6; }
+.tb-name { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; color: #c9cbcd; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

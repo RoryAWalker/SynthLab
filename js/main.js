@@ -25,6 +25,7 @@ import { RackEdit } from './rackEdit.js';
 import { NodeEditor } from './nodeEditor.js';
 import { XYPad } from './xyPad.js';
 import { BounceView } from './bounceView.js';
+import { TableScreen } from './tableScreen.js';
 
 const engine = new Engine({ module: SYNTH.module, processor: SYNTH.processor });
 // the Draw module's screen shows where its shape is playing, and whether it is in Once mode
@@ -33,6 +34,11 @@ NodeEditor.mode = (inst) => patch[`${inst}.mode`];
 XYPad.getPatch = () => patch; // (and the XY's pad, where its puck is)
 XYPad.live = NodeEditor.live;
 BounceView.live = NodeEditor.live; // (and the Bounce module's ball)
+// (and the Wavetable's screen, which hands its frames to the engine)
+TableScreen.post = (m) => engine.post(m);
+TableScreen.getPatch = () => patch;
+TableScreen.live = NodeEditor.live;
+TableScreen.toast = (t) => patchMenu && patchMenu.toast(t);
 document.body.dataset.skin = SYNTH.skin;
 // ?preview=1: just the synth on a transparent page, for capturing the start-menu pictures
 const PREVIEW = new URLSearchParams(location.search).has('preview');
@@ -196,6 +202,7 @@ function makeControl(id, sec) {
     : spec.ui === 'nodes' ? new NodeEditor(id, patch[id], onKnob) // the NF-ModRack's Draw: its drawing screen
     : spec.ui === 'xy' ? new XYPad(id, patch[id], onKnob) // and its XY: the pad
     : spec.ui === 'bounce' ? new BounceView(id) // and its Bounce: the ball's screen
+    : spec.ui === 'table' ? new TableScreen(id, patch[id], onKnob) // and its Wavetable: the table's screen
     : spec.ui === 'choice' ? new Choice(id, patch[id], onKnob)
     : spec.type === 'wheel' ? new Wheel(id, patch[id], onKnob)
     : new Knob(id, patch[id], onKnob);

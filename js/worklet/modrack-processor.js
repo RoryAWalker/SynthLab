@@ -812,6 +812,50 @@ class Bounce extends Module {
   }
 }
 
+// Wavetable: frames of one cycle each (sent by the page: see js/wavetables.js), each made into band-
+// limited copies; Position glides between neighbouring frames.
+const WAVETABLES = {}; // module id -> its frames' band-limited copies
+// a frame of 256 samples made into band-limited copies of TABLE samples (its spectrum, moved up)
+function bandLimitFrame(frame) {
+  const n = frame.length, re = Float64Array.from(frame), im = new Float64Array(n);
+  fft(re, im, false);
+  const big = new Float64Array(TABLE), bigIm = new Float64Array(TABLE), k = TABLE / n;
+  for (let h = 1; h < n / 2; h++) { big[h] = re[h] * k; bigIm[h] = im[h] * k; big[TABLE - h] = re[n - h] * k; bigIm[TABLE - h] = im[n - h] * k; }
+  fft(big, bigIm, true);
+  return bandLimit(big);
+}
+class Wavetable extends Module {
+  static OUTS = ['out'];
+  static INS = ['pitch', 'pos', 'fm', 'sync'];
+  constructor(id) { super(id); this.ph = Math.random(); this.syncWas = 0; }
+  begin(p, sr) {
+    this.oct = this.q(p, 'range') + this.q(p, 'tune') / 12;
+    this.fm = this.q(p, 'fm') * FM_OCTAVES; this.posK = this.q(p, 'pos');
+    this.frames = WAVETABLES[this.id] || null;
+    this.sr = sr;
+  }
+  tick(S) {
+    const fr = this.frames;
+    let f = C4 * Math.pow(2, this.oct + this.r('pitch') + this.r('fm') * this.fm);
+    f = f > this.sr * 0.45 ? this.sr * 0.45 : f < 0.01 ? 0.01 : f;
+    const sync = this.r('sync');
+    if (sync > 0 && this.syncWas <= 0) this.ph = 0;
+    this.syncWas = sync;
+    let y = 0;
+    if (fr && fr.length) {
+      // Position input: 1 volt is the whole table
+      let pos = this.posK + this.r('pos'); pos = pos < 0 ? 0 : pos > 1 ? 1 : pos;
+      const x = pos * (fr.length - 1), i = Math.min(fr.length - 2, Math.floor(x)), t = x - i;
+      if (fr.length === 1) y = readTable(fr[0], f, this.ph, this.sr);
+      else y = readTable(fr[i], f, this.ph, this.sr) * (1 - t) + readTable(fr[i + 1], f, this.ph, this.sr) * t;
+      this.pos = pos;
+    }
+    S[this.o] = y;
+    this.ph += f / this.sr;
+    if (this.ph >= 1) this.ph -= Math.floor(this.ph);
+  }
+}
+
 // Draw: a shape you draw (nodes joined by lines that can bend; see js/drawShape.js, which has the
 // same sums), played over Time. Once: start to end when the Gate rises (holding at the sustain node
 // while the Gate stays high), a custom envelope. Loop: round and round (the end jumps back to the
@@ -939,7 +983,7 @@ class Seq extends Module {
   }
 }
 
-const TYPES = { vco: VCO, noise: Noise, mix: Mixer, vcf: VCF, ring: Ring, vca: VCA, att: Att, env: Env, lfo: LFO, mfo: MFO, sh: SH, ping: Ping, string: StringRes, draw: Draw, formant: Formant, xy: XY, wave: WaveVCO, bounce: Bounce };
+const TYPES = { vco: VCO, noise: Noise, mix: Mixer, vcf: VCF, ring: Ring, vca: VCA, att: Att, env: Env, lfo: LFO, mfo: MFO, sh: SH, ping: Ping, string: StringRes, draw: Draw, formant: Formant, xy: XY, wave: WaveVCO, bounce: Bounce, table: Wavetable };
 const typeOf = (id) => (id === 'out' ? Out : id === 'seq' ? Seq : TYPES[(/^([a-z]+)\d+$/.exec(id) || [])[1]]);
 
 class ModRackProcessor extends AudioWorkletProcessor {
@@ -981,6 +1025,8 @@ class ModRackProcessor extends AudioWorkletProcessor {
         break;
       }
       case 'allOff': this.notes = []; break;
+      // a Wavetable's frames, from the page (made band-limited here, once)
+      case 'table': WAVETABLES[m.id] = m.frames.map(bandLimitFrame); break;
     }
   }
 
@@ -1074,6 +1120,7 @@ class ModRackProcessor extends AudioWorkletProcessor {
         lfo: this.lfo ? S[this.lfo.o] : 0, lfoT: 0, beat: 0, outs,
         seqStep: seq ? seq.step : 0, seqRun: seq ? seq.run : false,
         draws: Object.fromEntries(order.filter((m) => m instanceof Draw).map((m) => [m.id, m.ph])), // the Draw modules' play positions
+        tables: Object.fromEntries(order.filter((m) => m instanceof Wavetable).map((m) => [m.id, m.pos || 0])), // the Wavetables' positions
         bounces: Object.fromEntries(order.filter((m) => m instanceof Bounce).map((m) => [m.id, m.h])), // the Bounce modules' balls
         xys: Object.fromEntries(order.filter((m) => m instanceof XY).map((m) => [m.id, [m.sx, m.sy, m.ph]])), // the XY pads' outputs (0..1) and play positions
         over: this.over, resets: this.resets,

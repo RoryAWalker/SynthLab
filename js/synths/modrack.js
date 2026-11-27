@@ -12,6 +12,7 @@
 // type names the NF-Modular module it comes from).
 
 import { DEFAULT_SHAPE, valid as validShape, parse as parseShape } from '../drawShape.js';
+import { valid as validTable, tableName } from '../wavetables.js';
 import { PARAMS as NFP, OUTPUTS as NFO, LAYOUT as NF_LAYOUT, KEYBED_SECTIONS, SIDE_SECTIONS } from './nfmod.js';
 
 // The rack: three rows, each this wide (in the panel's own pixels: the NF-Modular's rows) with
@@ -57,6 +58,8 @@ export const TYPES = {
     params: ['range', 'tune', 'decay', 'tone', 'drive', 'fb'], ins: ['pitch', 'strike', 'in', 'fb', 'drive'], outs: ['out'] },
   wave: { name: 'Wave VCO', desc: 'An oscillator whose waveform you draw: one cycle, freehand or with nodes.', w: 698, p: 'wave', j: 'wave', help: 'wave',
     params: ['nodes', 'range', 'tune', 'fm'], ins: ['pitch', 'fm', 'sync'], outs: ['out'] },
+  table: { name: 'Wavetable', desc: 'An oscillator that sweeps through a table of waves: built-in ones, or any audio file you load.', w: 662, p: 'table', j: 'table', help: 'table',
+    params: ['table', 'pos', 'range', 'tune', 'fm'], ins: ['pitch', 'pos', 'fm', 'sync'], outs: ['out'] },
   formant: { name: 'Formant', desc: 'Makes any sound talk: three filters tuned like a voice, sweeping A, E, I, O, U.', w: 352, p: 'formant', j: 'formant', help: 'formant',
     params: ['vowel', 'shift', 'res', 'mix'], ins: ['in', 'vowel', 'shift'], outs: ['out'] },
   xy: { name: 'XY', desc: 'A pad to play two control signals at once by hand, and record your movements to loop them.', w: 480, p: 'xy', j: 'xy', help: 'xy',
@@ -159,6 +162,16 @@ TYPES.xy.specs = {
   ins: { gate: { ...NFP['jack.env1.gate'] } },
   outs: { x: { label: 'X' }, y: { label: 'Y' }, gate: { label: 'Gate' } },
 };
+// Wavetable: the table (a built-in one, or made from an audio file: see wavetables.js), Position in it
+TYPES.table.specs = {
+  params: {
+    table: { type: 'nodes', ui: 'table', label: 'Table', def: 'b:basic', valid: validTable, fmt: (v) => tableName(v) },
+    pos: { type: 'cont', label: 'Position', min: 0, max: 1, def: 0, curve: 'lin', unit: '%', fmt: pct, marks: [[0, 'first'], [0.5, '50'], [1, 'last']] },
+    range: { ...NFP['osc1.range'] }, tune: { ...NFP['osc1.tune'] }, fm: { ...NFP['osc1.fm'] },
+  },
+  ins: { pitch: { ...NFP['jack.vco1.pitch'] }, pos: { ...NFP['jack.vco1.fm'], label: 'Position' }, fm: { ...NFP['jack.vco1.fm'] }, sync: { ...NFP['jack.vco1.sync'] } },
+  outs: { out: { label: 'Out', audio: true } },
+};
 // Wave VCO: one cycle of the waveform, drawn (the middle line is 0; the top +1, the bottom -1)
 export const DEFAULT_WAVE = '-1;0,0.5,-0.35;0.25,1,0.35;0.5,0.5,-0.35;0.75,0,0.35;1,0.5,0';
 TYPES.wave.specs = {
@@ -209,7 +222,7 @@ TYPES.string.specs = {
   outs: { out: { label: 'Out', audio: true } },
 };
 // The order of the drawer: sources, shaping, modulation
-export const DRAWER = [['Sources', ['vco', 'wave', 'noise', 'ping', 'string', 'mix']], ['Shaping', ['vcf', 'formant', 'ring', 'vca', 'att']], ['Modulation', ['env', 'draw', 'bounce', 'xy', 'lfo', 'mfo', 'sh']]];
+export const DRAWER = [['Sources', ['vco', 'wave', 'table', 'noise', 'ping', 'string', 'mix']], ['Shaping', ['vcf', 'formant', 'ring', 'vca', 'att']], ['Modulation', ['env', 'draw', 'bounce', 'xy', 'lfo', 'mfo', 'sh']]];
 // always in the rack: the Output (in a row, and can be moved), the Keyboard (on the keyboard) and
 // the Sequencer (its own column)
 const OUT_W = 100;
@@ -233,6 +246,7 @@ const PANELS = {
   // the pad on the left, its knobs and sockets beside it
   xy: { titleSwitch: 'mode', screen: 'path', jacksBeside: true, rows: [['rate', 'smooth', 'pol']], jacks: ['gate', 'out:x', 'out:y', 'out:gate'] },
   formant: { rows: [['vowel', 'shift', 'res', 'mix']], jacks: ['in', 'vowel', 'shift', 'out:out'] },
+  table: { screen: 'table', jacksBeside: true, rows: [['pos', 'range', 'tune', 'fm']], jacks: ['pitch', 'pos', 'fm', 'sync', 'out:out'] },
   // its sockets under its knobs, beside the drawing screen, so the screen has the module's whole height
   wave: { screen: 'nodes', jacksBeside: true, rows: [['range', 'tune', 'fm']], jacks: ['pitch', 'fm', 'sync', 'out:out'] },
   bounce: { titleSwitch: 'mode', screen: 'view', rows: [['time', 'bounce', 'height']], jacks: ['gate', 'time', 'bounce', 'out:out', 'out:hit', 'out:end'] },
@@ -418,6 +432,13 @@ export const PRESETS = {
     ...C('env1.gate', 'kb.gate'), ...C('out.in', 'vca1.out'),
     'vco2.tune': 0.1, 'mix1.l1': 7, 'mix1.l2': 6, 'vcf1.cutoff': 700, 'vcf1.res': 0.45, 'vcf1.cv': 0.45,
     'xy1.mode': 'loop', 'xy1.path': CIRCLE, 'xy1.smooth': 0.05, 'env1.a': 0.02, 'env1.s': 0.9, 'env1.r': 0.5,
+  },
+  // a slow LFO sweeps Position through the Harmonics table: the harmonics come in and go out one by one
+  'Wavetable Sweep': {
+    'rack.layout': 'table1|vca1,out|env1,lfo1',
+    ...C('table1.pitch', 'kb.pitch'), ...C('table1.pos', 'lfo1.out'), ...C('vca1.in', 'table1.out'), ...C('vca1.cv', 'env1.out'),
+    ...C('env1.gate', 'kb.gate'), ...C('out.in', 'vca1.out'),
+    'table1.table': 'b:harmonics', 'table1.pos': 0.5, 'lfo1.rate': 0.25, 'lfo1.shape': 'tri', 'env1.a': 0.05, 'env1.s': 1, 'env1.r': 0.8,
   },
   // every note drops a ball onto a bell: each bounce strikes the Ping, softer and faster
   'Bouncing Bell': {
