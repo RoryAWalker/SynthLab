@@ -770,6 +770,9 @@ body[data-skin="vintage"] .perf { padding: 8px 10px; }
   animation: help-in 0.25s ease-out;
 }
 .start-menu[hidden] { display: none; }
+/* until the app has loaded, with no synth chosen: the menu covers the page (see index.html) */
+html.choosing .start-menu[hidden] { display: grid; }
+html.choosing .sm-close { display: none; }
 /* sized to the window's height, so all four synths fit on one screen without scrolling */
 .sm-inner { position: relative; width: min(1040px, calc(100vw - 32px), calc((100vh - 180px) * 1.55)); padding: 3vh 0; text-align: center; }
 /* a menu mixing synths and studio units (not used at present): a heading, then wide, short cards */

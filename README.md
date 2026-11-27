@@ -1,6 +1,6 @@
 # SynthLab
 
-**Learn sound design by ear.** SynthLab is a browser-based virtual-analogue synthesiser built for teaching synthesis at university level, with an oscilloscope, a spectrum analyser and gamified lessons where students match target sounds.
+**Learn. Create. Synthesize.** SynthLab is a browser-based virtual-analogue synthesiser built for teaching synthesis at university level, with an oscilloscope, a spectrum analyser and gamified lessons where students match target sounds.
 
 **Play it:** https://roryawalker.github.io/SynthLab/
 

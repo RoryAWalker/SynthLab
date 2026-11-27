@@ -3,8 +3,22 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SynthLab · NF-1</title>
+  <title>SynthLab</title>
+  <!-- what a link to SynthLab shows when it is shared (messages, email, social media) -->
+  <meta name="description" content="Four synths (NF-1, NiniFoog, NF-MiniModular and NF-Modular) with scopes, teaching graphs and lessons, free in your browser.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="SynthLab">
+  <meta property="og:title" content="SynthLab: Learn. Create. Synthesize.">
+  <meta property="og:description" content="Four synths (NF-1, NiniFoog, NF-MiniModular and NF-Modular) with scopes, teaching graphs and lessons, free in your browser.">
+  <meta property="og:url" content="https://roryawalker.github.io/SynthLab/">
+  <meta property="og:image" content="https://roryawalker.github.io/SynthLab/img/share.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="SynthLab: the NF-1, NiniFoog, NF-MiniModular and NF-Modular synths">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="stylesheet" href="css/synth.css">
+  <!-- no synth chosen yet: the start menu shows from the first moment, not after the app has loaded -->
+  <script>if (!/[?&]synth=/.test(location.search)) document.documentElement.classList.add('choosing');</script>
 </head>
 <body data-skin="classic">
   <header class="appbar">
