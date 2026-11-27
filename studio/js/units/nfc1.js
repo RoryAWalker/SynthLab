@@ -1,6 +1,6 @@
 // NF-C1: the first of the processors, a clean compressor for learning the basics: Threshold,
 // Ratio, Attack, Release, Knee and Makeup, with Bypass to compare. A loop player (a separate
-// unit above it) feeds it, so there is always something to compress: recorded drums, bass, keys and the full band, a test tone, or a
+// unit racked below it) feeds it, so there is always something to compress: recorded drums, bass, keys and the full band, a test tone, or a
 // file of the student's own. No keyboard: the processors work on sounds, not notes.
 // Engine: js/worklet/comp-processor.js. Sounds: js/sources.js. Its graphs: js/compScope.js.
 
@@ -10,7 +10,7 @@ const db = (v, places = 1) => (v > 0.05 ? '+' : '') + v.toFixed(places) + ' dB';
 const ms = (v) => (v < 1 ? v.toFixed(2) : v < 10 ? v.toFixed(1) : Math.round(v)) + ' ms';
 
 export const PARAMS = {
-  // ---- the loop player: a separate unit above the compressor, playing the sound going in
+  // ---- the loop player: a separate unit below the compressor, playing the sound going in
   'src.play':  { type: 'step', ui: 'led', button: 'Play', label: 'Play / Stop', def: 'stop', options: [{ v: 'stop', label: 'Stopped' }, { v: 'play', label: 'Playing' }] },
   'src.sound': { type: 'step', ui: 'choice', label: 'Sound', def: 'drums', options: SOURCES.map((s) => ({ v: s.id, label: s.label })) },
 
@@ -18,7 +18,8 @@ export const PARAMS = {
   'comp.thresh':  { type: 'cont', label: 'Threshold', min: -60, max: 0, def: -20, curve: 'lin', unit: 'dB', fmt: (v) => db(v),
                     marks: [[-60, '−60'], [-40, '−40'], [-20, '−20'], [0, '0']] },
   'comp.ratio':   { type: 'cont', label: 'Ratio', min: 1, max: 20, def: 4, curve: 'log', unit: ':1',
-                    fmt: (v) => (v >= 19.5 ? '20:1 (limiting)' : (v < 10 ? v.toFixed(1) : Math.round(v)) + ':1'),
+                    // from 10:1 a compressor is limiting; 20:1 (the most it goes to) is heavy limiting
+                    fmt: (v) => (v >= 19.5 ? '20:1 (heavy limiting)' : v >= 9.95 ? Math.round(v) + ':1 (limiting)' : v.toFixed(1) + ':1'),
                     marks: [[1, '1'], [2, '2'], [4, '4'], [10, '10'], [20, '20']] },
   'comp.knee':    { type: 'cont', label: 'Knee', min: 0, max: 24, def: 0, curve: 'lin', unit: 'dB',
                     fmt: (v) => (v < 0.5 ? 'hard' : v.toFixed(0) + ' dB soft'), marks: [[0, 'hard'], [12, '12'], [24, '24']] },
@@ -63,6 +64,7 @@ export const NFC1 = {
   brandSub: 'EDUCATIONAL COMPRESSOR',
   skin: 'studio', // one faceplate, like a studio rack unit (each processor type gets its own colour)
   kind: 'processor', // no keyboard: plays a sound through itself
+  lessons: true, // its lessons: studio/js/lessonsC1.js
   module: 'js/worklet/comp-processor.js',
   processor: 'comp-processor',
   card: {

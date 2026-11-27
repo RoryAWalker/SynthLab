@@ -37,11 +37,12 @@ export class ZoomPan {
     const designW = this.stage.offsetWidth;
     const designH = this.stage.offsetHeight;
     // parts marked data-no-fit (the open FX drawer) extend the page instead of shrinking the stage
-    // In lessons the scopes sit under the lesson panel (scroll up to see them), so they don't count either.
+    // In lessons the scopes sit under the lesson panel (scroll up to see them), so they don't count either,
+    // except on the processors (the NF-C1): their screens are half the lesson, so everything fits below it.
     const noFit = [...this.stage.querySelectorAll('[data-no-fit]')];
     const scopes = this.stage.querySelector('.scope-unit');
     const b = document.body.classList;
-    if (b.contains('lesson-mode') && !b.contains('lesson-scopes-visible') && scopes) noFit.push(scopes);
+    if (b.contains('lesson-mode') && !b.contains('lesson-scopes-visible') && !b.contains('processor') && scopes) noFit.push(scopes);
     const outer = (el) => { const cs = getComputedStyle(el); return el.offsetHeight + parseFloat(cs.marginTop) + parseFloat(cs.marginBottom); };
     const extra = noFit.reduce((s, el) => s + (el.offsetParent ? outer(el) : 0), 0);
     const oldScale = this.scale;

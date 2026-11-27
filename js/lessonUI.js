@@ -2,14 +2,21 @@
 // Challenge types (see lessons.js): match (hear a target and match it), goal (do something,
 // the result is checked) and question (try something, then choose the right answer).
 
-import { LESSONS as NF1_LESSONS, patchMatches, soundMatches, closeness, osc1Hz } from './lessons.js';
+import { LESSONS as NF1_LESSONS, patchMatches, soundMatches, closeness, patchCloseness, osc1Hz } from './lessons.js';
 import { MOD_LESSONS } from './lessonsModular.js';
 import { NF3_LESSONS } from './lessonsNiniFoog.js';
 import { RACK_LESSONS } from './lessonsRack.js';
 import { defaultPatch, ALL_SECTIONS, SYNTH } from './params.js';
+import { EXT } from './lab.js';
 
-// each synth with lessons has its own set
-const LESSONS = { nfm: MOD_LESSONS, nf3: NF3_LESSONS, nfmod: RACK_LESSONS }[SYNTH.id] || NF1_LESSONS;
+// each synth with lessons has its own set (a lab in its own folder, like StudioLab, brings its own)
+const LESSONS = (EXT.lessons && EXT.lessons[SYNTH.id]) || { nfm: MOD_LESSONS, nf3: NF3_LESSONS, nfmod: RACK_LESSONS }[SYNTH.id] || NF1_LESSONS;
+// The processors (the NF-C1) have no keyboard: a loop plays through them all the time. Their
+// targets are settings heard on the loop, answers are checked as the controls move (and, for
+// goals about what the meters show, several times a second), and a lesson can open single
+// controls (challenge.controls) rather than whole sections.
+const PROC = !!SYNTH.kind;
+const PROC_LISTEN_MS = 4000; // how long a processor's target plays
 const INDEX_KEY = SYNTH.id === 'nf1' ? 'sl.lessonIndex' : `sl.lessonIndex.${SYNTH.id}`;
 import { Fireworks, Smiley, finale } from './fireworks.js';
 
@@ -65,6 +72,8 @@ export class LessonController {
 
     // the Hint button appears when the student seems stuck
     setInterval(() => this.maybeOfferHint(), 1000);
+    // the processors' goals depend on what the meters show, which changes as the loop plays
+    if (PROC) setInterval(() => { if (this.mode === 'lessons' && this.index >= 0 && this.type !== 'match') this.check(); }, 250);
   }
 
   get lesson() { return LESSONS[this.lessonIndex]; }
@@ -89,6 +98,7 @@ export class LessonController {
       this.d.scope.clearTarget();
       this.d.keyboard.markTarget(null);
       ALL_SECTIONS.forEach((s) => this.d.lockSection(s.id, false));
+      if (this.d.lockControls) this.d.lockControls(null);
       if (this.freePatch) this.d.setPatch(this.freePatch);
     }
     if (this.d.onModeChange) this.d.onModeChange(mode);
@@ -106,6 +116,7 @@ export class LessonController {
   // so they can carry on playing it under the fireworks
   showIntro(keep = false) {
     this.index = -1;
+    this.chScopes = undefined;
     this.runId = (this.runId || 0) + 1;
     this.busy = false;
     document.body.classList.remove('auditioning');
@@ -114,7 +125,7 @@ export class LessonController {
     // the intro shows the lesson's starting point (NF-1: Init, with only Oscillator 1 open)
     if (!keep) {
       this.lockFor(this.lesson.introUnlocked || ['osc1']);
-      this.d.setPatch(this.lesson.base || {});
+      this.d.setPatch(this.withLoop(this.lesson.base || {}));
     }
     // Scopes: the NF-1's lessons (no 'scopes' setting) show them in full, since matching by ear
     // leans on them. The NF-MiniModular's lessons choose: false = off, true = on, under the panel.
@@ -168,9 +179,17 @@ export class LessonController {
     this.lowNote = Infinity; this.highNote = -Infinity; // range of notes played in this challenge
     const ch = this.challenge;
     this.target = this.makeTarget(ch);
-    this.lockFor(ch.unlocked);
+    this.lockFor(ch.unlocked, ch.controls);
+    // a challenge can turn the screens off for itself (the NF-C1's matches: by ear, not by eye;
+    // the Scopes button still opens them). The next challenge goes back to the lesson's setting.
+    if (this.d.showScopes && (ch.scopes !== undefined || this.chScopes !== undefined)) {
+      const sc = ch.scopes !== undefined ? ch.scopes : this.lesson.scopes;
+      this.d.showScopes(sc !== false, sc === undefined);
+    }
+    this.chScopes = ch.scopes;
     this.d.keyboard.markTarget(ch.showKey ? this.target.note : null);
-    if (!(carry && this.lesson.carry)) this.d.setPatch(this.startOverrides);
+    if (PROC) this.d.ensureAudio();
+    if (!(carry && this.lesson.carry)) this.d.setPatch(this.withLoop(this.startOverrides));
     else if (this.challenge.set) this.d.setPatch({ ...this.d.getPatch(), ...this.challenge.set });
     this.d.scope.clearTarget();
 
@@ -226,13 +245,24 @@ export class LessonController {
     return t;
   }
 
-  lockFor(unlocked) {
+  lockFor(unlocked, controls = null) {
     ALL_SECTIONS.forEach((s) => this.d.lockSection(s.id, !unlocked.includes(s.id)));
+    if (this.d.lockControls) this.d.lockControls(controls);
+  }
+
+  // The processors: a challenge's settings keep the loop going, on the challenge's sound or, if it
+  // names none, on whatever the student is listening to (the Loop Player is always theirs to use).
+  withLoop(p) {
+    if (!PROC) return p;
+    const now = this.d.getPatch();
+    const sound = p['src.sound'] || now['src.sound'];
+    // the loop plays during a challenge; the lesson's start screen is quiet (Start begins it)
+    return { ...p, 'src.sound': sound, 'src.play': this.mode === 'lessons' && this.index >= 0 ? 'play' : 'stop' };
   }
 
   resetControls() {
     if (this.busy || this.index < 0) return;
-    this.d.setPatch(this.startOverrides);
+    this.d.setPatch(this.withLoop(this.startOverrides));
     this.check();
   }
 
@@ -246,6 +276,20 @@ export class LessonController {
     const { engine, scope, keyboard } = this.d;
     keyboard.releaseAll();
     await this.d.ensureAudio();
+    if (PROC) {
+      // the loop plays through the target settings for a few seconds, then through the student's
+      const now = this.d.getPatch();
+      scope.frozen = false;
+      engine.setPatch({ ...this.target.patch, 'src.sound': now['src.sound'], 'src.play': 'play' });
+      if (scope.captureTarget) scope.captureTarget(this.target.patch);
+      await wait(PROC_LISTEN_MS);
+      if (run !== this.runId) return;
+      engine.setPatch(this.d.getPatch());
+      this.busy = false;
+      document.body.classList.remove('auditioning');
+      if (!this.solved) this.setStatus('Your turn', 'turn');
+      return;
+    }
     engine.allOff();
     scope.frozen = false;
     document.getElementById('hold-btn').classList.remove('on');
@@ -287,7 +331,8 @@ export class LessonController {
 
   state() {
     const patch = this.d.getPatch();
-    return { patch, note: this.lastNote, held: this.held > 0, heldCount: this.held, notes: this.notesPlayed || 0, f0: osc1Hz(patch, this.lastNote), lowNote: this.lowNote, highNote: this.highNote };
+    // live: the processors' measurements (playing, gain reduction, levels in and out), see main.js
+    return { patch, note: this.lastNote, held: this.held > 0, heldCount: this.held, notes: this.notesPlayed || 0, f0: osc1Hz(patch, this.lastNote), lowNote: this.lowNote, highNote: this.highNote, live: this.d.measure ? this.d.measure() : null };
   }
 
   check() {
@@ -295,7 +340,9 @@ export class LessonController {
     this.updateHintBar();
     if (this.solved) return;
     const ch = this.challenge;
-    if (this.type === 'match') {
+    if (this.type === 'match' && PROC) {
+      if (patchMatches(this.d.getPatch(), this.target.patch, ch.compare)) this.success('Matched!');
+    } else if (this.type === 'match') {
       if (this.lastNote == null) return;
       if (soundMatches(this.d.getPatch(), this.lastNote, this.target.patch, this.target.note, ch.compare)) this.success('Matched!');
     } else if (this.type === 'goal') {
@@ -368,7 +415,10 @@ export class LessonController {
   renderQuestion(q) {
     const wrap = $('lb-question');
     wrap.hidden = false;
-    q.options.forEach((opt) => {
+    // in a random order each time, so the right answer is not always in the same place
+    const opts = [...q.options];
+    for (let i = opts.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [opts[i], opts[j]] = [opts[j], opts[i]]; }
+    opts.forEach((opt) => {
       const b = document.createElement('button');
       b.className = 'lb-answer';
       b.textContent = opt.text;
@@ -434,11 +484,13 @@ export class LessonController {
   updateHintBar() {
     if (!this.hintShown || $('lb-heat').hidden || this.index < 0) return;
     let v = 0;
-    if (this.type === 'match') {
+    if (this.type === 'match' && PROC) {
+      v = patchCloseness(this.d.getPatch(), this.target.patch, this.challenge.compare);
+    } else if (this.type === 'match') {
       v = closeness(this.d.getPatch(), this.lastNote, this.target.patch, this.target.note, this.challenge.compare);
     } else if (this.challenge.progress && !(this.type === 'question' && this.revealed)) {
       const s = this.state();
-      v = s.note == null ? 0 : this.challenge.progress(s);
+      v = s.note == null && !PROC ? 0 : this.challenge.progress(s);
     }
     v = Math.max(0, Math.min(1, v || 0));
     $('lb-heat-fill').style.width = `${Math.round(v * 100)}%`;

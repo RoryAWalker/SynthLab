@@ -277,6 +277,7 @@ function ensureAudio() {
 function onKnob(id, value) {
   const before = { ...patch };
   patch[id] = value;
+  restartMeasure(); // the meters start again (see measure)
   // a control that moves another (e.g. Osc 3 Frequency snapping to 0 when Osc 3 becomes an oscillator)
   const extra = SYNTH.linked && SYNTH.linked(id, before, patch);
   if (extra) for (const k in extra) { if (patch[k] !== extra[k]) { onKnob(k, extra[k]); if (knobs[k]) knobs[k].set(extra[k]); } }
@@ -300,12 +301,49 @@ function refreshScales() {
 
 function setPatch(p) {
   patch = { ...defaultPatch(), ...p };
+  restartMeasure(); // the meters start again (see measure)
   refreshScales();
   for (const id in knobs) knobs[id].set(patch[id]);
   engine.setPatch(patch);
   if (PROC) sendSource();
   if (help) help.refresh();
   if (cables) cables.redraw();
+}
+
+// A lesson can open single controls in an unlocked section (the NF-C1: one pot at a time). null
+// opens them all again. The Loop Player's controls are never locked: the student chooses the sound.
+function lockControls(ids) {
+  for (const id in knobs) {
+    if (id.startsWith('src.')) continue;
+    const locked = !!ids && !ids.includes(id);
+    knobs[id].el.classList.toggle('ctl-locked', locked);
+    knobs[id].el.querySelectorAll('.knob, button').forEach((k) => (k.tabIndex = locked ? -1 : 0));
+  }
+}
+
+// What the NF-C1's meters have shown over the last two seconds, for lessons that ask for, say,
+// "about 6 dB of gain reduction": playing, peak and average gain reduction (dB), and the average
+// level in and out (dBFS, before the listening level). Only since the last change of setting, and
+// only once the meters have had 1.5 s to settle: until then it reports nothing (not playing), so
+// a goal can't be passed on readings left over from before (Bypass pressed in the last challenge,
+// or the compressor still releasing the last challenge's gain reduction).
+let measureSince = 0;
+// (a function declaration, safe to call while the page is still starting up, before scope exists)
+function restartMeasure() { try { measureSince = scope && scope.n !== undefined ? scope.n : 0; } catch { /* not started yet */ } }
+function measure() {
+  if (!scope || !scope.inp) return null;
+  const rate = scope.rate || 375, since = scope.n - measureSince;
+  if (since < 1.5 * rate) return { playing: false, settling: true, grMax: 0, grAvg: 0, inDb: -120, outDb: -120, bypassed: patch['comp.bypass'] === 'on' };
+  // (the first 0.75 s after a change is left out: the compressor is still letting go of the old setting)
+  const live = engine.live || {}, frames = Math.min(since - Math.round(0.75 * rate), Math.round(2 * rate));
+  let grMax = 0, grSum = 0, pin = 0, pout = 0;
+  for (let a = 0; a < frames; a++) {
+    const k = (scope.n - 1 - a + scope.cap) % scope.cap;
+    grMax = Math.max(grMax, scope.gr[k]); grSum += scope.gr[k];
+    pin += Math.pow(10, scope.inp[k] / 10); pout += Math.pow(10, scope.out[k] / 10);
+  }
+  const db = (pw) => (frames && pw > 0 ? 10 * Math.log10(pw / frames) : -120);
+  return { playing: !!(engine.running && live.playing && patch['src.play'] === 'play'), grMax, grAvg: frames ? grSum / frames : 0, inDb: db(pin), outDb: db(pout), bypassed: patch['comp.bypass'] === 'on' };
 }
 
 function lockSection(id, locked = true) {
@@ -666,6 +704,7 @@ if (fxTab) fxTab.addEventListener('click', () => setFxOpen(!fxDrawer.classList.c
 let celebrateTimer = 0;
 lesson = new LessonController({
   getPatch: () => ({ ...patch }), setPatch, engine, scope, keyboard, lockSection, ensureAudio,
+  lockControls: SYNTH.PLAYER ? lockControls : null, measure: SYNTH.PLAYER ? measure : null,
   onModeChange: (mode) => {
     document.querySelectorAll('#mode-switch button').forEach((b) => b.classList.toggle('on', b.dataset.mode === mode));
     // each lesson chooses whether the scopes start on (showScopes below); Free play restores your setting
@@ -682,7 +721,8 @@ lesson = new LessonController({
       fit();
       const synthTop = document.querySelector('.synth').getBoundingClientRect().top + window.scrollY;
       const pinned = document.querySelector('.appbar').offsetHeight + lessonWrap.offsetHeight;
-      window.scrollTo(0, on && !visible ? Math.max(0, synthTop - pinned - 12) : 0);
+      // (the processors fit everything below the lesson panel: no scrolling)
+      window.scrollTo(0, on && !visible && !PROC ? Math.max(0, synthTop - pinned - 12) : 0);
     });
   },
   // A success: bring the screens into view so the smiley is seen, then put things back
@@ -690,6 +730,8 @@ lesson = new LessonController({
   celebrate: (seconds, restore = true) => {
     if (maxMods && maxMods.on) { smileyPop(); return; }
     const wasHidden = document.body.classList.contains('scopes-hidden');
+    // (the processors: everything is fitted on screen; opening hidden screens would resize it all)
+    if (PROC) return;
     const y = window.scrollY;
     if (wasHidden) setScopes(true, false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -736,6 +778,9 @@ document.getElementById('btn-synths').addEventListener('click', () => startMenu.
 const lessonWrap = document.getElementById('lesson-wrap');
 // (with the modules maximised they always fit the room left below it, whatever its height)
 if (maxMods) new ResizeObserver(() => { if (maxMods.on) fit(); }).observe(lessonWrap);
+// The processors (NF-C1): in lessons the screens, the player and the unit all fit below the lesson
+// panel, so nothing needs scrolling; the panel grows and shrinks (a question, a hint), so re-fit.
+if (PROC) new ResizeObserver(() => { if (document.body.classList.contains('lesson-mode')) { fit(); window.scrollTo(0, 0); } }).observe(lessonWrap);
 
 // ---- modular synths: cables over the panel, and lamps by the output jacks ----
 // The NF-Modular's Output has an Overload light: it glows while the output limiter is working
@@ -834,7 +879,7 @@ function buildLoadButton() {
   return wrap;
 }
 
-// The loop player (NF-C1): a separate slim unit above the processor, playing the sound that goes
+// The loop player (NF-C1): a separate slim unit racked below the processor, playing the sound that goes
 // into it: Play, a display (what is playing, how far through the loop), the sounds, Load your own.
 function buildPlayer() {
   const P = SYNTH.PLAYER;
@@ -848,7 +893,7 @@ function buildPlayer() {
   sections[P.id] = face;
   display.before(makeControl(P.play, {}));
   display.after(makeControl(P.sound, {}), buildLoadButton());
-  document.querySelector('#stage > .synth').before(unit);
+  document.querySelector('#stage > .synth').after(unit);
   // the display follows what the engine is playing
   const state = display.querySelector('.pd-state'), now = display.querySelector('.pd-now'), bar = display.querySelector('.pd-bar i');
   let shown = '';
