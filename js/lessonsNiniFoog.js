@@ -7,9 +7,18 @@ import { lfoHz } from './synths/nf3.js';
 
 const lfoKnob = (hz) => 14 * Math.log(hz / 0.1) / Math.log(200) - 7; // Osc 3 LFO speed -> Frequency knob
 const played = (s) => s.note != null;
+// Cutoff sits on harmonic h of Osc. 1 (within a semitone and a half). With both Keyboard Controls on the
+// filter tracks the keyboard from middle C, so this holds on every note.
+const onHarmonic = (p, h) => Math.abs(12 * Math.log2(p['filt.cutoff'] / (h * 261.63 * Math.pow(2, p['osc1.range'])))) <= 1.5;
 const mixSum = (p) => p['mix.osc1'] + p['mix.osc2'] + p['mix.osc3'];
+const allOscs = (p, ok) => ok(p['mix.osc1']) && ok(p['mix.osc2']) && ok(p['mix.osc3']);
 const share = (...bits) => bits.filter(Boolean).length / bits.length;
-const ALL = ['ctrl', 'oscmod', 'oscs', 'mix', 'filtsw', 'mods', 'perf'];
+const FX = ['chorus', 'delay', 'reverb'];
+const ALL = ['ctrl', 'oscmod', 'oscs', 'mix', 'filtsw', 'mods', 'perf', ...FX]; // the FX are never needed, but there is no reason to lock them
+const sirenSpeed = (p) => lfoHz(p['osc3.freq']) >= 0.5 && lfoHz(p['osc3.freq']) <= 1.5;
+const longDecay = (p) => p['aenv.d'] >= 2 && p['perf.decay'] === 'on';
+// a ready-made gliding lead, to finish with effects
+const LEAD = { 'osc2.freq': 0.1, 'osc3.range': 0, 'osc3.ctrl': 'on', 'osc3.wave': 'saw', 'osc3.freq': -0.08, 'osc.mod': 'off', 'mix.osc1': 0.8, 'mix.osc2': 0.7, 'mix.osc3': 0.6, 'filt.cutoff': 1500, 'filt.res': 0.45, 'filt.env': 0.3, 'filt.kb1': 'on', 'filt.kb2': 'on', 'perf.glideon': 'on', 'ctrl.glide': 0.08, 'perf.decay': 'on', 'aenv.d': 0.5, 'aenv.s': 0.9 };
 
 // starting points
 const OSC3_NOTE = { 'osc3.ctrl': 'on', 'osc3.range': 0, 'osc3.freq': 0, 'osc.mod': 'off' }; // Osc 3 playing a note, not modulating
@@ -285,11 +294,11 @@ export const NF3_LESSONS = [
     challenges: [
       {
         type: 'goal', title: 'Light the Overload',
-        text: 'Turn all three oscillators up (adding up to at least 1.8 in the Mixer) and Feedback past halfway, then hold a note: the Overload light by Feedback glows.',
+        text: 'In the Mixer, turn all three oscillators up to 6 or more and Feedback past halfway, then hold a note: the Overload light by Feedback glows.',
         unlocked: ALL,
         make: (c) => ({ start: { ...THREE, 'mix.osc1': 0.5, 'mix.osc2': 0.5, 'mix.osc3': 0.5 }, note: c.note }),
-        check: (s) => mixSum(s.patch) >= 1.8 && s.patch['mix.feedback'] >= 0.5 && s.held,
-        progress: (s) => share(mixSum(s.patch) >= 1.8, s.patch['mix.feedback'] >= 0.5, s.held),
+        check: (s) => allOscs(s.patch, (v) => v >= 0.6) && s.patch['mix.feedback'] >= 0.5 && s.held,
+        progress: (s) => share(allOscs(s.patch, (v) => v >= 0.6), s.patch['mix.feedback'] >= 0.5, s.held),
         hint: 'Mixer: Osc. 1, 2 and 3 to about 7 each, Feedback past 5. Hold a key and watch the light.',
       },
       {
@@ -310,12 +319,12 @@ export const NF3_LESSONS = [
       },
       {
         type: 'goal', title: 'A controlled growl',
-        text: 'Find a growl without going all the way: Feedback between 25% and 45%, the three oscillators adding up to no more than 1.6, and Cutoff below 2 kHz. Play.',
+        text: 'Find a growl without going all the way: in the Mixer, bring all three oscillators down to 5 or lower and set Feedback between 2.5 and 4.5. Cutoff below 2 kHz. Play.',
         unlocked: ALL,
         make: (c) => ({ start: { ...THREE }, note: c.note }),
-        check: (s) => s.patch['mix.feedback'] >= 0.25 && s.patch['mix.feedback'] <= 0.45 && mixSum(s.patch) <= 1.6 && s.patch['filt.cutoff'] <= 2000 && played(s),
-        progress: (s) => share(s.patch['mix.feedback'] >= 0.25 && s.patch['mix.feedback'] <= 0.45, mixSum(s.patch) <= 1.6, s.patch['filt.cutoff'] <= 2000),
-        hint: 'Feedback around 3.5 on its scale. Oscillators around 5 each. Cutoff below 2 kHz.',
+        check: (s) => s.patch['mix.feedback'] >= 0.25 && s.patch['mix.feedback'] <= 0.45 && allOscs(s.patch, (v) => v <= 0.5) && mixSum(s.patch) >= 0.6 && s.patch['filt.cutoff'] <= 2000 && played(s),
+        progress: (s) => share(s.patch['mix.feedback'] >= 0.25 && s.patch['mix.feedback'] <= 0.45, allOscs(s.patch, (v) => v <= 0.5), s.patch['filt.cutoff'] <= 2000),
+        hint: 'Feedback around 3.5 on its scale. Oscillators at about 4 or 5 each. Cutoff below 2 kHz.',
       },
       {
         type: 'question', title: 'Feedback on its own',
@@ -341,7 +350,7 @@ export const NF3_LESSONS = [
   {
     id: 'nf3-filter', number: 5, title: 'The Filter as an Instrument',
     summary: 'Turn the Emphasis up until the filter sings on its own, then use Keyboard Control to play it in tune.',
-    doneText: 'You made the filter whistle with no oscillators at all, played it in tune with the keyboard, heard half-tracking, and kept a sound\'s tone even across the keyboard.',
+    doneText: 'You made the filter whistle with no oscillators at all, played it in tune with the keyboard, heard half-tracking, and made the filter sing one harmonic all the way up the keyboard.',
     introUnlocked: [], scopes: true,
     challenges: [
       {
@@ -379,13 +388,13 @@ export const NF3_LESSONS = [
         },
       },
       {
-        type: 'goal', title: 'Even tone',
-        text: 'Back to a normal sound: Osc. 1 up in the Mixer, Emphasis below 40%, Cutoff Frequency around 600 Hz (300 Hz to 1 kHz), both Keyboard Controls on. Play notes two octaves apart: high notes are no duller than low ones.',
-        unlocked: ALL,
-        make: (c) => ({ start: { 'mix.osc1': 0, 'filt.res': 1 }, note: c.note }),
-        check: (s) => s.patch['mix.osc1'] >= 0.4 && s.patch['filt.res'] <= 0.4 && s.patch['filt.cutoff'] >= 300 && s.patch['filt.cutoff'] <= 1000 && s.patch['filt.kb1'] === 'on' && s.patch['filt.kb2'] === 'on' && s.highNote - s.lowNote >= 24,
-        progress: (s) => share(s.patch['mix.osc1'] >= 0.4, s.patch['filt.res'] <= 0.4, s.patch['filt.cutoff'] >= 300 && s.patch['filt.cutoff'] <= 1000, s.patch['filt.kb1'] === 'on' && s.patch['filt.kb2'] === 'on', s.highNote - s.lowNote >= 24),
-        hint: 'Mixer Osc. 1 up; Emphasis down; Cutoff about 600 Hz; both Keyboard Control switches on; play a low C and the C two octaves up.',
+        type: 'goal', title: 'Sing a harmonic',
+        text: 'Emphasis can pick out one harmonic of a note. Osc. 1 is a sawtooth at 8′. Set Emphasis between 7 and 9 (singing, but not whistling on its own), hold middle C and tune Cutoff Frequency to its 4th harmonic, two octaves up (about 1 kHz): watch that peak jump out on the Spectrum. Then switch both Keyboard Controls on and play notes at least five keys apart: the filter follows, singing the same harmonic on every note.',
+        unlocked: ALL, showKey: true,
+        make: () => ({ start: { 'mix.osc1': 0.8, 'mix.osc2': 0, 'mix.osc3': 0, 'osc1.range': 0, 'osc1.wave': 'saw', 'filt.res': 0.3, 'filt.cutoff': 300, 'filt.kb1': 'off', 'filt.kb2': 'off' }, note: 60 }),
+        check: (s) => s.patch['mix.osc1'] >= 0.4 && onHarmonic(s.patch, 4) && s.patch['filt.res'] >= 0.7 && s.patch['filt.res'] <= 0.92 && s.patch['filt.kb1'] === 'on' && s.patch['filt.kb2'] === 'on' && s.highNote - s.lowNote >= 5,
+        progress: (s) => share(s.patch['filt.res'] >= 0.7 && s.patch['filt.res'] <= 0.92, onHarmonic(s.patch, 4), s.patch['filt.kb1'] === 'on' && s.patch['filt.kb2'] === 'on', s.highNote - s.lowNote >= 5),
+        hint: 'Emphasis about 8. Hold the marked C and turn Cutoff slowly up from 500 Hz: the 4th harmonic rings out near 1 kHz. Then both Keyboard Control switches on, and play.',
       },
     ],
   },
@@ -393,8 +402,8 @@ export const NF3_LESSONS = [
   // ---------------------------------------------------------------------------------------
   {
     id: 'nf3-recipes', number: 6, title: 'Classic Recipes',
-    summary: 'Build four classic NiniFoog sounds from what you have learnt. Each is checked by its ingredients, not exact knob positions, so your version can be your own.',
-    doneText: 'You built a three-oscillator bass, a gliding lead, a siren and the wind. These recipes are the starting points for hundreds of classic synth sounds.',
+    summary: 'Build four classic NiniFoog sounds from what you have learnt, then finish one with effects. Each is checked by its ingredients, not exact knob positions, so your version can be your own.',
+    doneText: 'You built a three-oscillator bass, a gliding lead, an ambulance siren and the wind, and finished a lead with effects. These recipes are the starting points for hundreds of classic synth sounds.',
     introUnlocked: [], scopes: true,
     challenges: [
       {
@@ -412,26 +421,35 @@ export const NF3_LESSONS = [
         unlocked: ALL,
         make: (c) => ({ start: {}, note: c.note }),
         check: (s) => s.patch['perf.glideon'] === 'on' && s.patch['ctrl.glide'] >= 0.05 && s.patch['ctrl.glide'] <= 0.4 && s.patch['mix.osc2'] >= 0.4 && Math.abs(s.patch['osc2.freq']) >= 0.03 && Math.abs(s.patch['osc2.freq']) <= 0.3 && s.patch['filt.cutoff'] >= 1500 && s.highNote - s.lowNote >= 5,
-        progress: (s) => share(s.patch['perf.glideon'] === 'on', s.patch['ctrl.glide'] >= 0.05 && s.patch['ctrl.glide'] <= 0.4, s.patch['mix.osc2'] >= 0.4, Math.abs(s.patch['osc2.freq']) >= 0.03 && Math.abs(s.patch['osc2.freq']) <= 0.3, s.highNote - s.lowNote >= 5),
+        progress: (s) => share(s.patch['perf.glideon'] === 'on', s.patch['ctrl.glide'] >= 0.05 && s.patch['ctrl.glide'] <= 0.4, s.patch['mix.osc2'] >= 0.4, Math.abs(s.patch['osc2.freq']) >= 0.03 && Math.abs(s.patch['osc2.freq']) <= 0.3, s.patch['filt.cutoff'] >= 1500, s.highNote - s.lowNote >= 5),
         hint: 'The Glide switch is left of the keys; the Glide time knob is in Controllers.',
       },
       {
         type: 'goal', title: 'Siren',
-        text: 'Oscillator 3 as a very slow triangle (1 Hz or less) on the pitch, with the mod wheel fully up. Hold a note.',
+        text: 'An ambulance: Oscillator 3 as a square-wave LFO on the pitch flips between two notes. Set Osc. 3 Waveform to square, its Frequency between 0.5 and 1.5 Hz, and the mod wheel about a quarter up (the two notes a fourth or fifth apart). Put Oscillator 1 up high, at 2′. Hold a note.',
         unlocked: ALL,
-        make: (c) => ({ start: {}, note: c.note }),
-        check: (s) => s.patch['osc3.range'] === -7 && s.patch['osc3.ctrl'] === 'off' && s.patch['osc.mod'] === 'on' && s.patch['osc3.wave'] === 'tri' && lfoHz(s.patch['osc3.freq']) <= 1 && s.patch['perf.mod'] >= 0.8 && s.held,
-        progress: (s) => share(s.patch['osc.mod'] === 'on', lfoHz(s.patch['osc3.freq']) <= 1, s.patch['perf.mod'] >= 0.8, s.held),
-        hint: 'Init already has Oscillator 3 as an LFO on the pitch. Slow its Frequency down to under 1 Hz and push the mod wheel all the way up.',
+        make: (c) => ({ start: { 'mix.osc2': 0, 'mix.osc3': 0 }, note: c.note }),
+        check: (s) => s.patch['osc3.range'] === -7 && s.patch['osc3.ctrl'] === 'off' && s.patch['osc.mod'] === 'on' && s.patch['osc3.wave'] === 'square' && sirenSpeed(s.patch) && s.patch['perf.mod'] >= 0.15 && s.patch['perf.mod'] <= 0.35 && s.patch['osc1.range'] === 2 && s.held,
+        progress: (s) => share(s.patch['osc3.wave'] === 'square', sirenSpeed(s.patch), s.patch['perf.mod'] >= 0.15 && s.patch['perf.mod'] <= 0.35, s.patch['osc1.range'] === 2, s.held),
+        hint: 'Init already has Oscillator 3 as an LFO on the pitch. Osc. 3 Waveform: square. Its Frequency: about 1 Hz. Mod wheel: a quarter (about 25%). Oscillator 1 Range: 2′.',
       },
       {
         type: 'goal', title: 'Wind',
-        text: 'No oscillators: pink noise (Noise up past 70%, switch on Pink) through the filter with Emphasis at least 60%, Filter Modulation on with the mod wheel at least halfway, and a slow Attack (0.5 s or more). Hold a note.',
+        text: 'No oscillators: pink noise (Noise up past 70%, switch on Pink) through the filter with Emphasis at least 60%, Filter Modulation on with the mod wheel at least halfway, a slow Attack (0.5 s or more), and a long Decay (2 s or more) with the Decay switch on, so the wind dies away slowly when you let go. Hold a note, then let go.',
         unlocked: ALL,
         make: (c) => ({ start: {}, note: c.note }),
-        check: (s) => mixSum(s.patch) < 0.05 && s.patch['mix.noise'] >= 0.7 && s.patch['mix.noisetype'] === 'pink' && s.patch['filt.res'] >= 0.6 && s.patch['filt.mod'] === 'on' && s.patch['perf.mod'] >= 0.5 && s.patch['aenv.a'] >= 0.5 && s.held,
-        progress: (s) => share(mixSum(s.patch) < 0.05, s.patch['mix.noise'] >= 0.7 && s.patch['mix.noisetype'] === 'pink', s.patch['filt.res'] >= 0.6, s.patch['filt.mod'] === 'on' && s.patch['perf.mod'] >= 0.5, s.patch['aenv.a'] >= 0.5),
-        hint: 'Mixer: oscillators to 0, Noise up, switch to Pink. Emphasis up. Filter Modulation on, mod wheel up. Loudness Contour Attack slow. Try Modulation Mix towards Noise for gusts.',
+        check: (s) => mixSum(s.patch) < 0.05 && s.patch['mix.noise'] >= 0.7 && s.patch['mix.noisetype'] === 'pink' && s.patch['filt.res'] >= 0.6 && s.patch['filt.mod'] === 'on' && s.patch['perf.mod'] >= 0.5 && s.patch['aenv.a'] >= 0.5 && longDecay(s.patch) && played(s),
+        progress: (s) => share(mixSum(s.patch) < 0.05, s.patch['mix.noise'] >= 0.7 && s.patch['mix.noisetype'] === 'pink', s.patch['filt.res'] >= 0.6, s.patch['filt.mod'] === 'on' && s.patch['perf.mod'] >= 0.5, s.patch['aenv.a'] >= 0.5, longDecay(s.patch)),
+        hint: 'Mixer: oscillators to 0, Noise up, switch to Pink. Emphasis up. Filter Modulation on, mod wheel up. Loudness Contour: Attack slow, Decay Time 2 s or more. Decay switch (left of the keys) on. Try Modulation Mix towards Noise for gusts.',
+      },
+      {
+        type: 'goal', title: 'Finishing touches',
+        text: 'Here is a lead like the one you built. Records rarely use a synth dry: open the FX drawer below the keyboard and finish it with Chorus (Amount 3 or more) for width, Delay (Amount 2 or more) for echoes, and Reverb (Amount 2 or more) for space. Play a phrase of a few notes.',
+        unlocked: [...ALL, ...FX],
+        make: () => ({ start: LEAD, note: 67 }),
+        check: (s) => s.patch['fx.chorus'] >= 0.3 && s.patch['fx.delay'] >= 0.2 && s.patch['fx.reverb'] >= 0.2 && s.notes >= 4,
+        progress: (s) => share(s.patch['fx.chorus'] >= 0.3, s.patch['fx.delay'] >= 0.2, s.patch['fx.reverb'] >= 0.2, s.notes >= 4),
+        hint: 'The FX tab is under the keyboard. Each effect has an Amount knob: Chorus, Delay and Reverb. Then play a few notes and listen to the echoes and the tail.',
       },
     ],
   },

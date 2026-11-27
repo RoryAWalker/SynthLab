@@ -2,6 +2,7 @@
 //
 //   Drag from an output to an input (or from an input to an output) to connect them.
 //   Drag a plugged-in cable off an input to move it elsewhere; drop it anywhere else to remove it.
+//   Double-click a plug (either end) to pull that cable out.
 //
 // Each input jack is a patch setting whose value is the output plugged into it ('' = none),
 // so cables save, load and reset with the rest of the patch. Cables are drawn in an SVG
@@ -32,7 +33,7 @@ class JackIn {
     this.id = id;
     this.spec = PARAMS[id];
     this.onChange = onChange;
-    this.el = el('div', 'jack-cell in');
+    this.el = el('div', 'jack-cell in' + (this.spec.audio ? ' audio' : ''));
     this.el.dataset.param = id;
     this.el.dataset.help = id;
     el('div', 'jack-label', this.el).textContent = this.spec.label;
@@ -83,13 +84,13 @@ export class Cables {
       }
       if (id.startsWith('out:')) {
         const out = id.slice(4);
-        const cell = el('div', 'jack-cell out', strip);
-        cell.dataset.help = id;
         const info = SYNTH.OUTPUTS && SYNTH.OUTPUTS[out];
+        const cell = el('div', 'jack-cell out' + (info && info.audio ? ' audio' : ''), strip);
+        cell.dataset.help = id;
         el('div', 'jack-label', cell).textContent = info ? info.label : 'Out';
         const s = el('div', 'socket', cell);
         s.dataset.out = out;
-        el('span', 'jack-lamp', cell);
+        s._lamp = el('span', 'jack-lamp', cell);
         this.outs[out] = s;
         s.addEventListener('pointerdown', (e) => this.startFromOut(e, out));
       } else {
@@ -145,6 +146,7 @@ export class Cables {
     L.setAttribute('height', this.stage.offsetHeight);
     L.replaceChildren();
     const p = this.getPatch();
+    this.markPatched(p);
     for (const id in this.ins) {
       listOf(p[id]).forEach((from, k) => {
         if (!this.outs[from]) return;
@@ -174,8 +176,19 @@ export class Cables {
   }
 
   // ---- dragging ----
+  // Two presses on the same socket in quick succession = a double-click: pull the cable out.
+  // (Detected here rather than with 'dblclick', which a trackpad tap or the redrawn cable can miss.)
+  isDouble(e, key) {
+    const now = performance.now(), last = this.lastPress;
+    this.lastPress = { key, t: now, x: e.clientX, y: e.clientY };
+    if (!last || last.key !== key || now - last.t > 450 || Math.hypot(e.clientX - last.x, e.clientY - last.y) > 12) return false;
+    this.lastPress = null;
+    return true;
+  }
+
   startFromOut(e, out) {
     e.preventDefault(); e.stopPropagation();
+    if (this.isDouble(e, 'out:' + out)) { this.cancel(); this.unplugOut(out); return; }
     this.drag = { want: 'in', from: out, anchor: this.outs[out], colour: '#d8d8d8', at: this.toStage(e.clientX, e.clientY) };
     document.body.classList.add('patching', 'patching-in');
     this.redraw();
@@ -183,6 +196,7 @@ export class Cables {
 
   startFromIn(e, id) {
     e.preventDefault(); e.stopPropagation();
+    if (this.isDouble(e, 'in:' + id)) { this.cancel(); this.unplugIn(id); return; }
     const list = listOf(this.getPatch()[id]);
     const from = list[list.length - 1]; // the most recently plugged-in cable comes out first
     if (from && this.outs[from]) {
@@ -242,6 +256,21 @@ export class Cables {
     this.ins[input].commit(listOf(this.getPatch()[input]).filter((x) => x !== out).join(','));
   }
 
+  // double-click a plug: pull out the most recent cable at that input,
+  // or (at an output) the most recently drawn cable leaving it
+  unplugIn(id) {
+    const list = listOf(this.getPatch()[id]);
+    if (list.length) this.remove(id, list[list.length - 1]);
+    this.redraw();
+  }
+
+  unplugOut(out) {
+    const p = this.getPatch();
+    const ids = Object.keys(this.ins).filter((id) => listOf(p[id]).includes(out));
+    if (ids.length) this.remove(ids[ids.length - 1], out);
+    this.redraw();
+  }
+
   cancel() {
     if (!this.drag) return;
     this.drag = null;
@@ -249,15 +278,30 @@ export class Cables {
     this.redraw();
   }
 
+  // a lamp only where a cable is plugged into the output
+  markPatched(p) {
+    const used = new Set();
+    for (const id in this.ins) listOf(p[id]).forEach((out) => used.add(out));
+    for (const out in this.outs) {
+      const s = this.outs[out], on = used.has(out);
+      if (s._patched === on) continue;
+      s._patched = on;
+      s.parentNode.classList.toggle('patched', on);
+      s._lamp._v = 0; s._lamp._glow = null; // starts dark
+    }
+  }
+
   // light each output socket's lamp with what it is sending (from the sound engine's live state)
   showLevels(outs) {
     for (const id in this.outs) {
+      const s = this.outs[id], lamp = s._lamp;
+      if (!s._patched) continue; // an output with no cable shows no lamp
       const v = outs ? Math.min(1, outs[id] || 0) : 0; // the keyboard's Pitch lamp lights while a key is down
-      const lamp = this.outs[id].parentNode.querySelector('.jack-lamp');
-      if (!lamp) continue;
-      const shown = Math.max(v, (lamp._v || 0) * 0.85); // light quickly, fade slowly
-      lamp._v = shown;
-      lamp.style.setProperty('--glow', shown.toFixed(3));
+      lamp._v = Math.max(v, (lamp._v || 0) * 0.85); // light quickly, fade slowly
+      const glow = lamp._v.toFixed(2);
+      if (glow === lamp._glow) continue; // nothing to redraw
+      lamp._glow = glow;
+      lamp.style.setProperty('--glow', glow);
     }
   }
 }

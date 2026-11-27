@@ -47,10 +47,15 @@ export const OUTPUTS = {
   'seq.gate': { label: 'Gate', module: 'Sequencer' },
   'seq.trig': { label: 'Trig', module: 'Sequencer' },
 };
+// outputs that carry sound (the ring round their socket is coloured to match the audio inputs)
+['vco1.saw', 'vco1.sq', 'vco1.tri', 'vco2.saw', 'vco2.sq', 'vco2.tri', 'noise.white', 'noise.pink', 'noise.col',
+  'mix.out', 'filt.out', 'filt.bp', 'filt.hp', 'ring.out', 'vca1.out', 'vca2.out'].forEach((id) => { OUTPUTS[id].audio = true; });
 const fullName = (out) => (OUTPUTS[out] ? `${OUTPUTS[out].module} ${OUTPUTS[out].label}` : 'nothing');
 // an input can hold several cables (a comma-separated list): their signals are added together
 const jack = (label, def = '') => ({ type: 'jack', label, def,
   fmt: (v) => (v ? 'from ' + String(v).split(',').filter(Boolean).map(fullName).join(' + ') : 'not patched') });
+// an input meant for sound (its socket's ring is the audio colour; the others are the control colour)
+const audioIn = (label, def = '') => ({ ...jack(label, def), audio: true });
 const pick = (id, extra = {}) => ({ ...NF1_PARAMS[id], ...extra });
 const level = (label, def) => ({ type: 'cont', label, min: 0, max: 1, def, curve: 'lin', fmt: fmtPct });
 const bipolar = (label, def = 0) => ({ type: 'cont', label, min: -1, max: 1, def, curve: 'lin', unit: '%',
@@ -68,7 +73,10 @@ const mixLevel = (label, def) => ({ type: 'cont', label, min: 0, max: 11, def, c
   marks: [[0, '0'], [2, '2'], [4, '4'], [6, '6'], [8, '8'], [10, '10'], [11, '11']] });
 // VCF cutoff: stored in Hz (20 Hz - 20 kHz, log), shown as a percentage of the knob's travel
 const cutPct = (v) => Math.log(v / 20) / Math.log(1000);
-const env = (n, a, d, s, r) => ({
+// curve: the shape of the stages, switched by clicking the word in the module's title
+// (shown as Exponential, stored as 'curved' so that saved patches still load)
+const env = (n, a, d, s, r, curve) => ({
+  [`env${n}.curve`]: { type: 'step', ui: 'word', label: `ENV ${n} shape`, def: curve, options: [{ v: 'curved', label: 'Exponential' }, { v: 'linear', label: 'Linear' }] },
   [`env${n}.a`]: pick('aenv.a', { def: a }), [`env${n}.d`]: pick('aenv.d', { def: d }),
   [`env${n}.s`]: pick('aenv.s', { def: s }), [`env${n}.r`]: pick('aenv.r', { def: r }),
 });
@@ -110,8 +118,8 @@ export const PARAMS = {
   'att.a1': bipolar('Amount 1'),
   'att.a2': bipolar('Amount 2'),
 
-  ...env(1, 0.005, 0.3, 0.7, 0.25),
-  ...env(2, 0.005, 0.5, 0.2, 0.3),
+  ...env(1, 0.005, 0.3, 0.7, 0.25, 'curved'),
+  ...env(2, 0.005, 0.5, 0.2, 0.3, 'linear'),
 
   // LFO 1: the classic one, up to 30 Hz, its speed movable by the Rate input
   'lfo.rate': pick('lfo.rate', { def: 5 }),
@@ -151,14 +159,14 @@ export const PARAMS = {
   // envelope on the VCA and a second envelope opening the filter
   'jack.vco1.pitch': jack('Pitch', 'kb.pitch'), 'jack.vco1.fm': jack('FM'), 'jack.vco1.pwm': jack('PWM'), 'jack.vco1.sync': jack('Sync'),
   'jack.vco2.pitch': jack('Pitch', 'kb.pitch'), 'jack.vco2.fm': jack('FM'), 'jack.vco2.pwm': jack('PWM'), 'jack.vco2.sync': jack('Sync'),
-  'jack.mix.in1': jack('In 1', 'vco1.saw'), 'jack.mix.in2': jack('In 2', 'vco2.saw'), 'jack.mix.in3': jack('In 3'), 'jack.mix.in4': jack('In 4'),
-  'jack.filt.in': jack('In', 'mix.out'), 'jack.filt.cv': jack('CV', 'env2.out'), 'jack.filt.key': jack('Key'), 'jack.filt.res': jack('Res'),
-  'jack.ring.a': jack('In A'), 'jack.ring.b': jack('In B'),
-  'jack.vca1.in': jack('In', 'filt.out'), 'jack.vca1.cv': jack('CV', 'env1.out'),
-  'jack.vca2.in': jack('In'), 'jack.vca2.cv': jack('CV'),
+  'jack.mix.in1': audioIn('In 1', 'vco1.saw'), 'jack.mix.in2': audioIn('In 2', 'vco2.saw'), 'jack.mix.in3': audioIn('In 3'), 'jack.mix.in4': audioIn('In 4'),
+  'jack.filt.in': audioIn('In', 'mix.out'), 'jack.filt.cv': jack('Freq', 'env2.out'), 'jack.filt.key': jack('Pitch'), 'jack.filt.res': jack('Res'),
+  'jack.ring.a': audioIn('In A'), 'jack.ring.b': audioIn('In B'),
+  'jack.vca1.in': audioIn('In', 'filt.out'), 'jack.vca1.cv': jack('CV', 'env1.out'),
+  'jack.vca2.in': audioIn('In'), 'jack.vca2.cv': jack('CV'),
   'jack.att.in1': jack('In'), 'jack.att.in2': jack('In'),
   'jack.noise.cv': jack('CV'),
-  'jack.out.in': jack('In', 'vca1.out'),
+  'jack.out.in': audioIn('In', 'vca1.out'),
   'jack.env1.gate': jack('Gate', 'kb.gate'), 'jack.env2.gate': jack('Gate', 'kb.gate'),
   'jack.lfo.gate': jack('Gate'), 'jack.lfo.rate': jack('Rate'), 'jack.lfo2.gate': jack('Gate'), 'jack.lfo2.fm': jack('FM'),
   'jack.sh.in': jack('In'), 'jack.sh.clock': jack('Clock'),
@@ -193,8 +201,8 @@ export const LAYOUT = [
     { id: 'out', title: 'Output', rows: [['out.vol']], jacks: ['jack.out.in'] },
   ],
   [
-    { id: 'env1', title: 'ENV 1', rows: [['env1.a', 'env1.d', 'env1.s', 'env1.r']], jacks: ['jack.env1.gate', 'out:env1.out', 'out:env1.inv'] },
-    { id: 'env2', title: 'ENV 2', rows: [['env2.a', 'env2.d', 'env2.s', 'env2.r']], jacks: ['jack.env2.gate', 'out:env2.out', 'out:env2.inv'] },
+    { id: 'env1', title: 'ENV 1', titleSwitch: 'env1.curve', rows: [['env1.a', 'env1.d', 'env1.s', 'env1.r']], jacks: ['jack.env1.gate', 'out:env1.out', 'out:env1.inv'] },
+    { id: 'env2', title: 'ENV 2', titleSwitch: 'env2.curve', rows: [['env2.a', 'env2.d', 'env2.s', 'env2.r']], jacks: ['jack.env2.gate', 'out:env2.out', 'out:env2.inv'] },
     { id: 'lfo', title: 'LFO', rows: [['lfo.rate', 'lfo.shape', 'lfo.rcv']], jacks: ['jack.lfo.gate', 'jack.lfo.rate', 'out:lfo.out'] },
     // the MFO's two switches share one cell, one above the other
     { id: 'mfo', title: 'MFO', rows: [['lfo2.rate', 'lfo2.shape', 'lfo2.fm', ['lfo2.fmmode', 'lfo2.pol']]], jacks: ['jack.lfo2.gate', 'jack.lfo2.fm', 'out:lfo2.out'] },
@@ -256,6 +264,22 @@ export const PRESETS = {
   'Tremolo Pad': {
     ...cable('vca2.in', 'vca1.out'), ...cable('vca2.cv', 'lfo.out'), ...cable('out.in', 'vca2.out'),
     'vca2.level': 0.6, 'vca2.cv': 0.4, 'lfo.rate': 5, 'lfo.shape': 'sine', 'env1.a': 0.3, 'env1.r': 0.6, 'vcf.cutoff': 1800,
+  },
+  // one low triangle whose pitch falls three octaves in an instant (ENV 2 into Pitch and FM). No keyboard
+  // Pitch, so every key is the same drum; Trig into Sync starts the wave at the same point every time.
+  'Kick': {
+    ...cable('mix.in1', 'vco1.tri'), ...cable('mix.in2', ''), ...cable('vco1.pitch', 'env2.out'), ...cable('vco1.fm', 'env2.out'), ...cable('vco1.sync', 'kb.trig'),
+    ...cable('filt.cv', ''), 'osc1.range': -2, 'osc1.tune': -7, 'osc1.fm': 1, 'mix.l1': 10, 'mix.mode': 'drive',
+    'vcf.cutoff': 3000, 'vcf.res': 0, 'vcf.cv': 0, 'out.vol': 1,
+    'env1.a': 0.001, 'env1.d': 0.27, 'env1.s': 0, 'env1.r': 0.373, 'env2.a': 0.001, 'env2.d': 0.034, 'env2.s': 0, 'env2.r': 0.006,
+  },
+  // noise, plus a metallic clang from two high squares ring-modulated, through the high-pass
+  'Hi-Hat': {
+    ...cable('mix.in1', 'noise.col'), ...cable('mix.in2', 'ring.out'), ...cable('ring.a', 'vco1.sq'), ...cable('ring.b', 'vco2.sq'),
+    ...cable('vco1.pitch', ''), ...cable('vco2.pitch', ''), ...cable('filt.cv', ''), ...cable('vca1.in', 'filt.hp'),
+    'osc1.range': 2, 'osc1.tune': 1.3, 'osc2.range': 2, 'osc2.tune': 6.7, 'noise.colour': 0.5, 'mix.l1': 9, 'mix.l2': 6,
+    'vcf.cutoff': 7500, 'vcf.res': 0.2, 'vcf.cv': 0, 'out.vol': 0.5,
+    'env1.a': 0.001, 'env1.d': 0.1, 'env1.s': 0, 'env1.r': 0.08,
   },
   // two layers with their own envelopes (tone + noise), mixed: the classic analogue snare
   'Snare': {

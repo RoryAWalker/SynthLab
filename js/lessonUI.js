@@ -102,7 +102,9 @@ export class LessonController {
   }
 
   // ---- intro / navigation ---------------------------------------------------------------------
-  showIntro() {
+  // keep: at the end of a lesson, leave the student's last sound (and the controls) alone
+  // so they can carry on playing it under the fireworks
+  showIntro(keep = false) {
     this.index = -1;
     this.runId = (this.runId || 0) + 1;
     this.busy = false;
@@ -110,12 +112,14 @@ export class LessonController {
     this.d.keyboard.markTarget(null);
     this.d.scope.clearTarget();
     // the intro shows the lesson's starting point (NF-1: Init, with only Oscillator 1 open)
-    this.lockFor(this.lesson.introUnlocked || ['osc1']);
-    this.d.setPatch(this.lesson.base || {});
+    if (!keep) {
+      this.lockFor(this.lesson.introUnlocked || ['osc1']);
+      this.d.setPatch(this.lesson.base || {});
+    }
     // Scopes: the NF-1's lessons (no 'scopes' setting) show them in full, since matching by ear
     // leans on them. The NF-MiniModular's lessons choose: false = off, true = on, under the panel.
     const sc = this.lesson.scopes;
-    if (this.d.showScopes && this.mode === 'lessons') this.d.showScopes(sc !== false, sc === undefined);
+    if (!keep && this.d.showScopes && this.mode === 'lessons') this.d.showScopes(sc !== false, sc === undefined);
     const started = this.done.some(Boolean);
     const total = this.lesson.challenges.length;
     const complete = this.done.filter(Boolean).length === total;
@@ -301,13 +305,20 @@ export class LessonController {
     }
   }
 
-  success(label) {
+  success(label, delay = 1500) {
     this.solved = true;
     const done = this.done.slice();
     done[this.index] = true;
     this.progress[this.lesson.id] = done;
     save('nf1.progress', this.progress);
+    // a sound that has just been played gets heard before the congratulations
+    const entered = this.enteredAt;
+    setTimeout(() => { if (this.mode === 'lessons' && this.index >= 0 && this.solved && this.enteredAt === entered) this.celebrate(label, done); }, delay);
+  }
+
+  celebrate(label, done) {
     this.smileys.forEach((s) => s.start());
+    if (this.d.celebrate) this.d.celebrate(3, done.filter(Boolean).length < this.lesson.challenges.length);
     this.renderSteps();
     this.setStatus(label, 'matched');
     const total = this.lesson.challenges.length;
@@ -333,7 +344,7 @@ export class LessonController {
     $('lm-next').classList.toggle('soon', !nextLesson);
     $('lm-replay').textContent = `Replay lesson ${this.lesson.number}`;
     setTimeout(() => { $('lesson-modal').hidden = false; }, 900);
-    this.showIntro();
+    this.showIntro(true);
   }
 
   closeModal() { $('lesson-modal').hidden = true; }
@@ -374,7 +385,7 @@ export class LessonController {
       $('lb-question').querySelectorAll('.lb-answer').forEach((b) => { b.disabled = true; });
       fb.textContent = this.challenge.question.explain;
       fb.className = 'lb-feedback right';
-      this.success('Correct!');
+      this.success('Correct!', 0);
     } else {
       btn.classList.add('wrong');
       btn.disabled = true;

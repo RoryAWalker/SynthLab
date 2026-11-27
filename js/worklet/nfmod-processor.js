@@ -42,8 +42,11 @@ function polyBlep(t, dt) {
   return 0;
 }
 
+// Exponential ('curved'): each sample closes a fixed share of the distance still to go, like a
+// capacitor charging (natural for loudness). Decay and Release are 99% there at the time set.
+// Linear: straight lines, taking exactly the set times. Each envelope can be either.
 class Envelope {
-  constructor() { this.v = 0; this.stage = 0; this.tOn = 0; this.tOff = 0; this.was = 0; }
+  constructor() { this.linear = false; this.relFrom = 0; this.v = 0; this.stage = 0; this.tOn = 0; this.tOff = 0; this.was = 0; }
   // k: this envelope's fixed tolerance times this note's variation (virtual analogue)
   setTimes(a, d, s, r, sr) {
     const k = (this.tol || 1) * (this.jit || 1);
@@ -51,14 +54,16 @@ class Envelope {
     this.aCoef = 1 - Math.exp(-1.466 / (a * sr));
     this.dCoef = 1 - Math.exp(-4.6 / (d * sr));
     this.rCoef = 1 - Math.exp(-4.6 / (r * sr));
+    this.aStep = 1 / (a * sr); this.dStep = 1 / (d * sr); this.rStep = 1 / (r * sr);
     this.s = s;
   }
   // gate: the level at the Gate input this sample
   next(gate) {
     const g = gate > 0.5 ? 1 : 0;
     if (g && !this.was) { this.stage = 1; this.tOn = 0; this.jit = tol(ENV_NOTE_VAR); }
-    else if (!g && this.was && this.stage !== 0) { this.stage = 3; this.tOff = 0; }
+    else if (!g && this.was && this.stage !== 0) { this.stage = 3; this.tOff = 0; this.relFrom = this.v; }
     this.was = g;
+    if (this.linear) return this.nextLinear();
     switch (this.stage) {
       case 1:
         this.v += (1.3 - this.v) * this.aCoef;
@@ -68,6 +73,23 @@ class Envelope {
       case 3:
         this.v += (0 - this.v) * this.rCoef;
         if (this.v < 1e-5) { this.v = 0; this.stage = 0; }
+        break;
+    }
+    return this.v;
+  }
+  nextLinear() {
+    switch (this.stage) {
+      case 1:
+        this.v += this.aStep;
+        if (this.v >= 1) { this.v = 1; this.stage = 2; }
+        break;
+      case 2: // 1 down to Sustain over the Decay time (or up, if Sustain is raised while held)
+        if (this.v > this.s) this.v = Math.max(this.s, this.v - Math.max(0.02, 1 - this.s) * this.dStep);
+        else this.v = Math.min(this.s, this.v + this.dStep);
+        break;
+      case 3:
+        this.v -= this.relFrom * this.rStep;
+        if (this.v <= 1e-5) { this.v = 0; this.stage = 0; }
         break;
     }
     return this.v;
@@ -202,6 +224,7 @@ class NFModProcessor extends AudioWorkletProcessor {
     };
     const has = (k) => J[k].length > 0;
 
+    this.env1.linear = p['env1.curve'] === 'linear'; this.env2.linear = p['env2.curve'] === 'linear';
     this.env1.setTimes(p['env1.a'], p['env1.d'], p['env1.s'], p['env1.r'], sr);
     this.env2.setTimes(p['env2.a'], p['env2.d'], p['env2.s'], p['env2.r'], sr);
     const glideCoef = p['kb.glide'] > 0.0005 ? 1 - Math.exp(-4.6 / (p['kb.glide'] * sr)) : 1;
@@ -353,7 +376,7 @@ class NFModProcessor extends AudioWorkletProcessor {
       o['att.out1'] = lim(has('att.in1') ? read('att.in1') * att1 : att1);
       o['att.out2'] = lim(has('att.in2') ? read('att.in2') * att2 : att2);
 
-      // ---- VCF. Cutoff (moved by CV x CV Amount, and Key at one octave per octave) is the centre;
+      // ---- VCF. Cutoff (moved by Freq x CV Amount, and Pitch at one octave per octave) is the centre;
       // Width puts the low-pass half its value above the centre and the high-pass half below.
       //   LP: 4-pole ladder.  HP: 2-pole state-variable filter A.  BP: HP then a 2-pole low-pass
       //   (state-variable filter B), so it keeps the band between the two cutoffs.
@@ -363,7 +386,7 @@ class NFModProcessor extends AudioWorkletProcessor {
       if (fc > nyq) fc = nyq; else if (fc < 8) fc = 8;
       let fcH = Math.pow(2, centre - halfW);
       if (fcH > nyq) fcH = nyq; else if (fcH < 8) fcH = 8;
-      let res = p['vcf.res'] + read('filt.res');
+      let res = p['vcf.res'] + read('filt.res') * p['vcf.cv']; // CV Amount scales Res as well as Freq
       res = res < 0 ? 0 : res > 1 ? 1 : res;
       const gg = Math.tan(Math.PI * fc / sr);
       const G = gg / (1 + gg), G2 = G * G, G4 = G2 * G2;

@@ -26,6 +26,12 @@ export class ZoomPan {
 
   get scale() { return this.base * this.zoom; }
 
+  // the room there is for the instrument: the window's width, and the height below the top bars
+  avail() {
+    const top = this.vp.getBoundingClientRect().top + window.scrollY;
+    return { w: this.vp.clientWidth - 32, h: Math.max(300, window.innerHeight - top - 20) };
+  }
+
   // Recompute the fitted scale (on load and window resize), keeping the current zoom.
   fit() {
     const designW = this.stage.offsetWidth;
@@ -45,7 +51,8 @@ export class ZoomPan {
     // Maximised scopes: fit the width only and let the page scroll, so the big screens don't
     // shrink the synth's controls below them.
     const fitHeight = !document.body.classList.contains('scopes-max');
-    this.base = Math.min(1, (this.vp.clientWidth - 32) / designW, fitHeight && availH > 300 ? availH / (designH - extra) : 1);
+    const most = document.body.classList.contains('modules-max') ? 2 : 1; // maximised modules may grow past life size
+    this.base = Math.min(most, (this.vp.clientWidth - 32) / designW, fitHeight && availH > 300 ? availH / (designH - extra) : most);
     this.vp.style.height = designH * this.base + 'px';
     if (this.zoom === 1) this.center();
     else { // keep the same point in the middle of the view

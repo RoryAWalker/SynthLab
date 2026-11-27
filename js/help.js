@@ -351,6 +351,10 @@ export const HELP = {
     body: ['Shows the target sound as a dashed amber trace on the oscilloscope and spectrum. Turn it off to match by ear alone.'],
   },
   synths: { title: 'Menu', body: ['Opens the start menu to choose a different synth. Each synth has its own panel, sound and saved patches.'] },
+  midi: {
+    title: 'MIDI keyboard',
+    body: ['A MIDI keyboard is connected and plays the synth: its keys light the keys on screen, and lessons hear them too. On the NiniFoog its pitch bend and mod wheels move the Pitch and Mod wheels.', 'Plug one in at any time (Chrome, Edge or Firefox; Safari has no MIDI). Rest here to see its name.'],
+  },
   scopes: {
     title: 'Scopes',
     body: ['Shows or hides the oscilloscope and spectrum analyser. Hidden, the synth grows to fill the screen; shown, you can see the waveform and harmonics of everything you play, along with the teaching graphs.', 'Lessons that play a target sound switch them on, because the target is drawn on them.'],
@@ -376,6 +380,10 @@ export const HELP = {
   maximise: {
     title: 'Maximise',
     body: ['Makes the oscilloscope and spectrum much bigger, for looking closely at the sound. The keyboard folds away so the synth\'s controls stay in view (your computer keyboard still plays). Press RESTORE to bring the keyboard back.'],
+  },
+  modmax: {
+    title: 'Maximise the modules',
+    body: ['Puts the scopes, keyboard and effects out of sight so the modules can fill the window and are easier to read. The keyboard\'s outputs stay along the bottom so you can still patch them, and your computer keyboard or a MIDI keyboard still plays. In a narrow window the modules also rearrange, if that makes them much bigger.', 'Press Restore to put everything back where it was.'],
   },
   fxtab: { title: 'Effects', body: ['Opens or closes the effects: Chorus, Delay and Reverb. They come after the synth, so the scopes still show the synth\'s own sound.'] },
   zoom: {
@@ -471,10 +479,10 @@ export const HELP_NF3 = {
 
 // Entries for the NF-MiniModular (nfm): its modules, jacks and the controls that differ from the NF-1.
 export const HELP_NFM = {
-  'section:lfo': { title: 'LFO', body: ['A low-frequency oscillator: a wave too slow to hear, used to move other things up and down. Patch its Out into the VCO\'s FM for vibrato, the VCF\'s CV for a wah, or the VCA\'s CV for tremolo.', 'A signal in its Gate input restarts the wave, for example with every key press.'], tip: 'LFO Out into the VCO\'s FM with FM Amount at about 8%: vibrato.' },
+  'section:lfo': { title: 'LFO', body: ['A low-frequency oscillator: a wave too slow to hear, used to move other things up and down. Patch its Out into the VCO\'s FM for vibrato, the VCF\'s Freq for a wah, or the VCA\'s CV for tremolo.', 'A signal in its Gate input restarts the wave, for example with every key press.'], tip: 'LFO Out into the VCO\'s FM with FM Amount at about 8%: vibrato.' },
   'section:osc': { title: 'VCO (Voltage-Controlled Oscillator)', body: ['Makes the raw sound. Its Pitch input sets the note: patch the Keyboard\'s Pitch into it to play tunes. With nothing in Pitch it drones on middle C (moved by Range and Tune).', 'FM bends the pitch with whatever is patched in, by as much as FM Amount allows.'], tip: 'Turn the Waveform knob while holding a note and watch the shape change on the scope.' },
-  'section:filt': { title: 'VCF (Voltage-Controlled Filter)', body: ['A low-pass filter: it lets the low frequencies through and cuts the high ones, making the sound darker or brighter. Patch audio into In and take the filtered sound from Out.', 'Anything patched into CV moves the cutoff, by as much as CV Amount allows.'], tip: 'Turn Resonance up to 60% and sweep Cutoff slowly while holding a note: the harmonics sing out one by one.' },
-  'section:env': { title: 'ENV (Envelope)', body: ['Makes a shape over time each time its Gate input goes high (a key is pressed): it rises (Attack), falls to a level (Decay, Sustain) and, when the key is let go, falls to zero (Release).', 'Patch its Out into the VCA\'s CV to shape the volume, or into the VCF\'s CV to shape the tone.'], tip: 'Short Attack, short Decay, Sustain at 0: a pluck. Long Attack and Release: a slow, swelling pad.' },
+  'section:filt': { title: 'VCF (Voltage-Controlled Filter)', body: ['A low-pass filter: it lets the low frequencies through and cuts the high ones, making the sound darker or brighter. Patch audio into In and take the filtered sound from Out.', 'Anything patched into Freq moves the cutoff, by as much as CV Amount allows.'], tip: 'Turn Resonance up to 60% and sweep Cutoff slowly while holding a note: the harmonics sing out one by one.' },
+  'section:env': { title: 'ENV (Envelope)', body: ['Makes a shape over time each time its Gate input goes high (a key is pressed): it rises (Attack), falls to a level (Decay, Sustain) and, when the key is let go, falls to zero (Release).', 'Patch its Out into the VCA\'s CV to shape the volume, or into the VCF\'s Freq to shape the tone.'], tip: 'Short Attack, short Decay, Sustain at 0: a pluck. Long Attack and Release: a slow, swelling pad.' },
   'section:vca': { title: 'VCA (Voltage-Controlled Amplifier)', body: ['A voltage-controlled amplifier: a volume control worked by a signal instead of a hand. Sound goes into In; whatever is patched into CV opens it.', 'With nothing opening it the VCA is shut and you hear nothing. That is why the Envelope\'s Out goes into its CV: the sound starts and stops with the keys.'], tip: 'Pull the cable out of the VCA\'s CV and turn Level up: the sound plays all the time, with no key held.' },
   'section:out': { title: 'Output', body: ['What you hear. Patch the end of your signal chain (usually the VCA\'s Out) into In.'], tip: 'Patch the VCO\'s Out straight into the Output\'s In to hear the raw oscillator, unfiltered.' },
   'section:kb': { title: 'Keyboard', body: ['The keyboard sends two signals. Pitch says which note is played (patch it into the VCO\'s Pitch). Gate is high while a key is held (patch it into the Envelope\'s Gate).', 'Glide slides the Pitch from one note to the next.'], tip: 'Pull out the cable from Pitch: every key plays the same note. Pull out the one from Gate: no note starts at all.' },
@@ -484,7 +492,7 @@ export const HELP_NFM = {
   'osc1.range': { title: 'Range', body: ['Shifts the oscillator up or down in whole octaves.'], tip: 'Change Range by one step while holding a note: the pitch jumps by an octave, twice or half as fast on the scope.' },
   'osc1.tune': { title: 'Tune', body: ['Tunes the oscillator up or down by up to 7 semitones.'] },
   'osc.fm': { title: 'FM Amount', body: ['How far a signal in the FM input bends the pitch. With the LFO patched in, a little gives vibrato and a lot gives a siren.', 'Patch audio (like the VCO\'s own Out) into FM for harsh, metallic frequency-modulation tones.'], tip: 'With the LFO in FM, try 2-10% for vibrato and over 40% for a siren.' },
-  'filt.cv': { title: 'CV Amount', body: ['How far, and which way, a signal in the CV input moves the cutoff. Positive opens the filter as the signal rises; negative closes it.', 'Try the Envelope\'s Out into CV with a low Cutoff: each note starts bright and gets darker.'], tip: 'With the Envelope in CV, set Cutoff low and CV Amount to +60% for a pluck; try −60% to hear the sweep go the other way.' },
+  'filt.cv': { title: 'CV Amount', body: ['How far, and which way, a signal in the Freq input moves the cutoff. Positive opens the filter as the signal rises; negative closes it.', 'Try the Envelope\'s Out into Freq with a low Cutoff: each note starts bright and gets darker.'], tip: 'With the Envelope in Freq, set Cutoff low and CV Amount to +60% for a pluck; try −60% to hear the sweep go the other way.' },
   'vca.level': { title: 'Level', body: ['Opens the VCA by hand, on top of anything patched into CV. At 0 only the CV opens it; turned up, sound passes all the time (a drone).'] },
   'out.vol': { title: 'Volume', body: ['The overall loudness.'] },
   'aenv.a': { title: 'Attack', body: ['Time for the envelope to rise to full when the Gate goes high.'], tip: 'Set Attack to a second or more and hold a key: the note fades in.' },
@@ -496,7 +504,7 @@ export const HELP_NFM = {
   'jack.osc.pitch': { title: 'VCO: Pitch input', body: ['Sets the note. Patch the Keyboard\'s Pitch here to play tunes. An LFO here makes the pitch wobble; nothing here, and it holds one note.'], tip: 'Pull this cable out and play: every key gives the same note.' },
   'jack.osc.fm': { title: 'VCO: FM input', body: ['Bends the pitch by the signal patched here, scaled by FM Amount.'], tip: 'Patch the LFO\'s Out here and turn FM Amount up a little: vibrato.' },
   'jack.filt.in': { title: 'VCF: In', body: ['The sound to be filtered, usually the VCO\'s Out.'] },
-  'jack.filt.cv': { title: 'VCF: CV input', body: ['Moves the cutoff with the signal patched here, scaled by CV Amount.'], tip: 'Patch the Envelope\'s Out here, set Cutoff low and CV Amount to about +60%.' },
+  'jack.filt.cv': { title: 'VCF: Freq input', body: ['Moves the cutoff with the signal patched here, scaled by CV Amount.'], tip: 'Patch the Envelope\'s Out here, set Cutoff low and CV Amount to about +60%.' },
   'jack.env.gate': { title: 'ENV: Gate input', body: ['Starts the envelope when the signal here goes high, and releases it when it goes low. Usually the Keyboard\'s Gate.'], tip: 'Pull this cable out: the envelope never starts, so the VCA stays shut and you hear nothing.' },
   'jack.vca.in': { title: 'VCA: In', body: ['The sound whose volume the VCA controls, usually the VCF\'s Out.'] },
   'jack.vca.cv': { title: 'VCA: CV input', body: ['Opens the VCA: the higher the signal here, the louder. Usually the Envelope\'s Out.'], tip: 'Patch the LFO\'s Out here instead and turn Level up to half: tremolo. It plays all the time, because the keys no longer open the VCA.' },
@@ -504,10 +512,10 @@ export const HELP_NFM = {
 
   'out:kb.pitch': { title: 'Keyboard: Pitch output', body: ['Which note is played, as a control signal: up one octave on the keyboard, up one step of signal. Drag from here to the VCO\'s Pitch input.'] },
   'out:kb.gate': { title: 'Keyboard: Gate output', body: ['High while a key is held, low when it is let go. Drag from here to the Envelope\'s Gate input.'] },
-  'out:lfo.out': { title: 'LFO: Out', body: ['The slow LFO wave. Drag it to an input (FM, Filter CV, VCA CV) to make that move. The light shows it swinging.'], tip: 'An output can feed several inputs: patch the LFO into the VCO\'s FM and the VCF\'s CV at the same time.' },
+  'out:lfo.out': { title: 'LFO: Out', body: ['The slow LFO wave. Drag it to an input (FM, VCF Freq, VCA CV) to make that move. Once a cable is in it, the light shows it swinging.'], tip: 'An output can feed several inputs: patch the LFO into the VCO\'s FM and the VCF\'s Freq at the same time.' },
   'out:osc.out': { title: 'VCO: Out', body: ['The raw oscillator sound. Usually patched into the VCF\'s In.'] },
   'out:filt.out': { title: 'VCF: Out', body: ['The filtered sound. Usually patched into the VCA\'s In.'] },
-  'out:env.out': { title: 'ENV: Out', body: ['The envelope\'s shape over time. Drag it to the VCA\'s CV to shape volume, or the VCF\'s CV to shape tone.'], tip: 'Patch the Envelope into the VCA\'s CV and also into the VCF\'s CV: one envelope shapes both volume and tone.' },
+  'out:env.out': { title: 'ENV: Out', body: ['The envelope\'s shape over time. Drag it to the VCA\'s CV to shape volume, or the VCF\'s Freq to shape tone.'], tip: 'Patch the Envelope into the VCA\'s CV and also into the VCF\'s Freq: one envelope shapes both volume and tone.' },
   'out:vca.out': { title: 'VCA: Out', body: ['The sound after the VCA. Usually patched into the Output.'] },
 };
 
@@ -539,15 +547,17 @@ const vcoHelp = (n) => {
 const envHelp = (n) => ({
   [`section:env${n}`]: { title: `ENV ${n} (Envelope)`, body: [
     'An ADSR envelope: when its Gate goes high it rises (Attack), falls to a level (Decay, Sustain) and holds there; when the Gate goes low it falls to zero (Release).',
+    'Click the word Exponential or Linear in the title to change the shape of its stages.',
     'Out gives the shape, 0 to 1. Inv gives the same shape upside down, 0 to −1, for sweeps that go down instead of up. There are two envelopes so that, for example, the volume and the filter (or a pitch drop) can have different shapes.'],
-    tip: n === 1 ? 'Out into a VCA\'s CV shapes the volume; Inv into the VCF\'s CV makes each note start dark and open up.' : 'ENV 2 Out into a VCO\'s FM with a short Decay and no Sustain: a percussive pitch drop, the heart of a synth drum.' },
+    tip: n === 1 ? 'Out into a VCA\'s CV shapes the volume; Inv into the VCF\'s Freq makes each note start dark and open up.' : 'ENV 2 Out into a VCO\'s FM with a short Decay and no Sustain: a percussive pitch drop, the heart of a synth drum.' },
+  [`env${n}.curve`]: { title: 'Exponential or Linear', body: ['Click to change the shape of this envelope\'s stages. Exponential always covers the same share of the distance still to go, so it moves fast at first and then eases in, as a capacitor charges: loudness that fades this way sounds natural, so it suits a VCA. Linear moves in straight lines, at a steady speed, taking exactly the times set: good for even sweeps of pitch or filter.'], tip: 'Set Sustain to 0 and a long Decay, then click back and forth while playing: the exponential fade drops away early and lingers; the linear one stays strong and then stops.' },
   [`env${n}.a`]: { title: 'Attack', body: ['Time to rise to full when the Gate goes high. Short: a click or pluck. Long: a slow swell.'] },
   [`env${n}.d`]: { title: 'Decay', body: ['Time to fall from full down to the Sustain level.'], tip: 'With Sustain at 0, Decay alone sets how long a plucked or struck note lasts.' },
   [`env${n}.s`]: { title: 'Sustain', body: ['The level held for as long as the Gate stays high (the key is held). It is a level, not a time.'] },
   [`env${n}.r`]: { title: 'Release', body: ['Time to fall to zero after the Gate goes low (the key is let go).'] },
   [`jack.env${n}.gate`]: { title: `ENV ${n}: Gate input`, body: ['Starts the envelope when the signal here goes high, and releases it when it goes low. Usually the Keyboard\'s Gate, but any signal that rises and falls will do.'], tip: 'Patch a square LFO here: the envelope repeats on its own, like a key being pressed over and over.' },
   [`out:env${n}.out`]: { title: `ENV ${n}: Out`, body: ['The envelope shape, from 0 up to 1 and back.'] },
-  [`out:env${n}.inv`]: { title: `ENV ${n}: Inv (inverted)`, body: ['The envelope turned upside down, from 0 down to −1. Wherever Out would push something up, Inv pushes it down.'], tip: 'Inv into the VCF\'s CV with Cutoff high: each note starts muffled and brightens as it fades, the reverse of a pluck.' },
+  [`out:env${n}.inv`]: { title: `ENV ${n}: Inv (inverted)`, body: ['The envelope turned upside down, from 0 down to −1. Wherever Out would push something up, Inv pushes it down.'], tip: 'Inv into the VCF\'s Freq with Cutoff high: each note starts muffled and brightens as it fades, the reverse of a pluck.' },
 });
 const vcaHelp = (n) => ({
   [`vca${n}.level`]: { title: `VCA ${n}: Level`, body: ['Opens the VCA by hand. At 0 only the CV opens it; turned up, the signal passes all the time, even with no key held.'] },
@@ -560,13 +570,13 @@ export const HELP_NFMOD = {
   ...vcoHelp(1), ...vcoHelp(2), ...envHelp(1), ...envHelp(2), ...vcaHelp(1), ...vcaHelp(2),
 
   // ---- patching on this synth
-  fadedcables: { title: 'Patch cables', body: ['See-through cables makes every cable faint so the knobs underneath are easy to see; cables near the mouse fade by themselves anyway, and the plugs at each end always stay visible.', 'Drag from an output (on a dark plate) to an input to connect them. An output can feed many inputs. On the NF-Modular an input can also take several cables (up to four): their signals are simply added together, like a small built-in mixer. Pick a cable up from an input to move it; the most recent one comes out first.', 'Adding signals is usually what you want: two VCAs into the Output, an envelope plus an LFO into a filter\'s CV, or the Keyboard\'s Pitch plus a steady voltage from the Attenuverter into a VCO (which transposes it). Several hot signals added together can get loud: the Output\'s Overload light and limiter keep it safe.'] },
+  fadedcables: { title: 'Patch cables', body: ['See-through cables makes every cable faint so the knobs underneath are easy to see; cables near the mouse fade by themselves anyway, and the plugs at each end always stay visible.', 'Drag from an output (on a dark plate) to an input to connect them. An output with a cable in it has a small lamp that lights with the signal it is sending. The ring round a socket shows the kind of signal: coral for sound, blue for control (pitch, gates, envelopes, LFOs). It is only a guide: any output can go into any input, and a VCA, for example, works just as well on a control signal. An output can feed many inputs. On the NF-Modular an input can also take several cables (up to four): their signals are simply added together, like a small built-in mixer. Pick a cable up from an input to move it, or drop it on an empty part of the panel to remove it; the most recent one comes out first. Double-clicking a plug (at either end) pulls that cable straight out.', 'Adding signals is usually what you want: two VCAs into the Output, an envelope plus an LFO into the VCF\'s Freq, or the Keyboard\'s Pitch plus a steady voltage from the Attenuverter into a VCO (which transposes it). Several hot signals added together can get loud: the Output\'s Overload light and limiter keep it safe.'] },
 
   // ---- keyboard
   'section:kb': { title: 'Keyboard', body: ['The keyboard sends three signals. Pitch: which note (1 volt per octave). Gate: high while a key is held. Trig: a short pulse at the start of every note.'] },
   'kb.glide': { title: 'Glide', body: ['How long the keyboard\'s Pitch takes to slide to a new note (portamento). 0 jumps straight there.'] },
   'kb.mode': { title: 'Mono / Legato', body: ['Mono: every new key restarts the Gate, so the envelopes start again on every note. Legato: when you play a new key before letting go of the last, the Gate stays high and the envelopes carry on, so the notes join smoothly (only the pitch changes). Trig still pulses on every note either way.'], tip: 'Legato with a little Glide, playing overlapping notes: a smooth, singing lead.' },
-  'out:kb.pitch': { title: 'Keyboard: Pitch output', body: ['Which note is played, at 1 volt per octave: one octave up the keyboard, one volt more.'], tip: 'Patch it into the VCF\'s Key input as well as the VCOs, and the filter\'s tone stays even from low notes to high.' },
+  'out:kb.pitch': { title: 'Keyboard: Pitch output', body: ['Which note is played, at 1 volt per octave: one octave up the keyboard, one volt more.'], tip: 'Patch it into the VCF\'s Pitch input as well as the VCOs, and the filter\'s tone stays even from low notes to high.' },
   'out:kb.gate': { title: 'Keyboard: Gate output', body: ['High while a key is held, low when it is let go. It tells envelopes when to start and when to release.'] },
   'out:kb.trig': { title: 'Keyboard: Trig output (trigger)', body: ['A very short pulse at the start of every note, even when you play legato and the Gate stays high. Use it to restart things once per note.'], tip: 'Trig into the S&H Clock: every note gets a new random value (for example a slightly different filter setting each time).' },
 
@@ -602,16 +612,16 @@ export const HELP_NFMOD = {
   // ---- VCF
   'section:filt': { title: 'VCF (Voltage-Controlled Filter)', body: [
     'A multimode filter with three outputs. LP (low-pass, 24 dB per octave) keeps the lows and darkens the sound, as on the NF-1. HP (high-pass) does the opposite: it removes the lows, leaving a thin, bright sound. BP (band-pass) keeps only a band of frequencies in between: thin, nasal, vocal.',
-    'Width spreads the two halves apart: the low-pass moves up and the high-pass down, so the band-pass between them gets wider. The cutoff moves with CV (by CV Amount) and with Key (exactly one octave per octave, for keyboard tracking).'],
+    'Width spreads the two halves apart: the low-pass moves up and the high-pass down, so the band-pass between them gets wider. The cutoff moves with Freq (by CV Amount) and with Pitch (exactly one octave per octave, for keyboard tracking).'],
     tip: 'Listen to BP with Width at 1-2 octaves and Resonance at 50%, and sweep Cutoff: a talking, "wah" sound.' },
   'vcf.cutoff': { title: 'Cutoff', body: ['The centre of the filter, from 0% (20 Hz) to 100% (20 kHz). With Width at 0, all three outputs share this cutoff.'] },
-  'vcf.res': { title: 'Resonance', body: ['Boosts the frequencies right at the cutoff. Near the top the filter rings and whistles on its own.'], tip: 'Resonance near the top, nothing in In, and the Keyboard\'s Pitch into Key: the filter itself plays in tune.' },
+  'vcf.res': { title: 'Resonance', body: ['Boosts the frequencies right at the cutoff. Near the top the filter rings and whistles on its own.'], tip: 'Resonance near the top, nothing in In, and the Keyboard\'s Pitch into the VCF\'s Pitch: the filter itself plays in tune.' },
   'vcf.width': { title: 'Width', body: ['How far apart the low-pass and high-pass are (half the Width above Cutoff, half below). It sets how wide the band-pass output is: 0 is a narrow peak, 6 octaves is wide open. It also moves where LP and HP cut.'] },
-  'vcf.cv': { title: 'CV Amount', body: ['How far, and which way, the CV input moves the cutoff. At +100% an input of 1 moves it up 6 octaves; negative amounts move it down.'] },
+  'vcf.cv': { title: 'CV Amount', body: ['How far, and which way, the Freq input moves the cutoff and the Res input moves the resonance. At +100% an input of 1 moves the cutoff up 6 octaves, or the resonance all the way up; negative amounts move them down.', 'It sets both inputs together. To give each its own amount, send one of them through the Attenuverter first.'] },
   'jack.filt.in': { title: 'VCF: In', body: ['The sound to filter, usually the Mixer\'s Out.'] },
-  'jack.filt.cv': { title: 'VCF: CV input', body: ['Moves the cutoff by the signal here, scaled by CV Amount: an envelope for plucks and sweeps, an LFO for wah, S&H for random bleeps.'] },
-  'jack.filt.key': { title: 'VCF: Key input (keyboard tracking)', body: ['Moves the cutoff exactly one octave for each volt, which matches the Keyboard\'s Pitch. Patched from the keyboard, the filter follows the notes, so high notes are not duller than low ones.'] },
-  'jack.filt.res': { title: 'VCF: Res input', body: ['Adds the signal here to the Resonance setting.'], tip: 'An envelope here makes each note start with a resonant "zap" that settles down.' },
+  'jack.filt.cv': { title: 'VCF: Freq input', body: ['Moves the cutoff by the signal here, scaled by CV Amount: an envelope for plucks and sweeps, an LFO for wah, S&H for random bleeps.'] },
+  'jack.filt.key': { title: 'VCF: Pitch input (keyboard tracking)', body: ['Moves the cutoff exactly one octave for each volt, which matches the Keyboard\'s Pitch. Patched from the keyboard, the filter follows the notes, so high notes are not duller than low ones.'] },
+  'jack.filt.res': { title: 'VCF: Res input', body: ['Moves the resonance by the signal here, scaled by CV Amount and added to the Resonance setting.'], tip: 'An envelope here makes each note start with a resonant "zap" that settles down.' },
   'out:filt.out': { title: 'VCF: LP (low-pass) output', body: ['Keeps the frequencies below the cutoff: turning Cutoff down makes it darker.'] },
   'out:filt.bp': { title: 'VCF: BP (band-pass) output', body: ['Keeps only the band of frequencies between the high-pass and the low-pass: a thin, nasal, telephone-like sound. Width sets how wide the band is.'] },
   'out:filt.hp': { title: 'VCF: HP (high-pass) output', body: ['Keeps the frequencies above the cutoff: turning Cutoff up removes more of the body and bass, leaving a thin, bright sound.'], tip: 'Noise through HP with Cutoff high: crisp hi-hats and cymbals.' },
@@ -636,7 +646,7 @@ export const HELP_NFMOD = {
   'section:att': { title: 'Attenuverter', body: [
     'An attenuator turns a signal down; an attenuverter can also turn it upside down (invert it), hence the name. Each channel scales its In by its Amount: +100% passes it unchanged, 50% halves it, 0 silences it, and negative values flip it over.',
     'With nothing patched into In, Out gives a steady voltage set by Amount: a knob you can patch into any CV input.'],
-    tip: 'Patch ENV 1 Out through one channel at −50% into the VCF\'s CV: a gentle downward sweep from an envelope that also opens the VCA.' },
+    tip: 'Patch ENV 1 Out through one channel at −50% into the VCF\'s Freq: a gentle downward sweep from an envelope that also opens the VCA.' },
   'att.a1': { title: 'Amount 1', body: ['Scales channel 1: +100% as it is, 0 nothing, −100% upside down. With nothing in its In, sets a steady voltage.'] },
   'att.a2': { title: 'Amount 2', body: ['Scales channel 2: +100% as it is, 0 nothing, −100% upside down. With nothing in its In, sets a steady voltage.'] },
   'jack.att.in1': { title: 'Attenuverter: In 1', body: ['The signal to scale or invert.'] },
@@ -651,7 +661,7 @@ export const HELP_NFMOD = {
   outoverload: { title: 'Overload', body: ['Glows yellow, then red, when the signal arriving at the Output is too hot and is being limited. Feedback loops (an output patched back into its own chain) often do this.', 'The output can never go past a safe level, and if a loop runs away completely the rack resets itself. Turn a Mixer or VCA level down to calm it.'] },
 
   // ---- LFO
-  'section:lfo': { title: 'LFO (Low-Frequency Oscillator)', body: ['A wave too slow to hear (up to 30 cycles a second), used to move other things: vibrato on a VCO\'s FM, wah on the VCF\'s CV, tremolo on a VCA. Gate restarts its wave; the Rate input speeds it up or slows it down, by as much as Rate CV allows.'], tip: 'Keyboard Gate into the LFO\'s Gate: the wobble starts the same way on every note (key sync).' },
+  'section:lfo': { title: 'LFO (Low-Frequency Oscillator)', body: ['A wave too slow to hear (up to 30 cycles a second), used to move other things: vibrato on a VCO\'s FM, wah on the VCF\'s Freq, tremolo on a VCA. Gate restarts its wave; the Rate input speeds it up or slows it down, by as much as Rate CV allows.'], tip: 'Keyboard Gate into the LFO\'s Gate: the wobble starts the same way on every note (key sync).' },
   'lfo.rate': { title: 'Rate', body: ['How fast the LFO cycles, from one cycle every 20 seconds to 30 a second.'] },
   'lfo.shape': { title: 'Shape', body: ['The waveform: sine and triangle move smoothly, ramp rises then snaps back, square jumps between two values.'] },
   'lfo.rcv': { title: 'Rate CV', body: ['How much a signal in the Rate input changes the LFO\'s speed (up to 4 octaves faster or slower).'], tip: 'ENV 2 into Rate: the wobble speeds up at the start of each note, then settles.' },
@@ -664,7 +674,7 @@ export const HELP_NFMOD = {
   'section:mfo': { title: 'MFO (Mid-Frequency Oscillator)', body: [
     'A second modulator that goes much faster than the LFO: up to 100 Hz. Below about 20 Hz it moves things like an LFO; above that you start to hear its speed as a low buzz, so on a filter or VCA it gives growls, rasps and gritty textures rather than a wobble.',
     'It also has FM (its speed can be pushed around by another signal) and a choice of output: Bi (swings both ways) or Uni (only upwards).'],
-    tip: 'MFO into the VCF\'s CV, MFO Rate around 40-80 Hz: a growling bass. Then patch the LFO into the MFO\'s FM to make the growl move.' },
+    tip: 'MFO into the VCF\'s Freq, MFO Rate around 40-80 Hz: a growling bass. Then patch the LFO into the MFO\'s FM to make the growl move.' },
   'lfo2.rate': { title: 'Rate', body: ['How fast the MFO cycles, from one cycle every 20 seconds up to 100 a second (an audible buzz at the top).'] },
   'lfo2.shape': { title: 'Shape', body: ['The waveform of the MFO.'] },
   'lfo2.fm': { title: 'FM Amount', body: ['How far a signal in the FM input pushes the MFO\'s speed up and down (linear FM: up to 4 times its Rate either way).'] },
@@ -697,7 +707,7 @@ export const HELP_NFMOD = {
   'section:sh': { title: 'S&H (Sample and Hold)', body: [
     'On each clock, it measures (samples) whatever is at its In and holds that value steady until the next clock, turning a moving signal into a staircase of steps. With nothing in In it samples noise, so every step is a new random value.',
     'It has its own clock, set by Speed; a signal in Clock takes over. Lag smooths the steps into glides, turning it into a random, wandering LFO.'],
-    tip: 'S&H Out into the VCF\'s CV with Resonance at 70%: the burbling "computer" sound of 1970s science-fiction films.' },
+    tip: 'S&H Out into the VCF\'s Freq with Resonance at 70%: the burbling "computer" sound of 1970s science-fiction films.' },
   'sh.rate': { title: 'Speed', body: ['How often it takes a new sample, when nothing is patched into Clock.'] },
   'sh.lag': { title: 'Lag', body: ['How long the output takes to glide to each new value. 0 jumps in steps; turned up, the steps become smooth, wandering curves.'], tip: 'Lag around 0.5 s on a filter or pitch: slow, unpredictable drifting, like an old tape machine or wind.' },
   'jack.sh.in': { title: 'S&H: In', body: ['The signal to sample. Empty: noise (random values).'], tip: 'Patch a slow LFO here instead of noise: the smooth wave becomes a rising and falling staircase.' },

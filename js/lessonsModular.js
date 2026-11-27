@@ -13,6 +13,7 @@ import { UNPATCHED } from './synths/nfm.js';
 // ---- reading a patch ----------------------------------------------------------------------
 const J = (p, input) => p['jack.' + input] || '';
 const is = (p, input, output) => J(p, input) === output;
+let unplugged = false; // 'Unplug and replug': has the cable been pulled out yet in this attempt?
 // The audio path that reaches the Output, followed backwards along the cables:
 // e.g. ['vca.out', 'filt.out', 'osc.out'] for VCO -> VCF -> VCA -> Output.
 function audioPath(p) {
@@ -65,12 +66,21 @@ export const MOD_LESSONS = [
     challenges: [
       {
         type: 'goal', title: 'Your first cables',
-        text: 'A modular synth starts silent: nothing is connected until you patch it. Sound flows along cables from an output (on a dark plate) to an input. Drag a cable from the VCO\'s Out to the VCA\'s In, then another from the VCA\'s Out to the Output\'s In.',
+        text: 'A modular synth starts silent: nothing is connected until you patch it. Sound flows along cables from an output (on a dark plate) to an input. Sockets with a coral ring carry sound; blue ones carry control signals. Drag a cable from the VCO\'s Out to the VCA\'s In, then another from the VCA\'s Out to the Output\'s In.',
         unlocked: BASIC,
         make: (c) => ({ start: P_EMPTY, note: c.note }),
         check: (s) => pathIs(s.patch, 'vca.out', 'osc.out'),
         progress: (s) => share(is(s.patch, 'vca.in', 'osc.out'), is(s.patch, 'out.in', 'vca.out')),
         hint: 'Press on the socket marked OUT in the VCO, hold, and drag to the socket marked IN in the VCA. Let go. Then do the same from the VCA\'s OUT to the Output\'s IN.',
+      },
+      {
+        type: 'goal', title: 'Unplug and replug',
+        text: 'Cables come out as easily as they go in. Pull the cable out of the Output\'s In: double-click its plug, or drag the plug off and let go over an empty part of the panel. Then patch it back in, from the VCA\'s Out to the Output\'s In.',
+        unlocked: BASIC,
+        make: (c) => { unplugged = false; return { start: P_VCA, note: c.note }; },
+        check: (s) => { if (!J(s.patch, 'out.in')) unplugged = true; return unplugged && pathIs(s.patch, 'vca.out', 'osc.out'); },
+        progress: (s) => share(unplugged || !J(s.patch, 'out.in'), unplugged && is(s.patch, 'out.in', 'vca.out')),
+        hint: 'Double-click the plug in the Output module\'s IN socket: the cable disappears. Then drag from the VCA\'s OUT to the Output\'s IN again.',
       },
       {
         type: 'goal', title: 'Open the VCA',
@@ -219,21 +229,21 @@ export const MOD_LESSONS = [
         question: {
           prompt: 'How could you make the LFO sweep the filter\'s cutoff up and down (a wah)?',
           options: [
-            { text: 'Patch the LFO\'s Out into the VCF\'s CV, and turn up CV Amount', correct: true },
+            { text: 'Patch the LFO\'s Out into the VCF\'s Freq, and turn up CV Amount', correct: true },
             { text: 'Patch the LFO\'s Out into the VCF\'s In', feedback: 'In is for the sound to be filtered. The LFO is far too slow to hear, so it would not move anything.' },
             { text: 'Turn FM Amount up further', feedback: 'FM Amount only sets how far the LFO moves the pitch.' },
           ],
-          explain: 'Like the VCA, the VCF has a CV input: a signal there moves the cutoff, by as much as CV Amount allows. Any modulator can go into any CV input. That is the whole idea of a modular.',
+          explain: 'Like the VCA\'s CV, the VCF\'s Freq is a control-voltage input: a signal there moves the cutoff frequency, by as much as CV Amount allows. Any modulator can go into any control input. That is the whole idea of a modular.',
         },
       },
       {
         type: 'goal', title: 'Wah',
-        text: 'Do it: patch the LFO\'s Out into the VCF\'s CV and turn CV Amount up to at least 30%. An output can feed more than one input, so the vibrato cable can stay where it is. Play a long note.',
+        text: 'Do it: patch the LFO\'s Out into the VCF\'s Freq and turn CV Amount up to at least 30%. An output can feed more than one input, so the vibrato cable can stay where it is. Play a long note.',
         unlocked: ALL,
         make: (c) => ({ start: P_VIBRATO, note: c.note }),
         check: (s) => is(s.patch, 'filt.cv', 'lfo.out') && Math.abs(s.patch['filt.cv']) >= 0.3 && s.note != null,
         progress: (s) => share(is(s.patch, 'filt.cv', 'lfo.out'), Math.abs(s.patch['filt.cv']) >= 0.3, s.note != null),
-        hint: 'Start a new cable from the LFO\'s OUT (it can have several) and drop it on the VCF\'s CV. Turn CV Amount up, and Cutoff down a little to hear the sweep.',
+        hint: 'Start a new cable from the LFO\'s OUT (it can have several) and drop it on the VCF\'s Freq. Turn CV Amount up, and Cutoff down a little to hear the sweep.',
       },
     ],
   },
@@ -255,21 +265,21 @@ export const MOD_LESSONS = [
         question: {
           prompt: 'How could you make each note start bright and then get darker?',
           options: [
-            { text: 'Patch the Envelope\'s Out into the VCF\'s CV as well', correct: true },
-            { text: 'Patch the LFO\'s Out into the VCF\'s CV', feedback: 'The LFO keeps swinging up and down on its own. You want something that rises at each key press, then falls.' },
+            { text: 'Patch the Envelope\'s Out into the VCF\'s Freq as well', correct: true },
+            { text: 'Patch the LFO\'s Out into the VCF\'s Freq', feedback: 'The LFO keeps swinging up and down on its own. You want something that rises at each key press, then falls.' },
             { text: 'Turn the VCF\'s Cutoff down', feedback: 'That makes the whole note darker. You want the tone to change during the note.' },
           ],
-          explain: 'The envelope rises when a key is pressed and falls again, so patched into the VCF\'s CV it opens the filter at the start of each note and lets it close. One envelope can drive the VCA and the VCF at once, because an output can feed several inputs.',
+          explain: 'The envelope rises when a key is pressed and falls again, so patched into the VCF\'s Freq it opens the filter at the start of each note and lets it close. One envelope can drive the VCA and the VCF at once, because an output can feed several inputs.',
         },
       },
       {
         type: 'goal', title: 'Pluck',
-        text: 'Patch the Envelope\'s Out into the VCF\'s CV too. Turn Cutoff below 300 Hz and CV Amount above 50%, and set Sustain low so the filter closes after each attack. Play some notes.',
+        text: 'Patch the Envelope\'s Out into the VCF\'s Freq too. Turn Cutoff below 300 Hz and CV Amount above 50%, and set Sustain low so the filter closes after each attack. Play some notes.',
         unlocked: ALL,
         make: (c) => ({ start: { ...P_GATE, 'aenv.s': 0.4, 'aenv.d': 0.6 }, note: c.note }),
         check: (s) => is(s.patch, 'filt.cv', 'env.out') && s.patch['filt.cutoff'] <= 300 && s.patch['filt.cv'] >= 0.5 && s.patch['aenv.s'] <= 0.3 && s.note != null,
         progress: (s) => share(is(s.patch, 'filt.cv', 'env.out'), s.patch['filt.cutoff'] <= 300, s.patch['filt.cv'] >= 0.5, s.patch['aenv.s'] <= 0.3),
-        hint: 'New cable: Envelope OUT to VCF CV (the other cable from the Envelope stays on the VCA). Then: Cutoff below 300 Hz, CV Amount above +50%, Sustain below 30%.',
+        hint: 'New cable: Envelope OUT to VCF FREQ (the other cable from the Envelope stays on the VCA). Then: Cutoff below 300 Hz, CV Amount above +50%, Sustain below 30%.',
       },
       {
         type: 'goal', title: 'Laser zap',
@@ -282,12 +292,12 @@ export const MOD_LESSONS = [
       },
       {
         type: 'goal', title: 'A filter that follows the keys',
-        text: 'Play a low note and a high note: the high one sounds duller, because the cutoff stays put. Patch the Keyboard\'s Pitch into the VCF\'s CV as well. Full CV Amount moves the cutoff 6 octaves for each octave of the keyboard, so set it to about +17% (one sixth): one octave per octave. Then play notes far apart.',
+        text: 'Play a low note and a high note: the high one sounds duller, because the cutoff stays put. Patch the Keyboard\'s Pitch into the VCF\'s Freq as well. Full CV Amount moves the cutoff 6 octaves for each octave of the keyboard, so set it to about +17% (one sixth): one octave per octave. Then play notes far apart.',
         unlocked: ALL,
         make: (c) => ({ start: { ...P_GATE, 'filt.cutoff': 500 }, note: c.note }),
         check: (s) => is(s.patch, 'filt.cv', 'kb.pitch') && s.patch['filt.cv'] >= 0.12 && s.patch['filt.cv'] <= 0.22 && s.highNote - s.lowNote >= 12,
         progress: (s) => share(is(s.patch, 'filt.cv', 'kb.pitch'), s.patch['filt.cv'] >= 0.12 && s.patch['filt.cv'] <= 0.22, s.highNote - s.lowNote >= 12),
-        hint: 'A second cable from the Keyboard\'s PITCH (the first still goes to the VCO) into the VCF\'s CV. Turn on Show values and set CV Amount between +12% and +22%. Then play notes at least an octave apart.',
+        hint: 'A second cable from the Keyboard\'s PITCH (the first still goes to the VCO) into the VCF\'s Freq. Turn on Show values and set CV Amount between +12% and +22%. Then play notes at least an octave apart.',
       },
       {
         type: 'goal', title: 'The LFO plays the keys',
@@ -316,12 +326,12 @@ export const MOD_LESSONS = [
       },
       {
         type: 'goal', title: 'Play the filter',
-        text: 'A filter with high resonance whistles on its own. Pull out the cable in the VCF\'s In so no sound goes into it, turn Resonance all the way up, and patch the Keyboard\'s Pitch into the VCF\'s CV at about +17%. Play: the filter itself is the instrument.',
+        text: 'A filter with high resonance whistles on its own. Pull out the cable in the VCF\'s In so no sound goes into it, turn Resonance all the way up, and patch the Keyboard\'s Pitch into the VCF\'s Freq at about +17%. Play: the filter itself is the instrument.',
         unlocked: ALL,
         make: (c) => ({ start: { ...P_GATE, 'filt.cutoff': 300 }, note: c.note }),
         check: (s) => !J(s.patch, 'filt.in') && s.patch['filt.res'] >= 0.95 && is(s.patch, 'filt.cv', 'kb.pitch') && s.patch['filt.cv'] >= 0.12 && s.patch['filt.cv'] <= 0.22 && is(s.patch, 'vca.in', 'filt.out') && s.note != null,
         progress: (s) => share(!J(s.patch, 'filt.in'), s.patch['filt.res'] >= 0.95, is(s.patch, 'filt.cv', 'kb.pitch'), s.patch['filt.cv'] >= 0.12 && s.patch['filt.cv'] <= 0.22),
-        hint: 'Drag the plug out of the VCF\'s IN and drop it on nothing. Resonance fully up. A cable from the Keyboard\'s PITCH to the VCF\'s CV, with CV Amount between +12% and +22%. Move Cutoff to tune it.',
+        hint: 'Drag the plug out of the VCF\'s IN and drop it on nothing. Resonance fully up. A cable from the Keyboard\'s PITCH to the VCF\'s Freq, with CV Amount between +12% and +22%. Move Cutoff to tune it.',
       },
       {
         type: 'goal', title: 'Feed it back',

@@ -313,6 +313,8 @@ body.zoomed .zoom-ctl .zoom-level { color: var(--accent); }
   opacity: 0; transition: opacity 0.12s;
   white-space: nowrap; font-variant-numeric: tabular-nums;
 }
+/* the knob in use gets its own layer while it turns: otherwise each step redraws the whole panel */
+.knob-cell:hover .knob, .knob-cell.active .knob, .knob-cell.active .knob-value { will-change: transform; }
 .knob-cell:hover .knob-value,
 .knob-cell.active .knob-value,
 .knob-cell:focus-within .knob-value,
@@ -748,6 +750,7 @@ body[data-skin="vintage"] .perf { padding: 8px 10px; }
 /* overload light by the Feedback pot */
 .overload-led { position: absolute; top: 40px; right: -26px; display: flex; flex-direction: column; align-items: center; gap: 3px; }
 .overload-lamp {
+  will-change: opacity; /* its own layer, as for the jack lamps */
   --glow: 0; --hue: 52;
   width: 12px; height: 12px; border-radius: 50%;
   background: radial-gradient(circle at 40% 35%,
@@ -1052,22 +1055,29 @@ body[data-skin="modular"] .panel-footer { margin-top: 8px; }
 .jack-cell { position: relative; width: 62px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .jack-label { font-size: 10.5px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink); }
 /* outputs sit on a dark plate, the usual way modules tell outputs from inputs */
-.jack-cell.out { background: #0c0d0e; border-radius: 6px; padding: 3px 0 5px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1); }
+.jack-cell.out { background: #2c2e31; border-radius: 6px; padding: 3px 0 5px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1); }
 .jack-cell.out .jack-label { color: #f2f2f2; }
+.jack-cell.in { padding: 3px 0 5px; } /* line up with the outputs on their plates */
 .socket {
   width: 30px; height: 30px; border-radius: 50%; cursor: grab; touch-action: none;
-  background: radial-gradient(circle, #050505 0 34%, #3b3e42 36%, #c4c7ca 52%, #7d8184 70%, #4a4d50 100%);
+  /* a thin band round the metal shows the kind of signal: blue for control, coral for sound (.audio) */
+  --ring: #6a9dbd;
+  background: radial-gradient(circle, #050505 0 34%, #3b3e42 36%, #c4c7ca 47%, #7d8184 56%, #3a3d40 60%, var(--ring) 62.5%);
   box-shadow: 0 2px 3px rgba(0,0,0,0.6);
   transition: box-shadow 0.12s, transform 0.12s;
 }
+.jack-cell.audio .socket { --ring: #cd7a66; }
 .socket:hover { box-shadow: 0 0 0 3px rgba(255,181,71,0.55), 0 2px 3px rgba(0,0,0,0.6); }
 body.patching { cursor: grabbing; user-select: none; }
 body.patching .socket { cursor: grabbing; }
 /* while dragging, the sockets that can take the cable glow */
 body.patching-in .socket[data-jack], body.patching-out .socket[data-out] { box-shadow: 0 0 0 3px rgba(255,181,71,0.35), 0 2px 3px rgba(0,0,0,0.6); }
 .socket.hover { box-shadow: 0 0 0 4px #ffb547, 0 0 14px rgba(255,181,71,0.8) !important; transform: scale(1.08); }
-/* lamp by each output: lights with the signal leaving it */
+/* lamp by each output in use: lights with the signal leaving it */
+.jack-cell.out.patched .jack-lamp { display: block; }
 .jack-lamp {
+  display: none; /* shown only on an output with a cable in it */
+  will-change: opacity; /* its own layer: otherwise every flicker redraws the whole panel */
   position: absolute; top: 5px; right: 5px; width: 7px; height: 7px; border-radius: 50%;
   --glow: 0;
   background: rgb(calc(70 + 185 * var(--glow)), calc(20 + 40 * var(--glow)), 20);
@@ -1269,8 +1279,7 @@ body .rack-side .knob-cell.small .knob-value { font-size: 10.5px; height: 14px; 
 .rack-side .stack-cell .led-btn { width: 22px; height: 12px; border-radius: 3px; }
 .rack-side .stack-cell .led-lamp { width: 8px; height: 4px; }
 
-/* ==========================================================================
-   NF-C1 compressor (body.processor): no keyboard; big screens; level meters
+/* ===================================================================   NF-C1 compressor (body.processor): no keyboard; big screens; level meters
    ========================================================================== */
 body.processor .keybed, body.processor .wood-band, body.processor .fx-drawer { display: none; }
 body.processor .tb-group { display: none; }
@@ -1488,3 +1497,55 @@ body[data-synth="nf4"] .section[data-section="mtr"] .toggle-cell { width: 120px;
 .meter-ladder i.hold.ref { background: #f4f1e6; opacity: 0.75; }
 .meter-ladder i.hold.amber { background: #ffc23a; opacity: 0.8; }
 .meter-ladder i.hold.red { background: #ff3b2f; opacity: 0.9; }
+=======
+/* Hear target sits in the task heading, beside the challenge title, so it is not missed */
+.lb-task-head { flex-wrap: wrap; }
+.lb-btn.lb-hear { padding: 5px 12px; font-size: 12.5px; background: linear-gradient(#ffcf7a, #f0a43a); border-color: #c98a2e; color: #24180a; }
+.lb-btn.lb-hear:hover { background: linear-gradient(#ffd98f, #f5ae4a); }
+
+/* MIDI light in the top bar: shown while a MIDI keyboard is connected */
+.midi-light { display: inline-flex; align-items: center; gap: 6px; font: 700 11px var(--font); letter-spacing: 0.1em; color: #9fe0b4; padding: 5px 9px; border: 1px solid #2f5a3e; border-radius: 6px; background: #17241c; }
+.midi-light[hidden] { display: none; }
+.midi-light i { width: 7px; height: 7px; border-radius: 50%; background: #49c07c; box-shadow: 0 0 6px #49c07c; }
+.midi-light.hit i { background: #b8ffd0; box-shadow: 0 0 10px #8affb3; }
+
+/* a word in a module's title that is a switch (ENV: Exponential / Linear) */
+.word-switch {
+  font: inherit; letter-spacing: inherit; text-transform: inherit; color: #ffd9a0; cursor: pointer;
+  background: rgba(0, 0, 0, 0.28); border: 1px solid rgba(255, 217, 160, 0.35); border-radius: 4px;
+  margin-left: 8px; padding: 0 6px; line-height: 1.35;
+}
+.word-switch:hover { background: rgba(0, 0, 0, 0.45); border-color: rgba(255, 217, 160, 0.8); }
+
+/* ==========================================================================
+   Maximised modules (modular synths): see maxModules.js
+   ========================================================================== */
+body.modules-max .scope-unit, body.modules-max .keybed, body.modules-max .wood-band,
+body.modules-max .fx-drawer, body.modules-max .panel-footer { display: none; }
+body.modules-max:not(.zoomed) #fit { overflow: clip; overflow-clip-margin: 120px; } /* let cables hang below the rack */
+body.modules-max .cheek { display: none; }
+body[data-skin="modular"].modules-max .panel { padding: 8px 8px 6px; border-radius: 6px; }
+body.modules-max #sections { display: block; }
+body.modules-max #sections > :not(.max-box) { display: none; }
+.max-main { display: flex; align-items: stretch; }
+.max-side { display: flex; }
+.max-side .section { height: auto !important; }
+.max-rows { min-width: 0; }
+.max-rows .rack-row { flex: 1 1 auto; }
+.max-box.measuring .max-main { width: max-content; }
+.max-box.measuring .rack-row > .section { flex: 0 0 auto; }
+.max-box .section .jack-strip, .max-box .section .jack-rows { margin-top: auto; }
+/* the keyboard's outputs: one slim strip, labels beside their sockets */
+.max-kb { margin-top: 6px; }
+body[data-skin="modular"] .max-kb .section { height: auto; padding: 3px 14px !important; flex-direction: row; align-items: center; gap: 18px; }
+.max-kb .section::before, .max-kb .section::after, .max-kb .section-grid { display: none !important; }
+body[data-skin="modular"] .max-kb .section .section-title { margin: 0; padding: 0; border: none; font-size: 11.5px; }
+body[data-skin="modular"] .max-kb .section .jack-rows, body[data-skin="modular"] .max-kb .section .jack-strip { margin: 0; padding: 0; border: none; gap: 10px; }
+body[data-skin="modular"] .max-kb .jack-cell.out { width: auto; flex-direction: row; gap: 9px; padding: 2px 8px 2px 14px; }
+.max-kb .jack-lamp { top: 3px; right: auto; left: 4px; }
+/* the smiley's own small screen */
+.smiley-pop {
+  position: fixed; left: 50%; top: 30%; width: 280px; height: 180px; margin-left: -140px; z-index: 70; pointer-events: none;
+  border-radius: 12px; padding: 8px; background: linear-gradient(#3a3c3f, #2b2d30); box-shadow: 0 18px 40px rgba(0,0,0,0.6);
+}
+.smiley-pop canvas { width: 100%; height: 100%; border-radius: 7px; display: block; }

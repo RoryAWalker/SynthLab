@@ -18,6 +18,10 @@ import { ConsoleScope } from './consoleScope.js';
 import { Fader } from './fader.js';
 import { ConsoleMeters } from './meters.js';
 import { loadSource, loadUserFile, userFileName, loadSong } from './sources.js';
+import { startMidi } from './midi.js';
+import { WordSwitch } from './wordswitch.js';
+import { MaxModules } from './maxModules.js';
+import { Smiley } from './fireworks.js';
 
 const engine = new Engine({ module: SYNTH.module, processor: SYNTH.processor });
 document.body.dataset.skin = SYNTH.skin;
@@ -51,6 +55,8 @@ function buildSection(sec) {
   el.innerHTML = `<div class="section-title"${titleHelp}><span>${sec.title}</span></div><div class="section-grid"></div><div class="lock-veil"><span>LOCKED</span></div>`;
   const grid = el.querySelector('.section-grid');
   sections[sec.id] = el;
+  // a word in the title that is a switch (the envelopes' Exponential / Linear)
+  if (sec.titleSwitch) el.querySelector('.section-title').appendChild(makeControl(sec.titleSwitch, sec));
   // a module that can fold away to a thin strip (the sequencer): a button in its title bar
   if (sec.foldable) {
     const fb = document.createElement('button');
@@ -150,6 +156,7 @@ function makeControl(id, sec) {
   const k = spec.ui === 'toggle' ? new Toggle(id, patch[id], onKnob)
     : spec.ui === 'led' ? new LedButton(id, patch[id], onKnob)
     : spec.ui === 'fader' ? new Fader(id, patch[id], onKnob)
+    : spec.ui === 'word' ? new WordSwitch(id, patch[id], onKnob)
     : spec.type === 'wheel' ? new Wheel(id, patch[id], onKnob)
     : new Knob(id, patch[id], onKnob);
   knobs[id] = k;
@@ -268,7 +275,11 @@ function ensureAudio() {
 }
 
 function onKnob(id, value) {
+  const before = { ...patch };
   patch[id] = value;
+  // a control that moves another (e.g. Osc 3 Frequency snapping to 0 when Osc 3 becomes an oscillator)
+  const extra = SYNTH.linked && SYNTH.linked(id, before, patch);
+  if (extra) for (const k in extra) { if (patch[k] !== extra[k]) { onKnob(k, extra[k]); if (knobs[k]) knobs[k].set(extra[k]); } }
   // modular synths: a patch can sound without a key (a drone), so any change may start the audio
   if ((SYNTH.modular || PROC) && !engine.running) ensureAudio();
   if (PROC) { if (id === 'src.sound' || id === 'src.play' || id === 'tape.play') sendSource(); scope.focus(id); }
@@ -366,12 +377,15 @@ document.getElementById('zoom-in').addEventListener('click', () => zoomPan.zoomT
 document.getElementById('zoom-out').addEventListener('click', () => zoomPan.zoomTo(zoomPan.zoom / 1.25));
 document.getElementById('zoom-level').addEventListener('click', () => zoomPan.reset());
 
+let maxMods = null; // maximised modules (modular synths), set up below
 function fit() {
   // help panel overlays below the top bar; the lesson panel pins just under it
   const barH = document.querySelector('.appbar').offsetHeight;
   document.getElementById('help-panel').style.top = barH + 'px';
   document.body.style.setProperty('--appbar-h', barH + 'px');
+  if (maxMods) maxMods.layout();
   zoomPan.fit();
+  if (maxMods && maxMods.on && cables) cables.redraw();
 }
 
 // ---- boot ------------------------------------------------------------------------------------
@@ -400,6 +414,22 @@ const keyboard = new Keyboard(document.getElementById('keys'), {
   onOctave: (o) => (document.getElementById('oct-readout').textContent = 'C' + o),
 });
 if (SYNTH.keyboard) document.querySelector('.oct-hint').textContent = 'Play with A–K on your computer keyboard';
+// ---- MIDI keyboard: plays through the on-screen keyboard; bend and mod wheel where the synth has them ----
+startMidi({
+  keyboard,
+  setControl: (id, v) => { if (knobs[id]) knobs[id].commit(v); },
+  onDevices: (names) => {
+    const light = document.getElementById('midi-light');
+    light.hidden = !names || !names.length;
+    if (names && names.length) light.title = 'MIDI: ' + names.join(', ');
+  },
+  onActivity: () => { // the light flickers as notes arrive
+    const light = document.getElementById('midi-light');
+    light.classList.add('hit');
+    clearTimeout(light._t);
+    light._t = setTimeout(() => light.classList.remove('hit'), 90);
+  },
+});
 document.getElementById('oct-down').addEventListener('click', () => keyboard.shiftOctave(-1));
 document.getElementById('oct-up').addEventListener('click', () => keyboard.shiftOctave(1));
 
@@ -551,7 +581,9 @@ function setScopes(on, remember = true) {
   scope.resize(); // the screens had no size while hidden
 }
 scopesBtn.addEventListener('click', () => {
-  const show = document.body.classList.contains('scopes-hidden');
+  const leaving = maxMods && maxMods.on; // the scopes are out of sight behind maximised modules: bring them back
+  if (leaving) setMaxModules(false);
+  const show = leaving || document.body.classList.contains('scopes-hidden');
   if (!show) setMaxScopes(false); // hiding the scopes also leaves the maximised view
   setScopes(show);
 });
@@ -562,12 +594,53 @@ function setMaxScopes(on) {
   document.body.classList.toggle('scopes-max', on);
   maxBtn.classList.toggle('on', on);
   maxBtn.textContent = on ? 'RESTORE' : 'MAXIMISE';
+  if (on && maxMods && maxMods.on) setMaxModules(false);
   if (on && document.body.classList.contains('scopes-hidden')) setScopes(true, false);
   fit();
   scope.resize(); // redraw the screens at their new size
 }
 maxBtn.addEventListener('click', () => setMaxScopes(!document.body.classList.contains('scopes-max')));
 setScopes(!PREVIEW && loadPref(scopesPref, PROC ? '1' : '0') === '1', false);
+
+// ---- maximise the modules (modular synths): no scopes or keyboard, and the modules rearranged to fill the window ----
+const modBtn = document.getElementById('btn-modmax');
+if (SYNTH.modular && modBtn && !PREVIEW) {
+  modBtn.hidden = false;
+  maxMods = new MaxModules({
+    root: document.getElementById('sections'), sections,
+    usual: SYNTH.rack ? LAYOUT.map((row) => row.map((s) => s.id)) : [LAYOUT.flat().map((s) => s.id)], side: SIDE_SECTIONS.length ? SIDE_SECTIONS[0].id : null, kb: KEYBED_SECTIONS[0].id,
+    avail: () => zoomPan.avail(),
+  });
+  modBtn.addEventListener('click', () => setMaxModules(!maxMods.on));
+}
+function setMaxModules(on) {
+  if (!maxMods || on === maxMods.on) return;
+  if (on) setMaxScopes(false); // one or the other
+  maxMods.set(on);
+  modBtn.classList.toggle('on', on);
+  modBtn.setAttribute('aria-pressed', String(on));
+  modBtn.textContent = on ? 'Restore' : 'Maximise';
+  window.scrollTo(0, 0);
+  zoomPan.reset();
+  fit();
+  if (cables) cables.redraw();
+  if (!on) scope.resize(); // the screens had no size while out of sight
+}
+// a success while the screens are out of sight: the smiley gets a small screen of its own
+function smileyPop() {
+  const el = document.createElement('div');
+  el.className = 'smiley-pop';
+  el.innerHTML = '<canvas width="560" height="360"></canvas>';
+  document.body.appendChild(el);
+  const ctx = el.firstChild.getContext('2d'), face = new Smiley();
+  face.start();
+  (function loop() {
+    ctx.fillStyle = '#04100a';
+    ctx.fillRect(0, 0, 560, 360);
+    face.draw(ctx, 560, 360);
+    if (face.t0 < 0) el.remove(); else requestAnimationFrame(loop);
+  })();
+}
 
 // ---- effects drawer: a thin FX line below the keyboard that folds open ----
 const fxDrawer = document.getElementById('fx-drawer');
@@ -589,6 +662,7 @@ if (fxTab) fxTab.addEventListener('click', () => setFxOpen(!fxDrawer.classList.c
 // always starts closed, so the synth fits the screen
 
 // ---- lessons ----
+let celebrateTimer = 0;
 lesson = new LessonController({
   getPatch: () => ({ ...patch }), setPatch, engine, scope, keyboard, lockSection, ensureAudio,
   onModeChange: (mode) => {
@@ -610,6 +684,22 @@ lesson = new LessonController({
       window.scrollTo(0, on && !visible ? Math.max(0, synthTop - pinned - 12) : 0);
     });
   },
+  // A success: bring the screens into view so the smiley is seen, then put things back
+  // (hidden again if they were hidden, the page scrolled back to the synth).
+  celebrate: (seconds, restore = true) => {
+    if (maxMods && maxMods.on) { smileyPop(); return; }
+    const wasHidden = document.body.classList.contains('scopes-hidden');
+    const y = window.scrollY;
+    if (wasHidden) setScopes(true, false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    clearTimeout(celebrateTimer);
+    if (!restore) return;
+    celebrateTimer = setTimeout(() => {
+      if (lesson.mode !== 'lessons') return;
+      if (wasHidden) setScopes(false, false);
+      requestAnimationFrame(() => window.scrollTo({ top: wasHidden ? 0 : y, behavior: 'smooth' }));
+    }, seconds * 1000);
+  },
 });
 document.querySelectorAll('#mode-switch button').forEach((b) => b.addEventListener('click', () => lesson.setMode(b.dataset.mode)));
 document.getElementById('mode-switch').hidden = !SYNTH.lessons; // lessons are written for the NF-1
@@ -629,7 +719,7 @@ if (knobs['mix.feedback']) {
     requestAnimationFrame(loop);
     const l = engine.live;
     const drive = l && engine.running ? l.drive || 0 : 0;
-    const level = Math.min(1, Math.max(0, (drive - 0.8) / 1.0)); // 0 below 0.8, full red by 1.8
+    const level = Math.min(1, Math.max(0, (drive - 1.9) / 1.1)); // dark up to two oscillators at full (peaks ~1.8); Feedback lights it, red by 3.0
     shown = Math.max(level, shown * 0.93); // light quickly, fade slowly
     lamp.style.setProperty('--glow', shown.toFixed(3));
     lamp.style.setProperty('--hue', String(Math.round(52 - 52 * shown))); // yellow -> red
@@ -643,6 +733,8 @@ document.getElementById('btn-synths').addEventListener('click', () => startMenu.
 // ---- lesson panel: pinned to the top of the window (see showScopes above). A question or hint
 // makes it taller and the page scrolls, rather than the synth shrinking.
 const lessonWrap = document.getElementById('lesson-wrap');
+// (with the modules maximised they always fit the room left below it, whatever its height)
+if (maxMods) new ResizeObserver(() => { if (maxMods.on) fit(); }).observe(lessonWrap);
 
 // ---- modular synths: cables over the panel, and lamps by the output jacks ----
 // The NF-Modular's Output has an Overload light: it glows while the output limiter is working

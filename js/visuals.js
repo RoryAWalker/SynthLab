@@ -116,6 +116,9 @@ function intervalName(st) {
 const attackAt = (t, A) => Math.min(1, 1.3 * (1 - Math.exp((-1.466 * t) / A)));
 const decayAt = (t, D, S) => S + (1 - S) * Math.exp((-4.6 * t) / D);
 const releaseAt = (t, R, v0) => v0 * Math.exp((-4.6 * t) / R);
+// the NF-Modular's envelopes can be switched to linear: straight lines
+const LINEAR = { attack: (t, A) => Math.min(1, t / A), decay: (t, D, S) => S + (1 - S) * Math.max(0, 1 - t / D), release: (t, R, v0) => v0 * Math.max(0, 1 - t / R) };
+const CURVED = { attack: attackAt, decay: decayAt, release: releaseAt };
 
 function lfoShapeAt(shape, phase, cycle) {
   switch (shape) {
@@ -292,7 +295,7 @@ export class Overlay {
 
     // curve, one stage at a time so the adjusted stage can be highlighted
     const strokeStage = (name, fn, x0, wpx, dur, dashed) => {
-      const hi = stage === name || stage === 'amt';
+      const hi = stage === name || stage === 'amt' || stage === 'curve';
       ctx.save();
       ctx.strokeStyle = hi ? HI : AMBER;
       ctx.lineWidth = hi ? 3 : 2;
@@ -309,12 +312,14 @@ export class Overlay {
       ctx.restore();
     };
     const [ax, aw] = segs.a, [dx, dw] = segs.d, [rx, rw] = segs.r;
-    strokeStage('a', (t) => attackAt(t, A), ax, aw, A);
-    strokeStage('d', (t) => decayAt(t, D, S), dx, dw, D);
+    const linear = p[pre + 'curve'] === 'linear';
+    const shape = linear ? LINEAR : CURVED;
+    strokeStage('a', (t) => shape.attack(t, A), ax, aw, A);
+    strokeStage('d', (t) => shape.decay(t, D, S), dx, dw, D);
     if (loudStyle) {
       const [sx, sw] = segs.s;
       strokeStage('s', () => S, sx, sw, 1);
-      strokeStage('r', (t) => releaseAt(t, R, S), rx, rw, R);
+      strokeStage('r', (t) => shape.release(t, R, S), rx, rw, R);
     } else {
       const vMid = decayAt(D / 2, D, 0);
       strokeStage('r', (t) => releaseAt(t, R, vMid), rx, rw, R, true);
@@ -334,7 +339,7 @@ export class Overlay {
 
     // title
     // on the modular synths an envelope can go anywhere, so it is named for itself, not for loudness
-    let title = envN ? `ENV ${envN[1]}   ·   the shape at its Out (Inv: upside down)`
+    let title = envN ? `ENV ${envN[1]} (${linear ? 'linear' : 'exponential'})   ·   the shape at its Out (Inv: upside down)`
       : loud && PARAMS['jack.env.gate'] ? 'ENV   ·   the shape at its Out'
       : loud ? 'LOUDNESS ENVELOPE' : 'FILTER ENVELOPE';
     if (!loud) title += `   ·   ${PARAMS['filt.env'].label} ${formatValue('filt.env', amt)}`;
@@ -912,7 +917,8 @@ export class Overlay {
     });
     if (this.param === 'vcf.cv' && Math.abs(p['vcf.cv']) > 0.01) {
       const f2 = Math.min(fMax, Math.max(fMin, centre * Math.pow(2, p['vcf.cv'] * 6)));
-      this.sweepArrow(ctx, xOf(centre), xOf(f2), box.y + 44, `CV input of 1: the whole filter moves ${p['vcf.cv'] > 0 ? 'up' : 'down'} ${Math.abs(p['vcf.cv'] * 6).toFixed(1)} octaves`);
+      this.sweepArrow(ctx, xOf(centre), xOf(f2), box.y + 44, `Freq input of 1: the whole filter moves ${p['vcf.cv'] > 0 ? 'up' : 'down'} ${Math.abs(p['vcf.cv'] * 6).toFixed(1)} octaves`);
+      label(ctx, `Res input of 1: Resonance ${p['vcf.cv'] > 0 ? '+' : '−'}${Math.round(Math.abs(p['vcf.cv']) * 100)}%`, w - PAD.r, box.y + 80, HI, 'right', 10.5, 700);
     }
     label(ctx, `VCF   ·   Cutoff ${fmtHz(centre)}${playing ? ' (live)' : ''}   ·   Width ${p['vcf.width'].toFixed(1)} oct`, PAD.l, 16, AMBER, 'left', 10.5, 800);
     label(ctx, p['vcf.width'] < 0.3 ? 'BP is a narrow peak at the cutoff' : 'BP keeps the band between the HP and LP cutoffs', w - PAD.r, 16, HI, 'right', 10.5, 700);

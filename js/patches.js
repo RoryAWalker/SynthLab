@@ -16,6 +16,14 @@ function save(all) {
 
 // Keep only known controls with valid values (anything else falls back to the default),
 // so an imported or old patch can never put the synth in a broken state.
+// The cables in an input: only outputs this synth has, each once, up to four (one where an input
+// takes a single cable). '' is no cable.
+function cablesIn(v) {
+  const outs = SYNTH.OUTPUTS || {};
+  const list = [...new Set(v.split(',').map((x) => x.trim()).filter((x) => x in outs))];
+  return list.slice(-(SYNTH.multiInput ? 4 : 1)).join(',');
+}
+
 export function sanitizePatch(obj) {
   const out = defaultPatch();
   if (!obj || typeof obj !== 'object') return out;
@@ -23,6 +31,7 @@ export function sanitizePatch(obj) {
     const spec = PARAMS[id], v = obj[id];
     if (v === undefined) continue;
     if (spec.type === 'step') { if (spec.options.some((o) => o.v === v)) out[id] = v; }
+    else if (spec.type === 'jack') { if (typeof v === 'string') out[id] = cablesIn(v); } // a cable (or several) into an input
     else if (typeof v === 'number' && Number.isFinite(v)) out[id] = Math.min(spec.max, Math.max(spec.min, v));
   }
   return out;
