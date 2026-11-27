@@ -1505,3 +1505,7 @@ body[data-skin="modular"] .section[data-type="probe"] { --mod: #3a3f46; } /* Pro
 .sc-menu:focus-visible { outline: 1px solid #ffb547; }
 body[data-skin="modular"] .section[data-type="chance"] { --mod: #b08a2e; } /* Chance: gold */
 body[data-skin="modular"] .section[data-type="chance"].even { --mod: #c7a24a; }
+/* lessons: an explanation (the NF-ModRack's lessons) */
+.lb-task-text .lb-para { margin: 0 0 7px; }
+.lb-task-text .lb-try { margin-top: 8px; padding: 7px 10px; border-left: 3px solid #ffb547; background: rgba(255, 181, 71, 0.08); border-radius: 0 4px 4px 0; color: #e6e0d4; }
+.lb-task-text .lb-try b { display: block; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #ffb547; margin-bottom: 2px; }

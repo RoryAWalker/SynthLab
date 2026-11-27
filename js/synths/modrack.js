@@ -757,6 +757,7 @@ export const MODRACK = {
   modular: true,
   rack: true,
   openRack: true, // the modules can be chosen (js/rackEdit.js)
+  lessons: true, // (explanations of its own modules: js/lessonsModRack.js)
   multiInput: true,
   octaves: 3,
   helpAs: 'nfmod',

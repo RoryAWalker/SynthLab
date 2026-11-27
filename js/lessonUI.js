@@ -1,16 +1,19 @@
 // Lesson mode: the lesson bar, playing targets, checking answers, hints, progress and celebrations.
 // Challenge types (see lessons.js): match (hear a target and match it), goal (do something,
-// the result is checked) and question (try something, then choose the right answer).
+// the result is checked) and question (try something, then choose the right answer). Also explain
+// (the NF-ModRack's lessons): an explanation with an example patch to play and a "Try this"; it asks
+// nothing, so Next is there at once.
 
 import { LESSONS as NF1_LESSONS, patchMatches, soundMatches, closeness, patchCloseness, osc1Hz } from './lessons.js';
 import { MOD_LESSONS } from './lessonsModular.js';
 import { NF3_LESSONS } from './lessonsNiniFoog.js';
 import { RACK_LESSONS } from './lessonsRack.js';
+import { MODRACK_LESSONS } from './lessonsModRack.js';
 import { defaultPatch, ALL_SECTIONS, SYNTH } from './params.js';
 import { EXT } from './lab.js';
 
 // each synth with lessons has its own set (a lab in its own folder, like StudioLab, brings its own)
-const LESSONS = (EXT.lessons && EXT.lessons[SYNTH.id]) || { nfm: MOD_LESSONS, nf3: NF3_LESSONS, nfmod: RACK_LESSONS }[SYNTH.id] || NF1_LESSONS;
+const LESSONS = (EXT.lessons && EXT.lessons[SYNTH.id]) || { nfm: MOD_LESSONS, nf3: NF3_LESSONS, nfmod: RACK_LESSONS, modrack: MODRACK_LESSONS }[SYNTH.id] || NF1_LESSONS;
 // The processors (the NF-C1) have no keyboard: a loop plays through them all the time. Their
 // targets are settings heard on the loop, answers are checked as the controls move (and, for
 // goals about what the meters show, several times a second), and a lesson can open single
@@ -197,13 +200,44 @@ export class LessonController {
     this.showPlayControls(true);
     $('lb-next').hidden = true;
     $('lb-task-title').textContent = `${i + 1}. ${ch.title}`;
-    $('lb-task-text').textContent = ch.text;
+    if (this.type === 'explain') this.showExplanation(ch);
+    else $('lb-task-text').textContent = ch.text;
     this.clearQuestion();
     this.hideHint();
+    if (this.type === 'explain') { this.explained(); return; }
     if (this.type === 'question' && !ch.revealWhen) this.revealQuestion();
     this.renderSteps();
     if (this.type === 'match') this.audition();
     else this.setStatus('Your turn', 'turn');
+  }
+
+  // an explanation: its paragraphs, and what to try on the example patch now on the rack
+  showExplanation(ch) {
+    const box = $('lb-task-text');
+    box.innerHTML = '';
+    String(ch.text).split('\n\n').forEach((t) => { const p = document.createElement('p'); p.className = 'lb-para'; p.textContent = t; box.appendChild(p); });
+    if (ch.try) {
+      const t = document.createElement('div');
+      t.className = 'lb-try';
+      t.innerHTML = '<b>Try this</b>';
+      t.appendChild(document.createTextNode(ch.try));
+      box.appendChild(t);
+    }
+  }
+  // nothing to pass: counted as done, and Next (or, at the end, Finish) is there at once
+  explained() {
+    this.solved = true;
+    const done = this.done.slice();
+    done[this.index] = true;
+    this.progress[this.lesson.id] = done;
+    save('nf1.progress', this.progress);
+    this.renderSteps();
+    this.setStatus('Play the example', 'turn');
+    const total = this.lesson.challenges.length;
+    const last = this.index === total - 1;
+    $('lb-next').hidden = false;
+    $('lb-next').textContent = last ? 'Finish lesson ▸' : 'Next ▸';
+    $('lb-next').onclick = () => (last ? this.lessonComplete() : this.enter(this.index + 1));
   }
 
   makeTarget(ch) {
@@ -246,7 +280,8 @@ export class LessonController {
   }
 
   lockFor(unlocked, controls = null) {
-    ALL_SECTIONS.forEach((s) => this.d.lockSection(s.id, !unlocked.includes(s.id)));
+    // ('all': nothing locked, as in the NF-ModRack's lessons, whose racks change from step to step)
+    ALL_SECTIONS.forEach((s) => this.d.lockSection(s.id, unlocked !== 'all' && !unlocked.includes(s.id)));
     if (this.d.lockControls) this.d.lockControls(controls);
   }
 
@@ -454,6 +489,7 @@ export class LessonController {
 
   // ---- hints -----------------------------------------------------------------------------------
   maybeOfferHint() {
+    if (this.type === 'explain') return;
     if (this.mode !== 'lessons' || this.index < 0 || this.solved || !$('lb-hint').hidden || this.hintShown) return;
     const stuck = performance.now() - this.enteredAt > HINT_AFTER_MS
       || this.notesPlayed >= HINT_AFTER_NOTES
