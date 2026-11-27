@@ -9,11 +9,13 @@ import { CompScope } from './compScope.js';
 import { ConsoleScope } from './consoleScope.js';
 import { ConsoleMeters } from './meters.js';
 import { loadSource, loadUserFile, userFileName, loadSong } from './sources.js';
+import { C1_LESSONS } from './lessonsC1.js';
 
 globalThis.LAB_EXTENSION = {
   name: 'StudioLab',
   units: [NFC1, NF4],
   help: { nfc1: HELP_NFC1, nf4: HELP_NF4 },
+  lessons: { nfc1: C1_LESSONS },
   parts: { CompScope, ConsoleScope, ConsoleMeters, loadSource, loadUserFile, userFileName, loadSong },
 };
 globalThis.LAB_EXTENSION.parts.Fader = (await import('./fader.js')).Fader;

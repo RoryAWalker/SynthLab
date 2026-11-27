@@ -63,6 +63,7 @@ export const NFC1 = {
   brandSub: 'EDUCATIONAL COMPRESSOR',
   skin: 'studio', // one faceplate, like a studio rack unit (each processor type gets its own colour)
   kind: 'processor', // no keyboard: plays a sound through itself
+  lessons: true, // its lessons: studio/js/lessonsC1.js
   module: 'js/worklet/comp-processor.js',
   processor: 'comp-processor',
   card: {

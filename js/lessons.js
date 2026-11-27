@@ -421,5 +421,15 @@ function closenessAsIs(player, playerNote, target, targetNote, compareAll) {
   return scores.reduce((a, b) => a + b, 0) / scores.length;
 }
 
+// The processors (no notes): how close the student's settings are, control by control
+export function patchCloseness(player, target, compare) {
+  const scores = compare.map((id) => {
+    if (controlMatches(id, player, 0, target, 0)) return 1;
+    if (PARAMS[id] && PARAMS[id].type === 'cont') return Math.max(0, 1 - Math.abs(toNorm(id, player[id]) - toNorm(id, target[id])) / 0.6);
+    return 0;
+  });
+  return scores.reduce((a, b) => a + b, 0) / (scores.length || 1);
+}
+
 // The frequency of Oscillator 1's note (for goals about harmonics)
 export function osc1Hz(patch, note) { return note == null ? 0 : hz(note + 12 * patch['osc1.range']); }

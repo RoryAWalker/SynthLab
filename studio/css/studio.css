@@ -62,6 +62,9 @@ body.processor .synth-body { border-radius: 0 0 6px 6px; }
 .load-name { display: none; }
 .player-face .lock-veil { inset: 0; }
 
+/* a control a lesson has not opened yet */
+.ctl-locked { opacity: 0.22; filter: grayscale(1); pointer-events: none; }
+
 /* the ear-protection light under the meters */
 .meters-wrap { display: flex; flex-direction: column; flex: 1; }
 .protect { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 4px 0 0; font: 800 10.5px var(--font); letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-dim); }

@@ -98,10 +98,12 @@ export class CompScope {
     if (f.length >= 4) this.live = { det: f[f.length - 1], gr: m.gr, on: m.on, playing: m.playing };
   }
 
-  // (the lessons' target ghost on the synths' scopes: nothing to show here yet)
-  captureTarget() {}
-  showTarget() {}
-  clearTarget() {}
+  // Lessons: the target's settings, drawn as a ghost (its transfer curve, its threshold) once it
+  // has been heard, while 'Show target on scopes' (this.showTarget, set by the lessons) is ticked.
+  // It is drawn with the student's makeup, so the two curves can be compared directly.
+  captureTarget(patch) { this.target = patch ? { ...patch } : null; }
+  clearTarget() { this.target = null; }
+  ghost() { return this.target && this.showTarget !== false ? this.target : null; }
 
   // light up a control's part of the screens (hover help, or turning it)
   focus(id) {
@@ -133,6 +135,11 @@ export class CompScope {
     const p = this.getPatch();
     this.drawLevels(this.a.ctx, this.a.w, this.a.h, p);
     this.drawCurve(this.b.ctx, this.b.w, this.b.h, p);
+    // the lessons' celebrations (smileys, fireworks), drawn over the screens
+    if (this.fx) {
+      this.fx.a.forEach((f) => f.draw(this.a.ctx, this.a.w, this.a.h));
+      this.fx.b.forEach((f) => f.draw(this.b.ctx, this.b.w, this.b.h));
+    }
   }
 
   // ---- left: levels over time ----
@@ -210,6 +217,16 @@ export class CompScope {
     ctx.beginPath(); ctx.moveTo(left, yT); ctx.lineTo(right, yT); ctx.stroke();
     ctx.setLineDash([]);
     label(ctx, `Threshold ${fmtDb(p['comp.thresh'])}`, left + 4, yT - 4, tg ? '#fff' : INK, 'left', 9.5 + tg, 700);
+    const gt = this.ghost();
+    if (gt && Math.abs(gt['comp.thresh'] - p['comp.thresh']) > 0.5) { // the lesson's target threshold
+      const yG = Math.round(yOf(gt['comp.thresh'])) + 0.5;
+      ctx.setLineDash([2, 5]);
+      ctx.strokeStyle = 'rgba(120, 200, 255, 0.8)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(left, yG); ctx.lineTo(right, yG); ctx.stroke();
+      ctx.setLineDash([]);
+      label(ctx, 'target', right - 4, yG - 4, 'rgba(120, 200, 255, 0.95)', 'right', 9.5, 700);
+    }
     // gain reduction: red bars hanging from 0
     const arGlow = this.glow('comp.attack', 'comp.release', 'comp.ratio');
     ctx.fillStyle = p['comp.bypass'] === 'on' ? 'rgba(255, 90, 74, 0.35)' : `rgba(255, 90, 74, ${0.75 + 0.25 * arGlow})`;
@@ -310,6 +327,16 @@ export class CompScope {
       ctx.beginPath();
       for (let d = LO; d <= HI; d += 0.5) { const x = xOf(d), y = yOf(curve(d, T, R, W)); d === LO ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }
       ctx.stroke();
+    }
+    const gt = this.ghost();
+    if (gt) { // the lesson's target curve, in blue, under the student's
+      ctx.lineWidth = 3;
+      ctx.setLineDash([5, 4]);
+      ctx.strokeStyle = 'rgba(120, 200, 255, 0.75)';
+      ctx.beginPath();
+      for (let d = LO; d <= HI; d += 0.25) { const x = xOf(d), y = yOf(curve(d, gt['comp.thresh'], gt['comp.ratio'], gt['comp.knee']) + M); d === LO ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }
+      ctx.stroke();
+      ctx.setLineDash([]);
     }
     ctx.lineWidth = 2.5;
     ctx.strokeStyle = AMBER;

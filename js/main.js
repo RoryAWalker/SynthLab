@@ -308,6 +308,33 @@ function setPatch(p) {
   if (cables) cables.redraw();
 }
 
+// A lesson can open single controls in an unlocked section (the NF-C1: one pot at a time). null
+// opens them all again. The Loop Player's controls are never locked: the student chooses the sound.
+function lockControls(ids) {
+  for (const id in knobs) {
+    if (id.startsWith('src.')) continue;
+    const locked = !!ids && !ids.includes(id);
+    knobs[id].el.classList.toggle('ctl-locked', locked);
+    knobs[id].el.querySelectorAll('.knob, button').forEach((k) => (k.tabIndex = locked ? -1 : 0));
+  }
+}
+
+// What the NF-C1's meters have shown over the last two seconds, for lessons that ask for, say,
+// "about 6 dB of gain reduction": playing, peak and average gain reduction (dB), and the average
+// level in and out (dBFS, before the listening level).
+function measure() {
+  if (!scope || !scope.inp) return null;
+  const live = engine.live || {}, frames = Math.min(scope.n, Math.round(2 * (scope.rate || 375)));
+  let grMax = 0, grSum = 0, pin = 0, pout = 0;
+  for (let a = 0; a < frames; a++) {
+    const k = (scope.n - 1 - a + scope.cap) % scope.cap;
+    grMax = Math.max(grMax, scope.gr[k]); grSum += scope.gr[k];
+    pin += Math.pow(10, scope.inp[k] / 10); pout += Math.pow(10, scope.out[k] / 10);
+  }
+  const db = (pw) => (frames && pw > 0 ? 10 * Math.log10(pw / frames) : -120);
+  return { playing: !!(engine.running && live.playing && patch['src.play'] === 'play'), grMax, grAvg: frames ? grSum / frames : 0, inDb: db(pin), outDb: db(pout), bypassed: patch['comp.bypass'] === 'on' };
+}
+
 function lockSection(id, locked = true) {
   const el = sections[id];
   if (!el) return;
@@ -666,6 +693,7 @@ if (fxTab) fxTab.addEventListener('click', () => setFxOpen(!fxDrawer.classList.c
 let celebrateTimer = 0;
 lesson = new LessonController({
   getPatch: () => ({ ...patch }), setPatch, engine, scope, keyboard, lockSection, ensureAudio,
+  lockControls: SYNTH.PLAYER ? lockControls : null, measure: SYNTH.PLAYER ? measure : null,
   onModeChange: (mode) => {
     document.querySelectorAll('#mode-switch button').forEach((b) => b.classList.toggle('on', b.dataset.mode === mode));
     // each lesson chooses whether the scopes start on (showScopes below); Free play restores your setting
@@ -680,7 +708,8 @@ lesson = new LessonController({
     setScopes(on, false);
     requestAnimationFrame(() => {
       fit();
-      const synthTop = document.querySelector('.synth').getBoundingClientRect().top + window.scrollY;
+      // (the NF-C1: from its Loop Player, which sits above it)
+      const synthTop = document.querySelector('.player-unit, .synth').getBoundingClientRect().top + window.scrollY;
       const pinned = document.querySelector('.appbar').offsetHeight + lessonWrap.offsetHeight;
       window.scrollTo(0, on && !visible ? Math.max(0, synthTop - pinned - 12) : 0);
     });
