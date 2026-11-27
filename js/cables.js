@@ -111,6 +111,12 @@ export class Cables {
     return j.el;
   }
 
+  // forget sockets no longer on the panel (the NF-ModRack: a module taken out of the rack)
+  prune() {
+    for (const id in this.ins) if (!this.ins[id].el.isConnected) { delete this.ins[id]; if (this.controls[id] && !this.controls[id].el.isConnected) delete this.controls[id]; }
+    for (const out in this.outs) if (!this.outs[out].isConnected) delete this.outs[out];
+  }
+
   // centre of a socket, in the stage's own (unscaled) pixels
   pos(sock) {
     const s = this.stage.getBoundingClientRect(), r = sock.getBoundingClientRect();

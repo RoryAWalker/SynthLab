@@ -6,12 +6,13 @@ import { NF1 } from './synths/nf1.js';
 import { NF3 } from './synths/nf3.js';
 import { NFM } from './synths/nfm.js';
 import { NFMOD } from './synths/nfmod.js';
+import { MODRACK } from './synths/modrack.js';
 import { EXT, LAB_NAME } from './lab.js';
 import { FX_PARAMS, FX_SECTIONS } from './fx.js';
 
 // SynthLab's synths, or the units of a lab in its own folder (StudioLab), see lab.js
 export { LAB_NAME };
-export const SYNTHS = EXT.units || [NF1, NF3, NFM, NFMOD];
+export const SYNTHS = EXT.units || [NF1, NF3, NFM, NFMOD, MODRACK];
 const wanted = new URLSearchParams(location.search).get('synth');
 export const SYNTH = SYNTHS.find((s) => s.id === wanted) || SYNTHS[0];
 export const SYNTH_CHOSEN = SYNTHS.some((s) => s.id === wanted); // false: show the start menu
@@ -76,6 +77,10 @@ export function formatValue(id, v) {
 export function defaultPatch() {
   const patch = {};
   for (const id in PARAMS) patch[id] = PARAMS[id].def;
+  if (SYNTH.initCables) { // the NF-ModRack's starting cables (in its starting rack)
+    const init = SYNTH.initCables(patch);
+    for (const id in init) if (id in PARAMS) patch[id] = init[id];
+  }
   return patch;
 }
 

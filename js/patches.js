@@ -18,20 +18,25 @@ function save(all) {
 // so an imported or old patch can never put the synth in a broken state.
 // The cables in an input: only outputs this synth has, each once, up to four (one where an input
 // takes a single cable). '' is no cable.
-function cablesIn(v) {
-  const outs = SYNTH.OUTPUTS || {};
+function cablesIn(v, outs = SYNTH.OUTPUTS || {}) {
   const list = [...new Set(v.split(',').map((x) => x.trim()).filter((x) => x in outs))];
   return list.slice(-(SYNTH.multiInput ? 4 : 1)).join(',');
 }
 
 export function sanitizePatch(obj) {
-  const out = defaultPatch();
-  if (!obj || typeof obj !== 'object') return out;
-  for (const id in PARAMS) {
-    const spec = PARAMS[id], v = obj[id];
-    if (v === undefined) continue;
+  // the NF-ModRack: the patch's own rack of modules decides which controls and sockets it has
+  const rack = SYNTH.openRack ? SYNTH.build(obj && typeof obj['rack.layout'] === 'string' ? obj['rack.layout'] : undefined) : null;
+  const P = rack ? { ...PARAMS, ...rack.PARAMS } : PARAMS, OUTS = rack ? rack.OUTPUTS : SYNTH.OUTPUTS;
+  const out = {};
+  for (const id in P) out[id] = P[id].def;
+  if (!obj || typeof obj !== 'object') return rack ? { ...out, 'rack.layout': SYNTH.layoutString(rack.rows) } : defaultPatch();
+  if (rack) { out['rack.layout'] = SYNTH.layoutString(rack.rows); Object.keys(out).forEach((id) => { if (!(id in rack.PARAMS) && !id.startsWith('fx.')) delete out[id]; }); }
+  else Object.assign(out, defaultPatch());
+  for (const id in out) {
+    const spec = P[id], v = obj[id];
+    if (v === undefined || spec.type === 'layout') continue;
     if (spec.type === 'step') { if (spec.options.some((o) => o.v === v)) out[id] = v; }
-    else if (spec.type === 'jack') { if (typeof v === 'string') out[id] = cablesIn(v); } // a cable (or several) into an input
+    else if (spec.type === 'jack') { if (typeof v === 'string') out[id] = cablesIn(v, OUTS); } // a cable (or several) into an input
     else if (typeof v === 'number' && Number.isFinite(v)) out[id] = Math.min(spec.max, Math.max(spec.min, v));
   }
   return out;

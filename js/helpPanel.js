@@ -2,8 +2,13 @@ import { HELP, HELP_NF3, HELP_NFM, HELP_NFMOD, helpKeyFor } from './help.js';
 import { EXT } from './lab.js';
 import { PARAMS, ALL_SECTIONS, formatValue, SYNTH } from './params.js';
 
-const HELP_FOR_SYNTH = { nf3: HELP_NF3, nfm: HELP_NFM, nfmod: HELP_NFMOD, ...(EXT.help || {}) }[SYNTH.id] || {};
-const lookup = (k) => HELP_FOR_SYNTH[k] || HELP[k];
+const HELP_FOR_SYNTH = { nf3: HELP_NF3, nfm: HELP_NFM, nfmod: HELP_NFMOD, ...(EXT.help || {}) }[SYNTH.helpAs || SYNTH.id] || {};
+// (the NF-ModRack's modules share the NF-Modular's help: SYNTH.helpKey finds the entry, e.g. vco3.tune -> osc1.tune)
+const direct = (k) => HELP_FOR_SYNTH[k] || HELP[k];
+const lookup = (k) => {
+  const m = SYNTH.helpKey && SYNTH.helpKey(k);
+  return direct(k) || (m ? direct(m) || direct(helpKeyFor(m)) : undefined);
+};
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 

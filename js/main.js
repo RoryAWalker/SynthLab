@@ -21,13 +21,15 @@ import { startMidi } from './midi.js';
 import { WordSwitch } from './wordswitch.js';
 import { MaxModules } from './maxModules.js';
 import { Smiley } from './fireworks.js';
+import { RackEdit } from './rackEdit.js';
 
 const engine = new Engine({ module: SYNTH.module, processor: SYNTH.processor });
 document.body.dataset.skin = SYNTH.skin;
 // ?preview=1: just the synth on a transparent page, for capturing the start-menu pictures
 const PREVIEW = new URLSearchParams(location.search).has('preview');
 document.body.classList.toggle('preview', PREVIEW);
-document.body.dataset.synth = SYNTH.id;
+document.body.dataset.synth = SYNTH.look || SYNTH.id; // (the NF-ModRack uses the NF-Modular's styles)
+if (SYNTH.openRack) document.body.classList.add('open-rack');
 // the studio units (StudioLab: compressors, consoles): no keyboard; they play sounds through themselves
 const PROC = !!SYNTH.kind;
 document.body.classList.toggle('processor', PROC);
@@ -38,6 +40,7 @@ const knobs = {};
 const sections = {};
 let help = null; // HelpPanel, created at boot
 let lesson = null; // LessonController, created at boot
+let rackEdit = null; // the NF-ModRack's module drawer (rackEdit.js), created at boot
 // Modular synths (and patchable units, e.g. the NF-Mix4 and its outboard): jack sockets and patch cables (cables.js)
 const cables = SYNTH.modular || SYNTH.patchable ? new Cables(document.getElementById('stage'), { getPatch: () => patch, onChange: (id, v) => onKnob(id, v), controls: knobs }) : null;
 const overlay = new Overlay(() => patch, engine); // teaching graphs on the spectrum display
@@ -49,6 +52,7 @@ function buildSection(sec) {
   const el = document.createElement('div');
   el.className = 'section';
   el.dataset.section = sec.id;
+  if (sec.type) { el.dataset.type = sec.type; el.classList.toggle('even', sec.even); } // the NF-ModRack: coloured by kind of module
   // (an untitled section, e.g. the NiniFoog's switch columns on the section lines, has no help of its own)
   const titleHelp = sec.title ? ` data-help="section:${sec.id}"` : '';
   el.innerHTML = `<div class="section-title"${titleHelp}><span>${sec.title}</span></div><div class="section-grid"></div><div class="lock-veil"><span>LOCKED</span></div>`;
@@ -214,12 +218,7 @@ function buildPanel() {
     // rows of modules, with any side column (the sequencer) beside them, full height
     const rowsBox = document.createElement('div');
     rowsBox.className = 'rack-rows';
-    LAYOUT.forEach((row) => {
-      const r = document.createElement('div');
-      r.className = 'rack-row';
-      row.forEach((sec) => r.appendChild(buildSection(sec)));
-      rowsBox.appendChild(r);
-    });
+    buildRackRows(rowsBox);
     // the side column (the sequencer) stands on the left: it is a source of notes, like the
     // keyboard, and signals in the rack flow from left to right
     SIDE_SECTIONS.forEach((sec) => { const el = buildSection(sec); el.classList.add('rack-side'); root.appendChild(el); });
@@ -250,6 +249,69 @@ function buildPanel() {
   // (skipped if the page is an older cached copy without the Effects unit)
   const fx = document.getElementById('fx-sections');
   if (fx) FX_SECTIONS.forEach((sec) => fx.appendChild(buildSection(sec)));
+}
+
+// the rack's rows of modules (built again when the NF-ModRack's modules change)
+function buildRackRows(rowsBox) {
+  rowsBox.replaceChildren();
+  LAYOUT.forEach((row, ri) => {
+    const r = document.createElement('div');
+    r.className = 'rack-row';
+    r.dataset.row = ri;
+    row.forEach((sec) => r.appendChild(buildSection(sec)));
+    rowsBox.appendChild(r);
+  });
+}
+
+// ---- the NF-ModRack: choose the modules --------------------------------------------------
+// The rack's modules are the patch's 'rack.layout'. Changing them changes which controls and
+// sockets exist: PARAMS, the outputs and LAYOUT are updated in place (everything else reads
+// them from there), and the rack's rows are built again.
+let builtLayout = null;
+function setRackDefs(d) {
+  for (const id in PARAMS) if (!id.startsWith('fx.') && !(id in d.PARAMS)) delete PARAMS[id];
+  Object.assign(PARAMS, d.PARAMS);
+  for (const k in SYNTH.OUTPUTS) delete SYNTH.OUTPUTS[k];
+  Object.assign(SYNTH.OUTPUTS, d.OUTPUTS);
+  LAYOUT.splice(0, LAYOUT.length, ...d.LAYOUT);
+  ALL_SECTIONS.splice(0, ALL_SECTIONS.length, ...LAYOUT.flat(), ...SIDE_SECTIONS, ...KEYBED_SECTIONS, ...FX_SECTIONS);
+}
+function rebuildRack() {
+  const maxWas = maxMods && maxMods.on;
+  if (maxWas) setMaxModules(false);
+  const rowsBox = document.querySelector('#sections .rack-rows');
+  rowsBox.querySelectorAll('.section').forEach((el) => delete sections[el.dataset.section]);
+  buildRackRows(rowsBox);
+  for (const id in knobs) if (!knobs[id].el.isConnected) delete knobs[id];
+  cables.prune();
+  builtLayout = patch['rack.layout'];
+  if (maxMods) { maxMods.usual = LAYOUT.map((row) => row.map((sec) => sec.id)); maxMods.order = maxMods.usual.flat(); }
+  addOverLamp();
+  if (rackEdit) rackEdit.decorate();
+  fit();
+  cables.redraw();
+  if (maxWas) setMaxModules(true);
+}
+// a new rack (from the module drawer): keep every setting and cable that still has somewhere to
+// go, give new modules their starting settings, and drop cables to or from modules taken out
+function changeRack(rows) {
+  const d = SYNTH.build(SYNTH.layoutString(rows));
+  const lay = SYNTH.layoutString(d.rows);
+  if (lay === patch['rack.layout']) return false;
+  setRackDefs(d);
+  const next = defaultPatch();
+  for (const id in next) {
+    if (!(id in patch) || id === 'rack.layout') continue;
+    next[id] = PARAMS[id].type === 'jack'
+      ? String(patch[id] || '').split(',').filter((o) => o in SYNTH.OUTPUTS).join(',') : patch[id];
+  }
+  next['rack.layout'] = lay;
+  patch = next;
+  rebuildRack();
+  engine.setPatch(patch);
+  if ((SYNTH.modular) && !engine.running) ensureAudio();
+  if (patchMenu) patchMenu.markEdited();
+  return true;
 }
 
 // Line up the rows of single-section columns (Mixer, Filter, LFO) with the rows of
@@ -303,6 +365,15 @@ function refreshScales() {
 }
 
 function setPatch(p) {
+  // the NF-ModRack: a patch brings its own rack of modules
+  if (SYNTH.openRack) {
+    const d = SYNTH.build(p['rack.layout']);
+    const lay = SYNTH.layoutString(d.rows);
+    setRackDefs(d);
+    patch = { ...defaultPatch(), ...p, 'rack.layout': lay };
+    for (const id in patch) if (!(id in PARAMS)) delete patch[id];
+    if (lay !== builtLayout) rebuildRack();
+  } else
   patch = { ...defaultPatch(), ...p };
   restartMeasure(); // the meters start again (see measure)
   refreshScales();
@@ -435,6 +506,7 @@ document.querySelector('.np-model').innerHTML = nameHtml(SYNTH.name); // name pl
 document.querySelector('.brand-sub').textContent = SYNTH.brandSub;
 document.title = `${LAB_NAME} · ${SYNTH.name}`;
 buildPanel();
+if (SYNTH.openRack) builtLayout = patch['rack.layout'];
 if (SYNTH.OUTBOARD) buildOutboard();
 if (SYNTH.PLAYER) buildPlayer();
 refreshScales(); // e.g. Osc 3 Frequency starts in Hz when Osc 3 is an LFO
@@ -773,6 +845,15 @@ if (knobs['mix.feedback']) {
   })();
 }
 
+// ---- the NF-ModRack: the module drawer ----
+if (SYNTH.openRack && !PREVIEW) {
+  rackEdit = new RackEdit({
+    root: document.getElementById('sections'), button: document.getElementById('btn-modules'),
+    getRows: () => SYNTH.parseLayout(patch['rack.layout']),
+    change: changeRack, toast: (t) => patchMenu.toast(t),
+  });
+}
+
 // ---- start menu: choose a synth ----
 const startMenu = new StartMenu({ skip: PREVIEW });
 document.getElementById('btn-synths').addEventListener('click', () => startMenu.open());
@@ -789,9 +870,11 @@ if (PROC) new ResizeObserver(() => { if (document.body.classList.contains('lesso
 // ---- modular synths: cables over the panel, and lamps by the output jacks ----
 // The NF-Modular's Output has an Overload light: it glows while the output limiter is working
 // (a patch too hot, or feeding back). If a runaway loop ever forces the rack to reset, say so.
-const outSection = SYNTH.modular && sections.out;
 let overLamp = null, lastResets = 0;
-if (outSection && SYNTH.id === 'nfmod') {
+// (a function declaration: the NF-ModRack builds its Output module again when the rack changes)
+function addOverLamp() {
+  const outSection = SYNTH.modular && sections.out;
+  if (!outSection || !(SYNTH.id === 'nfmod' || SYNTH.openRack)) return;
   const led = document.createElement('div');
   led.className = 'overload-led out-overload';
   led.dataset.help = 'outoverload';
@@ -799,6 +882,7 @@ if (outSection && SYNTH.id === 'nfmod') {
   (outSection.querySelector('.jack-rows') || outSection).appendChild(led);
   overLamp = led.querySelector('.overload-lamp');
 }
+addOverLamp();
 let overShown = 0;
 if (cables) {
   requestAnimationFrame(() => cables.redraw());

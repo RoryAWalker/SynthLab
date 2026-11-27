@@ -385,6 +385,13 @@ export const HELP = {
     title: 'Maximise the modules',
     body: ['Puts the scopes, keyboard and effects out of sight so the modules can fill the window and are easier to read. The keyboard\'s outputs stay along the bottom so you can still patch them, and your computer keyboard or a MIDI keyboard still plays. In a narrow window the modules also rearrange, if that makes them much bigger.', 'Press Restore to put everything back where it was.'],
   },
+  moduledrawer: {
+    title: 'Module drawer',
+    body: ['Opens the drawer of modules for the NF-ModRack. Drag a module into any row of the rack (a bar shows where it will go), or click it to put it in the first row with room. Take as many oscillators, filters, envelopes and so on as you like, as long as they fit: each row is as wide as a row of the NF-Modular\'s case.', 'The bar under each module shows how much of a row it takes. A dimmed module has no row with room left for it.'],
+    tip: 'Start from Empty Rack (Patch menu) and build a voice yourself: a VCO, a VCF, a VCA and an ENV, then patch them.',
+  },
+  movemodule: { title: 'Move this module', body: ['Drag the grip to move the module along its row or into another row. Its settings and cables come with it.'] },
+  removemodule: { title: 'Take this module out', body: ['Takes the module out of the rack, with any cables plugged into it. Its settings are lost, so save the patch first if you might want them back.'] },
   fxtab: { title: 'Effects', body: ['Opens or closes the effects: Chorus, Delay and Reverb. They come after the synth, so the scopes still show the synth\'s own sound.'] },
   zoom: {
     title: 'Zoom',

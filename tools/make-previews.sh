@@ -18,6 +18,7 @@ shot nf1 1600 680
 shot nf3 1600 940
 shot nfm 1600 760
 shot nfmod 1880 1080
+shot modrack 1880 1080
 shot nfc1 1360 396 studio/
 shot nf4 1520 900 studio/
 rm -rf "$PROFILE"
