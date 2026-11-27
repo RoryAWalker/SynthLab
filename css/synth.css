@@ -10,18 +10,21 @@
 }
 
 body[data-skin="classic"] {
+  /* NF-1: an aubergine panel (a near-black purple) in dark walnut ends, so it stands apart
+     from the NiniFoog's black panel and warmer, lighter wood */
   --desk: #141517;
   --desk-2: #1d1f23;
-  --panel: #18191b;
-  --panel-hi: #232427;
-  --ink: #ececec;          /* silk-screen print */
-  --ink-dim: #a9a9a9;
-  --rule: rgba(236, 236, 236, 0.55);
+  --panel: #1f1428;
+  --panel-hi: #2b1d36;
+  --panel-lo: #160e1c;
+  --ink: #ece6f2;          /* silk-screen print, a touch of lilac */
+  --ink-dim: #ada5b6;
+  --rule: rgba(236, 230, 242, 0.55);
   --accent: #ffb547;       /* readouts, active option */
   --led: #ff3b2f;
-  --wood-1: #5b3219;
-  --wood-2: #3e200f;
-  --wood-3: #7a4524;
+  --wood-1: #3a1f12;       /* dark walnut */
+  --wood-2: #24130a;
+  --wood-3: #4e2a17;
 }
 
 * { box-sizing: border-box; }
@@ -310,6 +313,8 @@ body.zoomed .zoom-ctl .zoom-level { color: var(--accent); }
   opacity: 0; transition: opacity 0.12s;
   white-space: nowrap; font-variant-numeric: tabular-nums;
 }
+/* the knob in use gets its own layer while it turns: otherwise each step redraws the whole panel */
+.knob-cell:hover .knob, .knob-cell.active .knob, .knob-cell.active .knob-value { will-change: transform; }
 .knob-cell:hover .knob-value,
 .knob-cell.active .knob-value,
 .knob-cell:focus-within .knob-value,
@@ -503,7 +508,7 @@ body.help-open .help-panel.visible { display: block; animation: help-in 0.15s ea
 body.lesson-mode .free-only { display: none; }
 
 .lesson-bar {
-  display: grid; grid-template-columns: auto auto minmax(260px, 1fr) auto; gap: 26px; align-items: center;
+  display: grid; grid-template-columns: auto minmax(260px, 1fr) auto; gap: 26px; align-items: center;
   padding: 14px 24px;
   background: linear-gradient(#202227, #1a1c20);
   border-bottom: 1px solid #2e3137;
@@ -511,10 +516,11 @@ body.lesson-mode .free-only { display: none; }
 .lesson-bar[hidden] { display: none; }
 .lb-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent); }
 .lb-title { font-size: 22px; font-weight: 700; color: #fff; white-space: nowrap; }
-.lb-steps { display: flex; gap: 6px; }
+/* the challenge numbers: a compact row above the question, wrapping if there are many */
+.lb-steps { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
 .lb-step {
-  width: 30px; height: 30px; border-radius: 50%; padding: 0; cursor: pointer;
-  font: 700 12px var(--font); color: #c9ccd1;
+  width: 22px; height: 22px; border-radius: 50%; padding: 0; cursor: pointer;
+  font: 700 10.5px var(--font); color: #c9ccd1;
   background: #2a2c31; border: 1.5px solid #3d4047;
   display: grid; place-items: center; transition: transform 0.15s, background 0.2s;
 }
@@ -523,7 +529,7 @@ body.lesson-mode .free-only { display: none; }
 .lb-step.current { border-color: var(--accent); color: #fff; box-shadow: 0 0 0 3px rgba(255, 181, 71, 0.2); }
 .lb-step.done { background: #2f8a55; border-color: #49c07c; color: #fff; }
 .lb-step.done.current { box-shadow: 0 0 0 3px rgba(255, 181, 71, 0.35); border-color: var(--accent); }
-.lb-step svg { width: 15px; height: 15px; fill: none; stroke: #fff; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.lb-step svg { width: 12px; height: 12px; fill: none; stroke: #fff; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
 .lb-step.done.pop { animation: step-pop 0.5s ease-out; }
 @keyframes step-pop { 0% { transform: scale(1); } 40% { transform: scale(1.35); } 100% { transform: scale(1); } }
 .lb-task-head { display: flex; align-items: center; gap: 12px; margin-bottom: 3px; }
@@ -549,7 +555,7 @@ body.lesson-mode .free-only { display: none; }
 .lb-check { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: #b9bcc2; cursor: pointer; white-space: nowrap; }
 @media (max-width: 1250px) {
   .lesson-bar { grid-template-columns: auto 1fr; }
-  .lb-task { grid-column: 1 / -1; }
+  .lb-task { grid-column: 2; }
   .lb-actions { grid-column: 1 / -1; justify-content: flex-start; }
 }
 
@@ -744,6 +750,7 @@ body[data-skin="vintage"] .perf { padding: 8px 10px; }
 /* overload light by the Feedback pot */
 .overload-led { position: absolute; top: 40px; right: -26px; display: flex; flex-direction: column; align-items: center; gap: 3px; }
 .overload-lamp {
+  will-change: opacity; /* its own layer, as for the jack lamps */
   --glow: 0; --hue: 52;
   width: 12px; height: 12px; border-radius: 50%;
   background: radial-gradient(circle at 40% 35%,
@@ -757,40 +764,41 @@ body[data-skin="vintage"] .perf { padding: 8px 10px; }
    Start menu
    ========================================================================== */
 .btn-synths { margin-left: 12px; }
-.btn-synths[hidden] { display: none; }
 .start-menu {
   position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; overflow-y: auto;
   background: radial-gradient(ellipse at 50% 0%, #2a2d33, #121316 70%);
   animation: help-in 0.25s ease-out;
 }
 .start-menu[hidden] { display: none; }
-.sm-inner { position: relative; width: min(980px, calc(100vw - 32px)); padding: 40px 0; text-align: center; }
+/* sized to the window's height, so all four synths fit on one screen without scrolling */
+.sm-inner { position: relative; width: min(1040px, calc(100vw - 32px), calc((100vh - 180px) * 1.55)); padding: 3vh 0; text-align: center; }
 .sm-close {
-  position: absolute; top: 34px; right: 0; width: 36px; height: 36px; border-radius: 8px;
+  position: absolute; top: 3vh; right: 0; width: 36px; height: 36px; border-radius: 8px;
   border: 1px solid #3a3d44; background: #24262b; color: #d6d8dc; font-size: 20px; cursor: pointer;
 }
 .sm-close[hidden] { display: none; }
 .sm-eyebrow { font-size: 12px; font-weight: 800; letter-spacing: 0.22em; text-transform: uppercase; color: var(--accent); }
-.sm-title { margin: 6px 0 28px; font-size: 34px; color: #fff; }
-.sm-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 22px; }
+.sm-title { margin: 4px 0 2.4vh; font-size: 32px; color: #fff; }
+.sm-cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2.2vh 22px; } /* always 2 x 2, however wide the window */
+@media (max-width: 640px) { .sm-cards { grid-template-columns: 1fr; } } /* one column on a phone */
 .sm-card {
-  text-align: left; padding: 0 0 20px; border-radius: 16px; cursor: pointer; overflow: hidden;
+  text-align: left; padding: 0 0 14px; border-radius: 16px; cursor: pointer; overflow: hidden;
   background: #1c1e23; border: 1px solid #34373e; color: inherit; font: inherit;
   transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
 }
 .sm-card:hover, .sm-card:focus-visible { transform: translateY(-3px); border-color: var(--accent); box-shadow: 0 16px 40px rgba(0,0,0,0.45); outline: none; }
 .sm-card > :not(.sm-preview) { margin-left: 22px; margin-right: 22px; }
 .sm-preview {
-  height: 190px; margin-bottom: 16px; padding: 14px 16px 0; display: flex; align-items: center; justify-content: center;
+  height: clamp(100px, 19.5vh, 210px); margin-bottom: 12px; padding: 12px 16px 0; display: flex; align-items: center; justify-content: center;
   background: radial-gradient(ellipse at 50% 30%, #2a2c31, #17181b 75%);
   border-bottom: 1px solid #2c2f35;
 }
 .sm-preview img { max-width: 100%; max-height: 100%; object-fit: contain; filter: drop-shadow(0 10px 14px rgba(0,0,0,0.55)); transition: transform 0.2s; }
 .sm-card:hover .sm-preview img { transform: scale(1.03); }
 .sm-tag { font-size: 11px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent); }
-.sm-name { font-size: 28px; font-weight: 800; color: #fff; margin-top: 2px; letter-spacing: 0.02em; }
-.sm-text { font-size: 14.5px; line-height: 1.55; color: #c3c6cc; margin-top: 8px; min-height: 66px; }
-.sm-foot { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+.sm-name { font-size: 26px; font-weight: 800; color: #fff; margin-top: 2px; letter-spacing: 0.02em; }
+.sm-text { font-size: 14.5px; line-height: 1.45; color: #c3c6cc; margin-top: 4px; }
+.sm-foot { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
 .sm-play { font-weight: 700; color: #ffd9a0; }
 .sm-badge { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 20px; background: #2f3238; color: #c9ccd1; }
 .sm-badge.current { background: #2f8a55; color: #fff; }
@@ -840,17 +848,17 @@ body[data-skin="vintage"] .keybed { height: 262px; }
 body[data-skin="vintage"] .perf .wheel-slot { height: 150px; width: 38px; }
 /* win back height so the larger pots show larger on screen */
 /* NiniFoog: scopes are a slim strip (it is not the beginners' synth, so the displays can be compact) */
-body[data-skin="vintage"] .scope-unit { margin-bottom: 12px; padding: 8px 18px 6px; gap: 16px; align-items: center; }
-body[data-skin="vintage"] .bezel { height: 112px; padding: 6px; border-radius: 10px; }
-body[data-skin="vintage"] .screen-glass { inset: 6px; border-radius: 7px; }
-body[data-skin="vintage"] .bezel canvas { border-radius: 7px; }
-body[data-skin="vintage"] .scope-screen-wrap { gap: 4px; }
-body[data-skin="vintage"] .scope-controls { width: auto; padding-top: 0; gap: 6px; }
-body[data-skin="vintage"] .tb-group { gap: 6px; }
-body[data-skin="vintage"] .tb-buttons { grid-template-columns: repeat(6, 34px); gap: 5px; }
-body[data-skin="vintage"] .tb-btn { height: 24px; }
-body[data-skin="vintage"] .hold-btn { width: 100%; height: 24px; }
-body[data-skin="vintage"] .scope-brand { display: none; }
+body[data-skin="vintage"] .scope-unit, body[data-skin="modular"] .scope-unit { margin-bottom: 12px; padding: 8px 18px 6px; gap: 16px; align-items: center; }
+body[data-skin="vintage"] .bezel, body[data-skin="modular"] .bezel { height: 112px; padding: 6px; border-radius: 10px; }
+body[data-skin="vintage"] .screen-glass, body[data-skin="modular"] .screen-glass { inset: 6px; border-radius: 7px; }
+body[data-skin="vintage"] .bezel canvas, body[data-skin="modular"] .bezel canvas { border-radius: 7px; }
+body[data-skin="vintage"] .scope-screen-wrap, body[data-skin="modular"] .scope-screen-wrap { gap: 4px; }
+body[data-skin="vintage"] .scope-controls, body[data-skin="modular"] .scope-controls { width: auto; padding-top: 0; gap: 6px; }
+body[data-skin="vintage"] .tb-group, body[data-skin="modular"] .tb-group { gap: 6px; }
+body[data-skin="vintage"] .tb-buttons, body[data-skin="modular"] .tb-buttons { grid-template-columns: repeat(6, 34px); gap: 5px; }
+body[data-skin="vintage"] .tb-btn, body[data-skin="modular"] .tb-btn { height: 24px; }
+body[data-skin="vintage"] .hold-btn, body[data-skin="modular"] .hold-btn { width: 100%; height: 24px; }
+body[data-skin="vintage"] .scope-brand, body[data-skin="modular"] .scope-brand { display: none; }
 body[data-skin="vintage"] .panel { padding-top: 10px; }
 body[data-skin="vintage"] .panel-column.stacked, body[data-skin="vintage"] .panel-column { gap: 6px; }
 body[data-skin="vintage"] .perf .wheel-label { font-size: 12px; }
@@ -929,10 +937,12 @@ body.preview #fit { margin: 0; }
 .lb-heat-fill { height: 100%; width: 0; border-radius: 6px; background: linear-gradient(90deg, #4d8fe0, #9b6bd6 45%, #f0a03a 75%, #ff4d3a); background-size: 300px 100%; transition: width 0.15s; }
 .lb-heat-word { min-width: 92px; color: #ffd9a0; }
 
-/* the lesson bar sits in a wrapper of fixed (resting) height; when it grows it overlays the scopes */
-.lesson-wrap { position: relative; z-index: 30; }
-.lesson-wrap .lesson-bar { position: absolute; left: 0; right: 0; top: 0; }
-.lesson-bar.overlaying { box-shadow: 0 18px 30px rgba(0,0,0,0.55); border-bottom-color: #3a3d44; }
+/* The top bar and the lesson panel stay pinned to the top of the window. The synth is sized to
+   fit below them; when the scopes are on, the page opens scrolled so the lesson hangs over them,
+   and scrolling up brings them into view. */
+.appbar { position: sticky; top: 0; z-index: 31; background: #141518; }
+.lesson-wrap { position: sticky; top: var(--appbar-h, 0px); z-index: 30; }
+.lesson-bar { box-shadow: 0 10px 24px rgba(0,0,0,0.45); }
 
 /* ==========================================================================
    Effects unit: a small separate box between the scopes and the synth
@@ -976,22 +986,339 @@ body.preview .fx-drawer { display: none !important; }
 /* ==========================================================================
    Maximised scopes: tall screens; the keyboard folds away unless KEYBOARD is on
    ========================================================================== */
-body.scopes-max .bezel, body[data-skin="vintage"].scopes-max .bezel { height: 420px; padding: 10px; }
+body.scopes-max .bezel, body[data-skin="vintage"].scopes-max .bezel, body[data-skin="modular"].scopes-max .bezel { height: 420px; padding: 10px; }
 body.scopes-max .scope-unit { align-items: stretch; }
-body[data-skin="vintage"].scopes-max .scope-controls { flex-direction: column; width: 150px; }
-body[data-skin="vintage"].scopes-max .tb-buttons { grid-template-columns: repeat(3, 40px); }
+body[data-skin="vintage"].scopes-max .scope-controls, body[data-skin="modular"].scopes-max .scope-controls { flex-direction: column; width: 150px; }
+body[data-skin="vintage"].scopes-max .tb-buttons, body[data-skin="modular"].scopes-max .tb-buttons { grid-template-columns: repeat(3, 40px); }
 body.scopes-max .keybed,
 body.scopes-max .wood-band { display: none; }
 .max-btn { margin-top: 2px; }
 .max-btn.on { background: linear-gradient(#ffcf7a, #f0a43a); }
-body[data-skin="vintage"] .max-btn { height: 24px; }
+body[data-skin="vintage"] .max-btn, body[data-skin="modular"] .max-btn { height: 24px; }
 
 /* The screens' pixel resolution must never widen the layout: they are redrawn sharper when
    zoomed or maximised, and the page would otherwise grow, then shrink to fit. So the canvas is
    positioned inside its bezel (out of the layout flow), sized from the bezel, not the other way. */
 .scope-screen-wrap, .bezel { min-width: 0; }
 .bezel { --bp: 10px; }
-body[data-skin="vintage"] .bezel { --bp: 6px; }
-body.scopes-max .bezel, body[data-skin="vintage"].scopes-max .bezel { --bp: 10px; }
+body[data-skin="vintage"] .bezel, body[data-skin="modular"] .bezel { --bp: 6px; }
+body.scopes-max .bezel, body[data-skin="vintage"].scopes-max .bezel, body[data-skin="modular"].scopes-max .bezel { --bp: 10px; }
 .bezel canvas { position: absolute; top: var(--bp); left: var(--bp); width: calc(100% - 2 * var(--bp)); height: calc(100% - 2 * var(--bp)); }
 .bezel .screen-glass { inset: var(--bp); }
+
+/* ==========================================================================
+   NF-MiniModular (nfm): separate module plates in a dark rack, jack sockets, patch cables
+   ========================================================================== */
+body[data-skin="modular"] {
+  --desk: #141517; --desk-2: #1d1f23;
+  --panel: #202226; --panel-hi: #2a2d31;
+  --ink: #ececec; --ink-dim: #a9abae; --rule: rgba(236,236,236,0.5);
+  --accent: #ffb547; --led: #ff3b2f;
+  --wood-1: #2a2c30; --wood-2: #1b1c1f; --wood-3: #34363a; /* rack rails instead of wood */
+}
+body[data-skin="modular"] .cheek { width: 30px; background-image: linear-gradient(90deg, #1b1c1f, #3a3c40 45%, #26282b 70%, #18191b); }
+body[data-skin="modular"] .panel { background: #111214; padding: 14px 14px 10px; }
+body[data-skin="modular"] .panel-sections { gap: 8px; }
+body[data-skin="modular"] .section-divider { display: none; }
+/* each module is its own plate, with screws at its corners */
+body[data-skin="modular"] .panel .section {
+  padding: 10px 10px 8px; border-radius: 4px; height: 100%;
+  display: flex; flex-direction: column;
+  background:
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.016) 0 1px, transparent 1px 3px),
+    linear-gradient(180deg, #34373c, #26282c 40%, #212327);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), inset 0 0 0 1px rgba(0,0,0,0.5), 0 2px 4px rgba(0,0,0,0.6);
+}
+body[data-skin="modular"] .panel .section::before, body[data-skin="modular"] .panel .section::after {
+  content: ""; position: absolute; left: 50%; width: 7px; height: 7px; margin-left: -3.5px; border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #c9cbcd, #5d6164 70%);
+  box-shadow: 0 1px 1px rgba(0,0,0,0.8);
+}
+body[data-skin="modular"] .panel .section::before { top: 3px; }
+body[data-skin="modular"] .panel .section::after { bottom: 3px; }
+body[data-skin="modular"] .panel .section .jack-strip { margin-top: auto; }
+body[data-skin="modular"] .panel-footer { margin-top: 8px; }
+
+/* ---- jack sockets ---- */
+.jack-strip {
+  display: flex; justify-content: center; gap: 4px; padding: 8px 4px 6px; margin-top: 6px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+}
+.jack-cell { position: relative; width: 62px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.jack-label { font-size: 10.5px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink); }
+/* outputs sit on a dark plate, the usual way modules tell outputs from inputs */
+.jack-cell.out { background: #2c2e31; border-radius: 6px; padding: 3px 0 5px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1); }
+.jack-cell.out .jack-label { color: #f2f2f2; }
+.jack-cell.in { padding: 3px 0 5px; } /* line up with the outputs on their plates */
+.socket {
+  width: 30px; height: 30px; border-radius: 50%; cursor: grab; touch-action: none;
+  /* a thin band round the metal shows the kind of signal: blue for control, coral for sound (.audio) */
+  --ring: #6a9dbd;
+  background: radial-gradient(circle, #050505 0 34%, #3b3e42 36%, #c4c7ca 47%, #7d8184 56%, #3a3d40 60%, var(--ring) 62.5%);
+  box-shadow: 0 2px 3px rgba(0,0,0,0.6);
+  transition: box-shadow 0.12s, transform 0.12s;
+}
+.jack-cell.audio .socket { --ring: #cd7a66; }
+.socket:hover { box-shadow: 0 0 0 3px rgba(255,181,71,0.55), 0 2px 3px rgba(0,0,0,0.6); }
+body.patching { cursor: grabbing; user-select: none; }
+body.patching .socket { cursor: grabbing; }
+/* while dragging, the sockets that can take the cable glow */
+body.patching-in .socket[data-jack], body.patching-out .socket[data-out] { box-shadow: 0 0 0 3px rgba(255,181,71,0.35), 0 2px 3px rgba(0,0,0,0.6); }
+.socket.hover { box-shadow: 0 0 0 4px #ffb547, 0 0 14px rgba(255,181,71,0.8) !important; transform: scale(1.08); }
+/* lamp by each output in use: lights with the signal leaving it */
+.jack-cell.out.patched .jack-lamp { display: block; }
+.jack-lamp {
+  display: none; /* shown only on an output with a cable in it */
+  will-change: opacity; /* its own layer: otherwise every flicker redraws the whole panel */
+  position: absolute; top: 5px; right: 5px; width: 7px; height: 7px; border-radius: 50%;
+  --glow: 0;
+  background: rgb(calc(70 + 185 * var(--glow)), calc(20 + 40 * var(--glow)), 20);
+  box-shadow: 0 0 calc(10px * var(--glow)) rgba(255,60,30,calc(var(--glow)));
+}
+.section.locked .jack-strip { opacity: 0.22; filter: grayscale(1); pointer-events: none; }
+
+/* ---- cables: drawn over the whole instrument, letting clicks through to the knobs ---- */
+.cable-layer { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; z-index: 40; }
+.cable path { fill: none; stroke-linecap: round; }
+.cable-shadow { stroke: rgba(0,0,0,0.45); stroke-width: 9; transform: translate(2px, 4px); }
+.cable-body { stroke-width: 6.5; opacity: 0.92; }
+.cable-shine { stroke: rgba(255,255,255,0.25); stroke-width: 1.6; transform: translate(-1px, -1.5px); }
+.cable .plug { stroke: rgba(0,0,0,0.6); stroke-width: 1.5; }
+.cable .plug-tip { fill: #d8dadc; }
+.cable.live { opacity: 0.85; }
+/* see-through cables: near the mouse (always), or everywhere with the See-through switch.
+   The plugs stay visible so you can still see what is connected. */
+.cable .cable-shadow, .cable .cable-body, .cable .cable-shine { transition: opacity 0.18s; }
+.cable.near .cable-shadow, .cable.near .cable-shine { opacity: 0; }
+.cable.near .cable-body { opacity: 0.14; }
+body.cables-faded .cable:not(.live) .cable-shadow, body.cables-faded .cable:not(.live) .cable-shine { opacity: 0; }
+body.cables-faded .cable:not(.live) .cable-body { opacity: 0.3; }
+body.cables-faded .cable.near .cable-body { opacity: 0.1; }
+.ctl.modular-only[hidden] { display: none; }
+body.preview .cable-layer { display: block; }
+/* the keyboard's jacks sit with its Glide knob, left of the keys */
+body[data-skin="modular"] .perf .jack-strip { border-top-color: rgba(255,255,255,0.12); }
+/* NF-MiniModular: the keyboard section holds more than Glide, so the knob keeps its label */
+body[data-skin="modular"] .perf .knob-label { visibility: visible; height: 15px; }
+
+/* NF-Modular: a two-row rack (columns stack two modules) and modules with several rows of jacks */
+body[data-skin="modular"] .panel-column.stacked { gap: 8px; }
+body[data-skin="modular"] .panel-column.stacked > .section { height: auto; flex: 1 1 auto; }
+body[data-skin="modular"] .panel .section .jack-rows { margin-top: auto; }
+.jack-rows .jack-strip { margin-top: 0; }
+.jack-rows .jack-strip:first-child { margin-top: 6px; }
+.jack-rows .jack-strip + .jack-strip { border-top: none; padding-top: 7px; }
+.section.locked .jack-rows { opacity: 0.22; filter: grayscale(1); pointer-events: none; }
+/* dual modules: a small number in front of each row of jacks */
+.jack-rowlabel { align-self: center; width: 16px; font-size: 11px; font-weight: 800; color: var(--ink-dim); text-align: center; margin-top: 14px; }
+/* the NF-Modular's Output: an Overload light beside its jack */
+.out-overload { position: static; display: flex; justify-content: center; margin: 4px 0 6px; }
+
+/* ==========================================================================
+   NF-Modular rack: three full-width rows of modules, compact knobs
+   ========================================================================== */
+.panel-sections.rack { flex-direction: column; gap: 8px; }
+.rack-row { display: flex; gap: 8px; align-items: stretch; }
+.rack-row > .section { flex: 1 1 auto; }
+body[data-synth="nfmod"] { --cell-w: 84px; }
+body[data-synth="nfmod"] .panel .knob-cell { width: 84px; }
+body[data-synth="nfmod"] .panel .dial { zoom: 0.8; }
+body[data-synth="nfmod"] .panel .knob-label { font-size: 11px; }
+body[data-synth="nfmod"] .panel .knob-value { font-size: 11px; }
+body[data-synth="nfmod"] .panel .toggle-cell { width: 76px; }
+body[data-synth="nfmod"] .panel .section { padding: 8px 8px 4px; }
+body[data-synth="nfmod"] .panel .section-title { margin-bottom: 2px; }
+body[data-synth="nfmod"] .jack-strip { padding: 5px 4px 3px; margin-top: 4px; }
+body[data-synth="nfmod"] .jack-cell { width: 52px; }
+body[data-synth="nfmod"] .jack-strip { gap: 3px; }
+body[data-synth="nfmod"] .panel .knob-label { letter-spacing: 0.04em; }
+body[data-synth="nfmod"] .jack-rowlabel { margin-top: 12px; }
+
+/* ==========================================================================
+   Module colours (both modular synths): one hue per kind of module, shades for pairs.
+   The plate is a dark grey tinted with the module's colour, so the white print stays clear.
+   ========================================================================== */
+body[data-skin="modular"] .panel .section, body[data-skin="modular"] .perf .section { --mod: #6b6f76; }
+body[data-skin="modular"] .section[data-section="vco1"],
+body[data-skin="modular"] .section[data-section="osc"] { --mod: #3f6fb8; }   /* VCO: blue */
+body[data-skin="modular"] .section[data-section="vco2"] { --mod: #5a8fd6; }
+body[data-skin="modular"] .section[data-section="noise"] { --mod: #9aa1aa; } /* Noise: silver */
+body[data-skin="modular"] .section[data-section="mix"] { --mod: #2f9c94; }   /* Mixer: teal */
+body[data-skin="modular"] .section[data-section="filt"] { --mod: #d2832c; }  /* VCF: amber */
+body[data-skin="modular"] .section[data-section="ring"] { --mod: #8d5bc4; }  /* Ring Mod: violet */
+body[data-skin="modular"] .section[data-section="vca"] { --mod: #4f9e4a; }   /* VCA: green */
+body[data-skin="modular"] .section[data-section="att"] { --mod: #8f9a46; }   /* Attenuverter: olive */
+body[data-skin="modular"] .section[data-section="out"] { --mod: #4a4d52; }   /* Output: graphite */
+body[data-skin="modular"] .section[data-section="env1"],
+body[data-skin="modular"] .section[data-section="env"] { --mod: #c2423d; }   /* ENV: red */
+body[data-skin="modular"] .section[data-section="env2"] { --mod: #de6a5e; }
+body[data-skin="modular"] .section[data-section="lfo"] { --mod: #c7a434; }   /* LFO: mustard */
+body[data-skin="modular"] .section[data-section="sh"] { --mod: #c4508f; }    /* S&H: magenta */
+body[data-skin="modular"] .section[data-section="kb"] { --mod: #6b6f76; }    /* Keyboard: neutral */
+body[data-skin="modular"] .panel .section, body[data-skin="modular"] .perf .section {
+  background:
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.016) 0 1px, transparent 1px 3px),
+    linear-gradient(180deg, color-mix(in srgb, var(--mod) 30%, #2f3236), color-mix(in srgb, var(--mod) 18%, #1d1f22));
+  border-top: 3px solid color-mix(in srgb, var(--mod) 80%, #000);
+}
+body[data-skin="modular"] .panel .section-title { border-bottom-color: color-mix(in srgb, var(--mod) 55%, rgba(236,236,236,0.5)); }
+
+/* two controls stacked in one cell (the MFO's switches) */
+.stack-cell { width: var(--cell-w); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
+.stack-cell .toggle-cell { width: auto; padding: 0; }
+/* a module split into halves (Dual VCA): parts side by side with a line between */
+.section.split .parts { display: flex; justify-content: center; }
+.section.split .part { display: flex; flex-direction: column; flex: 1; padding: 0 6px; }
+.section.split .part + .part { border-left: 1px solid rgba(255,255,255,0.28); }
+.part-title { text-align: center; font-size: 10px; font-weight: 800; letter-spacing: 0.16em; color: var(--ink-dim); margin-bottom: 1px; }
+body[data-skin="modular"] .panel .section.split .part .jack-strip { margin-top: auto; }
+body[data-skin="modular"] .panel .section.split .parts { flex: 1; }
+body[data-skin="modular"] .section[data-section="mfo"] { --mod: #d99a2b; }   /* MFO: a deeper mustard than the LFO */
+/* NF-Modular: a shorter keyboard band (the rack above is what you work on) */
+body[data-synth="nfmod"] .keybed { height: 204px; padding-top: 8px; padding-bottom: 10px; }
+body[data-synth="nfmod"] .perf .dial { zoom: 0.8; }
+body[data-synth="nfmod"] .perf { padding-top: 4px; padding-bottom: 4px; }
+/* rack rows: every module fills the full height of its row (no gaps under the shorter ones) */
+.rack-row > .section { height: auto !important; align-self: stretch; }
+/* modular synths: the keyboard section has no title (Glide and Mode sit side by side) */
+body[data-skin="modular"] .perf .section-title:empty, body[data-skin="modular"] .perf .section-title:has(span:empty) { display: none; }
+body[data-skin="modular"] .perf .section-grid { column-gap: 2px; }
+/* modular synths: the Mono/Legato switch in the keyboard's controls column */
+.perf-mode { width: auto; margin-top: 2px; }
+.perf-mode .toggle-title { font-size: 11px; letter-spacing: 0.12em; }
+/* start menu: "SynthLab by NoFoe" at the top, in its own capitals */
+.sm-brand { text-transform: none; font-size: 15px; letter-spacing: 0.08em; }
+.sm-brand span { font-weight: 600; color: #c9ccd1; }
+
+/* ==========================================================================
+   Touch screens
+   ========================================================================== */
+/* no grey flash on tap, no text selection or long-press menu on the instrument, and no
+   double-tap page zoom on buttons */
+html { -webkit-tap-highlight-color: transparent; }
+#stage, .lesson-bar, .appbar, .start-menu { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+button, .btn, .toggle, .toggle-label, .lb-btn, .range-btn, .oct-btn, .tb-btn, .sm-card { touch-action: manipulation; }
+/* fingers need bigger targets: the jack sockets grow an invisible ring that also counts as the socket */
+@media (pointer: coarse) {
+  .socket { position: relative; }
+  .socket::after { content: ''; position: absolute; inset: -12px; border-radius: 50%; }
+  .knob::after { content: ''; position: absolute; inset: -8px; border-radius: 50%; }
+}
+
+/* NF-1 aubergine: the panel's lower edge and the keyboard area share the tint (the scopes stay the
+   same grey test instrument on every synth) */
+body[data-skin="classic"] .panel { background:
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.018) 0 1px, transparent 1px 2px),
+    linear-gradient(180deg, var(--panel-hi), var(--panel) 30%, var(--panel-lo)); border-top-color: #3a2b45; }
+body[data-skin="classic"] .keybed { background: linear-gradient(#0f0a13, #1a1220); }
+body[data-skin="classic"] .perf { background: linear-gradient(#22172b, #170f1d); }
+
+/* the pop-out graph: a floating scope screen for the teaching graphs (see main.js) */
+.graph-pop {
+  position: fixed; right: 16px; top: 70px; z-index: 60; width: 620px; height: 280px; max-width: calc(100vw - 32px);
+  border-radius: 12px; padding: 8px; pointer-events: none; opacity: 0; transition: opacity 0.12s;
+  background: linear-gradient(#3a3c3f, #2b2d30);
+  box-shadow: 0 18px 40px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.12);
+}
+.graph-pop canvas { width: 100%; height: 100%; border-radius: 7px; display: block; }
+body.preview .graph-pop { display: none; }
+
+/* ==========================================================================
+   NF-Modular sequencer: a column beside the rack rows, full height; folds to a thin strip
+   ========================================================================== */
+.panel-sections.rack { flex-direction: row; align-items: stretch; }
+.rack-rows { display: flex; flex-direction: column; gap: 8px; flex: 1 1 auto; }
+.rack-side { flex: none; margin-right: 8px; display: flex; flex-direction: column; }
+body[data-skin="modular"] .section[data-section="seq"] { --mod: #2fa6c9; } /* Sequencer: cyan */
+.rack-side .section-grid { row-gap: 0; }
+.rack-side .jack-rows { margin-top: auto; }
+/* each step: a small pitch knob over its on/off light; the playing step glows */
+.rack-side .stack-cell { gap: 0; border-radius: 8px; padding: 0 0 3px; transition: background 0.08s; }
+.rack-side .stack-cell.current { background: rgba(47, 166, 201, 0.28); box-shadow: 0 0 0 1px rgba(120, 220, 255, 0.5); }
+body .rack-side .knob-cell.small { width: 84px; padding-top: 0; }
+body .rack-side .knob-cell.small .knob-label { font-size: 10px; height: 13px; }
+body .rack-side .knob-cell.small .dial { width: 74px; height: 74px; zoom: 1; margin-top: -4px; }
+body .rack-side .knob-cell.small .knob { width: 34px; height: 34px; margin: -17px 0 0 -17px; }
+body .rack-side .knob-cell.small .knob-cap { inset: 6px; }
+body .rack-side .knob-cell.small .knob-pointer { height: 9px; top: 2px; width: 2px; margin-left: -1px; }
+body .rack-side .knob-cell.small .knob-value { font-size: 10.5px; height: 14px; margin-top: -6px; }
+.led-cell { display: flex; justify-content: center; }
+.led-btn {
+  width: 30px; height: 18px; border-radius: 4px; cursor: pointer; padding: 0;
+  border: 1px solid #0b0b0c; background: linear-gradient(#3a3d42, #25272b);
+  display: grid; place-items: center; box-shadow: 0 1px 0 rgba(255,255,255,0.08);
+}
+.led-lamp { width: 10px; height: 5px; border-radius: 2px; background: #3a1c18; }
+.led-btn.on .led-lamp { background: #ff5a3a; box-shadow: 0 0 8px rgba(255, 90, 58, 0.9); }
+/* the fold button, in the module's title bar */
+.fold-btn {
+  float: left; width: 20px; height: 18px; margin: -2px 4px 0 -2px; padding: 0; border-radius: 4px; cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.18); background: rgba(0,0,0,0.25); color: var(--ink); font-size: 11px; line-height: 16px;
+}
+.fold-btn:hover { background: rgba(255,255,255,0.12); }
+/* folded: a thin strip with the name running down it */
+.section.folded { width: 40px; padding-left: 4px !important; padding-right: 4px !important; }
+.section.folded .section-grid, .section.folded .jack-rows, .section.folded .jack-strip { display: none; }
+.section.folded .section-title { border-bottom: none; writing-mode: vertical-rl; margin: 4px auto 0; padding: 0; }
+.section.folded .fold-btn { float: none; margin: 0 0 8px; writing-mode: horizontal-tb; }
+/* sequencer v2: two columns, a wide Run button on top, small step lights tucked under each knob */
+.section-head { display: flex; justify-content: center; margin: 2px 0 4px; }
+.led-cell.wide .led-btn { width: 132px; height: 26px; gap: 8px; display: flex; align-items: center; justify-content: center; }
+.led-cell.wide .led-lamp { width: 9px; height: 9px; border-radius: 50%; }
+.led-word { font: 800 11px var(--font); letter-spacing: 0.2em; color: var(--ink); }
+.led-btn.on .led-word { color: #ffd2c6; }
+.rack-side .stack-cell .led-cell { margin-top: -9px; position: relative; z-index: 1; }
+.rack-side .stack-cell .led-btn { width: 22px; height: 12px; border-radius: 3px; }
+.rack-side .stack-cell .led-lamp { width: 8px; height: 4px; }
+
+/* Hear target sits in the task heading, beside the challenge title, so it is not missed */
+.lb-task-head { flex-wrap: wrap; }
+.lb-btn.lb-hear { padding: 5px 12px; font-size: 12.5px; background: linear-gradient(#ffcf7a, #f0a43a); border-color: #c98a2e; color: #24180a; }
+.lb-btn.lb-hear:hover { background: linear-gradient(#ffd98f, #f5ae4a); }
+
+/* MIDI light in the top bar: shown while a MIDI keyboard is connected */
+.midi-light { display: inline-flex; align-items: center; gap: 6px; font: 700 11px var(--font); letter-spacing: 0.1em; color: #9fe0b4; padding: 5px 9px; border: 1px solid #2f5a3e; border-radius: 6px; background: #17241c; }
+.midi-light[hidden] { display: none; }
+.midi-light i { width: 7px; height: 7px; border-radius: 50%; background: #49c07c; box-shadow: 0 0 6px #49c07c; }
+.midi-light.hit i { background: #b8ffd0; box-shadow: 0 0 10px #8affb3; }
+
+/* a word in a module's title that is a switch (ENV: Exponential / Linear) */
+.word-switch {
+  font: inherit; letter-spacing: inherit; text-transform: inherit; color: #ffd9a0; cursor: pointer;
+  background: rgba(0, 0, 0, 0.28); border: 1px solid rgba(255, 217, 160, 0.35); border-radius: 4px;
+  margin-left: 8px; padding: 0 6px; line-height: 1.35;
+}
+.word-switch:hover { background: rgba(0, 0, 0, 0.45); border-color: rgba(255, 217, 160, 0.8); }
+
+/* ==========================================================================
+   Maximised modules (modular synths): see maxModules.js
+   ========================================================================== */
+body.modules-max .scope-unit, body.modules-max .keybed, body.modules-max .wood-band,
+body.modules-max .fx-drawer, body.modules-max .panel-footer { display: none; }
+body.modules-max:not(.zoomed) #fit { overflow: clip; overflow-clip-margin: 120px; } /* let cables hang below the rack */
+body.modules-max .cheek { display: none; }
+body[data-skin="modular"].modules-max .panel { padding: 8px 8px 6px; border-radius: 6px; }
+body.modules-max #sections { display: block; }
+body.modules-max #sections > :not(.max-box) { display: none; }
+.max-main { display: flex; align-items: stretch; }
+.max-side { display: flex; }
+.max-side .section { height: auto !important; }
+.max-rows { min-width: 0; }
+.max-rows .rack-row { flex: 1 1 auto; }
+.max-box.measuring .max-main { width: max-content; }
+.max-box.measuring .rack-row > .section { flex: 0 0 auto; }
+.max-box .section .jack-strip, .max-box .section .jack-rows { margin-top: auto; }
+/* the keyboard's outputs: one slim strip, labels beside their sockets */
+.max-kb { margin-top: 6px; }
+body[data-skin="modular"] .max-kb .section { height: auto; padding: 3px 14px !important; flex-direction: row; align-items: center; gap: 18px; }
+.max-kb .section::before, .max-kb .section::after, .max-kb .section-grid { display: none !important; }
+body[data-skin="modular"] .max-kb .section .section-title { margin: 0; padding: 0; border: none; font-size: 11.5px; }
+body[data-skin="modular"] .max-kb .section .jack-rows, body[data-skin="modular"] .max-kb .section .jack-strip { margin: 0; padding: 0; border: none; gap: 10px; }
+body[data-skin="modular"] .max-kb .jack-cell.out { width: auto; flex-direction: row; gap: 9px; padding: 2px 8px 2px 14px; }
+.max-kb .jack-lamp { top: 3px; right: auto; left: 4px; }
+/* the smiley's own small screen */
+.smiley-pop {
+  position: fixed; left: 50%; top: 30%; width: 280px; height: 180px; margin-left: -140px; z-index: 70; pointer-events: none;
+  border-radius: 12px; padding: 8px; background: linear-gradient(#3a3c3f, #2b2d30); box-shadow: 0 18px 40px rgba(0,0,0,0.6);
+}
+.smiley-pop canvas { width: 100%; height: 100%; border-radius: 7px; display: block; }

@@ -4,17 +4,14 @@
 
 import { NF1 } from './synths/nf1.js';
 import { NF3 } from './synths/nf3.js';
+import { NFM } from './synths/nfm.js';
+import { NFMOD } from './synths/nfmod.js';
 import { FX_PARAMS, FX_SECTIONS } from './fx.js';
 
-// RELEASE HOLD: the public site offers only the NF-1 for now. To release the NiniFoog,
-// put NF3 back in this list (and restore its section of the README).
-const ALL_SYNTHS = [NF1, NF3];
-const PUBLIC = ['nf1'];
-export const SYNTHS = ALL_SYNTHS.filter((s) => PUBLIC.includes(s.id));
+export const SYNTHS = [NF1, NF3, NFM, NFMOD];
 const wanted = new URLSearchParams(location.search).get('synth');
 export const SYNTH = SYNTHS.find((s) => s.id === wanted) || NF1;
-// false: show the start menu (never, when there is only one synth to choose)
-export const SYNTH_CHOSEN = SYNTHS.length === 1 || SYNTHS.some((s) => s.id === wanted);
+export const SYNTH_CHOSEN = SYNTHS.some((s) => s.id === wanted); // false: show the start menu
 
 // every synth's own controls, plus the shared effects
 export const PARAMS = { ...SYNTH.PARAMS, ...FX_PARAMS };
@@ -22,7 +19,8 @@ export const LAYOUT = SYNTH.LAYOUT;
 export const KEYBED_SECTIONS = SYNTH.KEYBED_SECTIONS;
 export const PRESETS = SYNTH.PRESETS;
 export { FX_SECTIONS };
-export const ALL_SECTIONS = [...LAYOUT.flat(), ...KEYBED_SECTIONS, ...FX_SECTIONS];
+export const SIDE_SECTIONS = SYNTH.SIDE_SECTIONS || []; // the NF-Modular's sequencer column
+export const ALL_SECTIONS = [...LAYOUT.flat(), ...SIDE_SECTIONS, ...KEYBED_SECTIONS, ...FX_SECTIONS];
 
 // A synth name for display: capitals (and digits) bold, lower-case letters lighter,
 // e.g. NiniFoog -> bold N and F.

@@ -1,7 +1,8 @@
-import { PARAMS, LAYOUT, KEYBED_SECTIONS, FX_SECTIONS, ALL_SECTIONS, defaultPatch, updateAlts, SYNTH, SYNTHS, nameHtml } from './params.js';
+import { PARAMS, LAYOUT, KEYBED_SECTIONS, FX_SECTIONS, SIDE_SECTIONS, ALL_SECTIONS, defaultPatch, updateAlts, SYNTH, nameHtml } from './params.js';
 import { Knob } from './knob.js';
 import { Toggle } from './toggle.js';
 import { Wheel } from './wheel.js';
+import { LedButton } from './ledbutton.js';
 import { StartMenu } from './startMenu.js';
 import { Engine } from './engine.js';
 import { Scope, TIMEBASES } from './scope.js';
@@ -11,6 +12,11 @@ import { Overlay } from './visuals.js';
 import { ZoomPan } from './zoom.js';
 import { LessonController } from './lessonUI.js';
 import { PatchMenu } from './patches.js';
+import { Cables } from './cables.js';
+import { startMidi } from './midi.js';
+import { WordSwitch } from './wordswitch.js';
+import { MaxModules } from './maxModules.js';
+import { Smiley } from './fireworks.js';
 
 const engine = new Engine({ module: SYNTH.module, processor: SYNTH.processor });
 document.body.dataset.skin = SYNTH.skin;
@@ -23,6 +29,8 @@ const knobs = {};
 const sections = {};
 let help = null; // HelpPanel, created at boot
 let lesson = null; // LessonController, created at boot
+// Modular synths: jack sockets and patch cables (cables.js)
+const cables = SYNTH.modular ? new Cables(document.getElementById('stage'), { getPatch: () => patch, onChange: (id, v) => onKnob(id, v), controls: knobs }) : null;
 const overlay = new Overlay(() => patch, engine); // teaching graphs on the spectrum display
 
 // ---- panel ---------------------------------------------------------------------------
@@ -30,16 +38,88 @@ function buildSection(sec) {
   const el = document.createElement('div');
   el.className = 'section';
   el.dataset.section = sec.id;
-  el.innerHTML = `<div class="section-title" data-help="section:${sec.id}"><span>${sec.title}</span></div><div class="section-grid"></div><div class="lock-veil"><span>LOCKED</span></div>`;
+  // (an untitled section, e.g. the NiniFoog's switch columns on the section lines, has no help of its own)
+  const titleHelp = sec.title ? ` data-help="section:${sec.id}"` : '';
+  el.innerHTML = `<div class="section-title"${titleHelp}><span>${sec.title}</span></div><div class="section-grid"></div><div class="lock-veil"><span>LOCKED</span></div>`;
   const grid = el.querySelector('.section-grid');
-  const cols = Math.max(...sec.rows.map((r) => r.length));
+  sections[sec.id] = el;
+  // a word in the title that is a switch (the envelopes' Exponential / Linear)
+  if (sec.titleSwitch) el.querySelector('.section-title').appendChild(makeControl(sec.titleSwitch, sec));
+  // a module that can fold away to a thin strip (the sequencer): a button in its title bar
+  if (sec.foldable) {
+    const fb = document.createElement('button');
+    fb.className = 'fold-btn';
+    fb.dataset.help = 'foldmodule';
+    el.querySelector('.section-title').prepend(fb);
+    const key = `${SYNTH.id}.fold.${sec.id}`;
+    const setFold = (on) => {
+      el.classList.toggle('folded', on);
+      fb.textContent = on ? '▸' : '◂'; // it sits on the left: folds leftwards
+      fb.setAttribute('aria-label', on ? `Open the ${sec.title}` : `Fold the ${sec.title} away`);
+      try { localStorage.setItem(key, on ? '1' : '0'); } catch { /* storage unavailable */ }
+      requestAnimationFrame(() => { if (typeof fit === 'function') fit(); });
+    };
+    fb.addEventListener('click', (e) => { e.stopPropagation(); setFold(!el.classList.contains('folded')); });
+    let folded = false;
+    try { folded = localStorage.getItem(key) === '1'; } catch { /* storage unavailable */ }
+    setFold(folded);
+  }
+  // A module split into side-by-side halves with a line between them (the NF-Modular's Dual
+  // VCA): each part has its own knobs and jacks.
+  if (sec.parts) {
+    el.classList.add('split');
+    grid.className = 'parts';
+    sec.parts.forEach((part) => {
+      const pe = document.createElement('div');
+      pe.className = 'part';
+      if (part.title) pe.innerHTML = `<div class="part-title">${part.title}</div>`;
+      const g = document.createElement('div');
+      g.className = 'section-grid';
+      pe.appendChild(g);
+      fillGrid(g, part.rows, sec);
+      if (part.jacks && cables) pe.appendChild(cables.buildStrip(part.jacks));
+      grid.appendChild(pe);
+    });
+    return el;
+  }
+  // controls across the top of a module, before its grid (the sequencer's Run button)
+  if (sec.head) {
+    const hd = document.createElement('div');
+    hd.className = 'section-head';
+    sec.head.forEach((id) => hd.appendChild(makeControl(id, sec)));
+    grid.before(hd);
+  }
+  if (sec.jacks && cables) el.appendChild(cables.buildStrip(sec.jacks)); // modular synths: sockets along the module's foot
+  if (!sec.rows.length) { grid.remove(); return el; } // a module with only jacks
+  fillGrid(grid, sec.rows, sec);
+  return el;
+}
+
+function makeControl(id, sec) {
+  const spec = PARAMS[id];
+  const k = spec.ui === 'toggle' ? new Toggle(id, patch[id], onKnob)
+    : spec.ui === 'led' ? new LedButton(id, patch[id], onKnob)
+    : spec.ui === 'word' ? new WordSwitch(id, patch[id], onKnob)
+    : spec.type === 'wheel' ? new Wheel(id, patch[id], onKnob)
+    : new Knob(id, patch[id], onKnob);
+  knobs[id] = k;
+  if (spec.small) k.el.classList.add('small'); // the effects' smaller pots
+  // staggered layouts: nudge a control down (e.g. the classic mixer's in-between pots)
+  if (sec.offsets && sec.offsets[id]) { k.el.style.transform = `translateY(${sec.offsets[id]})`; k.el.classList.add('offset'); }
+  return k.el;
+}
+
+// Lay out rows of controls in a section's grid. A cell can be a list of ids: those controls are
+// stacked in one cell (e.g. two small switches on top of each other).
+function fillGrid(grid, rows, sec) {
+  const cols = Math.max(...rows.map((r) => r.length));
   // Columns holding only switches or wheels can be narrow (NiniFoog), freeing panel space.
   const narrowCol = (c) => {
-    const ids = sec.rows.map((r) => r[c]).filter(Boolean);
+    const ids = rows.map((r) => r[c]).filter((id) => typeof id === 'string');
     return SYNTH.narrowSwitches && ids.length && ids.every((id) => PARAMS[id].ui === 'toggle' || PARAMS[id].type === 'wheel');
   };
   grid.style.gridTemplateColumns = Array.from({ length: cols }, (_, c) => (narrowCol(c) ? 'var(--narrow-w)' : 'var(--cell-w)')).join(' ');
-  sec.rows.forEach((row, ri) => {
+  rows.forEach((row, ri) => {
     // optional row header (e.g. "Oscillator 2"), spanning the whole section
     if (sec.rowTitles && sec.rowTitles[ri] !== undefined) {
       const rt = document.createElement('div');
@@ -50,16 +130,13 @@ function buildSection(sec) {
     }
     for (let c = 0; c < cols; c++) {
       const id = row[c];
-      if (id) {
-        const spec = PARAMS[id];
-        const k = spec.ui === 'toggle' ? new Toggle(id, patch[id], onKnob)
-          : spec.type === 'wheel' ? new Wheel(id, patch[id], onKnob)
-          : new Knob(id, patch[id], onKnob);
-        knobs[id] = k;
-        if (spec.small) k.el.classList.add('small'); // the effects' smaller pots
-        // staggered layouts: nudge a control down (e.g. the classic mixer's in-between pots)
-        if (sec.offsets && sec.offsets[id]) { k.el.style.transform = `translateY(${sec.offsets[id]})`; k.el.classList.add('offset'); }
-        grid.appendChild(k.el);
+      if (Array.isArray(id)) {
+        const stack = document.createElement('div');
+        stack.className = 'stack-cell';
+        id.forEach((x) => stack.appendChild(makeControl(x, sec)));
+        grid.appendChild(stack);
+      } else if (id) {
+        grid.appendChild(makeControl(id, sec));
       } else {
         const blank = document.createElement('div');
         blank.className = 'knob-cell blank';
@@ -67,12 +144,32 @@ function buildSection(sec) {
       }
     }
   });
-  sections[sec.id] = el;
-  return el;
 }
 
 function buildPanel() {
   const root = document.getElementById('sections');
+  // A rack (NF-Modular): LAYOUT is rows of modules, each row stretched across the full width.
+  if (SYNTH.rack) {
+    root.classList.add('rack');
+    // rows of modules, with any side column (the sequencer) beside them, full height
+    const rowsBox = document.createElement('div');
+    rowsBox.className = 'rack-rows';
+    LAYOUT.forEach((row) => {
+      const r = document.createElement('div');
+      r.className = 'rack-row';
+      row.forEach((sec) => r.appendChild(buildSection(sec)));
+      rowsBox.appendChild(r);
+    });
+    // the side column (the sequencer) stands on the left: it is a source of notes, like the
+    // keyboard, and signals in the rack flow from left to right
+    SIDE_SECTIONS.forEach((sec) => { const el = buildSection(sec); el.classList.add('rack-side'); root.appendChild(el); });
+    root.appendChild(rowsBox);
+    const perf = document.getElementById('perf-sections');
+    KEYBED_SECTIONS.forEach((sec) => perf.appendChild(buildSection(sec)));
+    const fx = document.getElementById('fx-sections');
+    if (fx) FX_SECTIONS.forEach((sec) => fx.appendChild(buildSection(sec)));
+    return;
+  }
   // A 'bridge' column sits on the dividing line between two sections (switches that
   // belong to both), so it replaces the divider rather than adding two more.
   const isBridge = (column) => column.every((sec) => sec.bridge);
@@ -121,12 +218,19 @@ function ensureAudio() {
 }
 
 function onKnob(id, value) {
+  const before = { ...patch };
   patch[id] = value;
+  // a control that moves another (e.g. Osc 3 Frequency snapping to 0 when Osc 3 becomes an oscillator)
+  const extra = SYNTH.linked && SYNTH.linked(id, before, patch);
+  if (extra) for (const k in extra) { if (patch[k] !== extra[k]) { onKnob(k, extra[k]); if (knobs[k]) knobs[k].set(extra[k]); } }
+  // modular synths: a patch can sound without a key (a drone), so any change may start the audio
+  if (SYNTH.modular && !engine.running) ensureAudio();
   refreshScales();
   if (!(lesson && lesson.busy)) engine.setParam(id, value); // while a lesson target plays, keep it intact
   if (lesson) lesson.onPatchChange();
   if (help) help.refresh(id);
   overlay.activate(id);
+  graphPop.from(id);
   if (patchMenu) patchMenu.markEdited();
 }
 
@@ -142,6 +246,7 @@ function setPatch(p) {
   for (const id in knobs) knobs[id].set(patch[id]);
   engine.setPatch(patch);
   if (help) help.refresh();
+  if (cables) cables.redraw();
 }
 
 function lockSection(id, locked = true) {
@@ -169,6 +274,18 @@ function buildToolbar() {
     savePref('sl.values', e.target.checked ? '1' : '0');
   });
 
+
+  // See-through cables (modular synths): off by default, remembered
+  const faded = document.getElementById('faded-cables');
+  if (faded && SYNTH.modular) {
+    faded.parentNode.hidden = false;
+    faded.checked = loadPref('sl.cablesFaded', '0') === '1';
+    document.body.classList.toggle('cables-faded', faded.checked);
+    faded.addEventListener('change', (e) => {
+      document.body.classList.toggle('cables-faded', e.target.checked);
+      savePref('sl.cablesFaded', e.target.checked ? '1' : '0');
+    });
+  }
 
   // scope timebase
   const tb = document.getElementById('tb-buttons');
@@ -201,10 +318,15 @@ document.getElementById('zoom-in').addEventListener('click', () => zoomPan.zoomT
 document.getElementById('zoom-out').addEventListener('click', () => zoomPan.zoomTo(zoomPan.zoom / 1.25));
 document.getElementById('zoom-level').addEventListener('click', () => zoomPan.reset());
 
+let maxMods = null; // maximised modules (modular synths), set up below
 function fit() {
-  // help panel overlays below the top bar
-  document.getElementById('help-panel').style.top = document.querySelector('.appbar').offsetHeight + 'px';
+  // help panel overlays below the top bar; the lesson panel pins just under it
+  const barH = document.querySelector('.appbar').offsetHeight;
+  document.getElementById('help-panel').style.top = barH + 'px';
+  document.body.style.setProperty('--appbar-h', barH + 'px');
+  if (maxMods) maxMods.layout();
   zoomPan.fit();
+  if (maxMods && maxMods.on && cables) cables.redraw();
 }
 
 // ---- boot ------------------------------------------------------------------------------------
@@ -218,8 +340,11 @@ alignRows();
 buildToolbar();
 
 
+// keyboard size, remembered per synth (the NF-1 keeps its original setting's name)
+const octPref = SYNTH.id === 'nf1' ? 'nf1.octaves' : `${SYNTH.id}.octaves`;
 const keyboard = new Keyboard(document.getElementById('keys'), {
-  octaves: Number(loadPref('nf1.octaves', 2)),
+  // the modular synths have a fixed keyboard size (their Mono/Legato switch takes the Range switch's place)
+  octaves: SYNTH.modular ? (SYNTH.octaves || 2) : Number(loadPref(octPref, SYNTH.octaves || 2)),
   fixed: SYNTH.keyboard, // NiniFoog: a fixed 44-key keyboard
   onNoteOn: (n) => {
     if (lesson && lesson.busy) return; // listening to a lesson target
@@ -230,6 +355,22 @@ const keyboard = new Keyboard(document.getElementById('keys'), {
   onOctave: (o) => (document.getElementById('oct-readout').textContent = 'C' + o),
 });
 if (SYNTH.keyboard) document.querySelector('.oct-hint').textContent = 'Play with A–K on your computer keyboard';
+// ---- MIDI keyboard: plays through the on-screen keyboard; bend and mod wheel where the synth has them ----
+startMidi({
+  keyboard,
+  setControl: (id, v) => { if (knobs[id]) knobs[id].commit(v); },
+  onDevices: (names) => {
+    const light = document.getElementById('midi-light');
+    light.hidden = !names || !names.length;
+    if (names && names.length) light.title = 'MIDI: ' + names.join(', ');
+  },
+  onActivity: () => { // the light flickers as notes arrive
+    const light = document.getElementById('midi-light');
+    light.classList.add('hit');
+    clearTimeout(light._t);
+    light._t = setTimeout(() => light.classList.remove('hit'), 90);
+  },
+});
 document.getElementById('oct-down').addEventListener('click', () => keyboard.shiftOctave(-1));
 document.getElementById('oct-up').addEventListener('click', () => keyboard.shiftOctave(1));
 
@@ -242,25 +383,92 @@ for (let o = 2; o <= 4; o++) {
   b.title = `${o} octave${o > 1 ? 's' : ''}`;
   b.addEventListener('click', () => {
     keyboard.setOctaves(o);
-    savePref('nf1.octaves', o);
+    savePref(octPref, o);
     rangeBtns.querySelectorAll('.range-btn').forEach((x) => x.classList.toggle('on', x === b));
   });
   rangeBtns.appendChild(b);
+}
+// Modular synths: Mono/Legato sits where the Keyboard Range switch was
+if (PARAMS['kb.mode']) {
+  const rangeBlock = rangeBtns.closest('.oct-block');
+  const mode = makeControl('kb.mode', {});
+  mode.classList.add('perf-mode');
+  rangeBlock.replaceWith(mode);
 }
 
 // The cutoff marker follows the live (envelope/LFO-modulated) cutoff while a note sounds.
 const liveCutoff = () => {
   const l = engine.live;
-  return l && l.gate && l.a.s !== 0 ? l.fc : patch['filt.cutoff'];
+  return l && l.gate && l.a.s !== 0 ? l.fc : patch['filt.cutoff'] ?? patch['vcf.cutoff']; // (the NF-Modular's is vcf.cutoff)
 };
 const scope = new Scope(document.getElementById('scope'), document.getElementById('spectrum'), engine, liveCutoff);
+
+// ---- pop-out graph (with Help on) ----
+// The teaching graphs are drawn on the spectrum screen. When that screen is too small to read
+// them (the slim scope strip) or hidden, and Help is on, they also appear in a larger floating screen on the
+// far side of the panel from the control being used, and fade away with the graph. It never
+// takes clicks, so it cannot get in the way of a knob. Maximised scopes show the graph themselves.
+const graphPop = (() => {
+  const el = document.createElement('div');
+  el.className = 'graph-pop';
+  el.innerHTML = '<canvas></canvas>';
+  document.body.appendChild(el);
+  const cv = el.querySelector('canvas');
+  const W = 620, H = 280;
+  const slim = document.body.dataset.skin !== 'classic'; // NiniFoog and the modulars: the slim strip
+  // only with Help on: the pop-out is part of the teaching aids, not something that appears
+  // over the panel while you are just playing
+  const wanted = () => document.body.classList.contains('help-open')
+    && !document.body.classList.contains('scopes-max')
+    && (slim || document.body.classList.contains('scopes-hidden'));
+  (function loop() {
+    requestAnimationFrame(loop);
+    const a = overlay.group && !overlay.scopeOnly && wanted() ? overlay.alpha() : 0;
+    el.style.opacity = String(a);
+    if (!a) return;
+    const dpr = window.devicePixelRatio || 1;
+    if (cv.width !== W * dpr) { cv.width = W * dpr; cv.height = H * dpr; }
+    const ctx = cv.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = '#06100a';
+    ctx.fillRect(0, 0, W, H);
+    overlay.draw(ctx, W, H, null);
+  })();
+  return {
+    // open beside the Help panel (which is on the side of the screen away from this control), above or
+    // below the control, whichever has more room, sized to fit there, so it covers neither
+    from(id) {
+      const k = knobs[id];
+      const r = k && k.el ? k.el.getBoundingClientRect() : null;
+      const hp = document.getElementById('help-panel');
+      const helpW = hp && hp.offsetWidth ? hp.offsetWidth : 0;
+      const left = helpW ? hp.classList.contains('left') : (!!r && r.left + r.width / 2 > window.innerWidth / 2);
+      const gap = 12;
+      const topY = document.querySelector('.appbar').offsetHeight + gap;
+      // the larger space above or below the control (the whole height below the top bar if there is no control)
+      const above = r ? r.top - gap - topY : window.innerHeight - topY - gap;
+      const below = r ? window.innerHeight - gap - (r.bottom + gap) : 0;
+      const atBottom = below > above;
+      // as large as fits beside the Help panel and in that space, keeping the screen's shape
+      let w = Math.min(W, window.innerWidth - helpW - gap * 3 - 16);
+      w = Math.max(240, Math.min(w, (Math.max(above, below) - 16) * W / H));
+      const h = Math.round(w * H / W) + 16;
+      w += 16;
+      el.style.width = w + 'px';
+      el.style.height = h + 'px';
+      el.style.left = left ? (helpW + gap) + 'px' : 'auto';
+      el.style.right = left ? 'auto' : (helpW + gap) + 'px';
+      el.style.top = (atBottom ? window.innerHeight - gap - h : topY) + 'px';
+    },
+  };
+})();
 scope.overlay = overlay;
 setInterval(() => document.getElementById('trig-led').classList.toggle('on', !!scope.triggered && engine.running), 120);
 
 // ---- help panel ----
 help = new HelpPanel(document.getElementById('help-panel'), () => patch);
 // when hover help opens on a control, show its graph too
-help.onShow = (key) => overlay.activate(key, true); // key may be an option, e.g. osc1.wave=square
+help.onShow = (key) => { overlay.activate(key, true); graphPop.from(key.split('=')[0]); }; // key may be an option, e.g. osc1.wave=square
 help.onHide = () => overlay.release();
 function setHelp(open) {
   document.body.classList.toggle('help-open', open);
@@ -309,7 +517,9 @@ function setScopes(on, remember = true) {
   scope.resize(); // the screens had no size while hidden
 }
 scopesBtn.addEventListener('click', () => {
-  const show = document.body.classList.contains('scopes-hidden');
+  const leaving = maxMods && maxMods.on; // the scopes are out of sight behind maximised modules: bring them back
+  if (leaving) setMaxModules(false);
+  const show = leaving || document.body.classList.contains('scopes-hidden');
   if (!show) setMaxScopes(false); // hiding the scopes also leaves the maximised view
   setScopes(show);
 });
@@ -320,12 +530,53 @@ function setMaxScopes(on) {
   document.body.classList.toggle('scopes-max', on);
   maxBtn.classList.toggle('on', on);
   maxBtn.textContent = on ? 'RESTORE' : 'MAXIMISE';
+  if (on && maxMods && maxMods.on) setMaxModules(false);
   if (on && document.body.classList.contains('scopes-hidden')) setScopes(true, false);
   fit();
   scope.resize(); // redraw the screens at their new size
 }
 maxBtn.addEventListener('click', () => setMaxScopes(!document.body.classList.contains('scopes-max')));
 setScopes(!PREVIEW && loadPref(scopesPref, '0') === '1', false);
+
+// ---- maximise the modules (modular synths): no scopes or keyboard, and the modules rearranged to fill the window ----
+const modBtn = document.getElementById('btn-modmax');
+if (SYNTH.modular && modBtn && !PREVIEW) {
+  modBtn.hidden = false;
+  maxMods = new MaxModules({
+    root: document.getElementById('sections'), sections,
+    usual: SYNTH.rack ? LAYOUT.map((row) => row.map((s) => s.id)) : [LAYOUT.flat().map((s) => s.id)], side: SIDE_SECTIONS.length ? SIDE_SECTIONS[0].id : null, kb: KEYBED_SECTIONS[0].id,
+    avail: () => zoomPan.avail(),
+  });
+  modBtn.addEventListener('click', () => setMaxModules(!maxMods.on));
+}
+function setMaxModules(on) {
+  if (!maxMods || on === maxMods.on) return;
+  if (on) setMaxScopes(false); // one or the other
+  maxMods.set(on);
+  modBtn.classList.toggle('on', on);
+  modBtn.setAttribute('aria-pressed', String(on));
+  modBtn.textContent = on ? 'Restore' : 'Maximise';
+  window.scrollTo(0, 0);
+  zoomPan.reset();
+  fit();
+  if (cables) cables.redraw();
+  if (!on) scope.resize(); // the screens had no size while out of sight
+}
+// a success while the screens are out of sight: the smiley gets a small screen of its own
+function smileyPop() {
+  const el = document.createElement('div');
+  el.className = 'smiley-pop';
+  el.innerHTML = '<canvas width="560" height="360"></canvas>';
+  document.body.appendChild(el);
+  const ctx = el.firstChild.getContext('2d'), face = new Smiley();
+  face.start();
+  (function loop() {
+    ctx.fillStyle = '#04100a';
+    ctx.fillRect(0, 0, 560, 360);
+    face.draw(ctx, 560, 360);
+    if (face.t0 < 0) el.remove(); else requestAnimationFrame(loop);
+  })();
+}
 
 // ---- effects drawer: a thin FX line below the keyboard that folds open ----
 const fxDrawer = document.getElementById('fx-drawer');
@@ -347,13 +598,43 @@ if (fxTab) fxTab.addEventListener('click', () => setFxOpen(!fxDrawer.classList.c
 // always starts closed, so the synth fits the screen
 
 // ---- lessons ----
+let celebrateTimer = 0;
 lesson = new LessonController({
   getPatch: () => ({ ...patch }), setPatch, engine, scope, keyboard, lockSection, ensureAudio,
   onModeChange: (mode) => {
     document.querySelectorAll('#mode-switch button').forEach((b) => b.classList.toggle('on', b.dataset.mode === mode));
-    // lessons show the target on the scopes, so they switch the scopes on; Free play restores your setting
-    setScopes(mode === 'lessons' || loadPref(scopesPref, '0') === '1', false);
+    // each lesson chooses whether the scopes start on (showScopes below); Free play restores your setting
+    if (mode !== 'lessons') { document.body.classList.remove('lesson-scopes-visible'); setScopes(loadPref(scopesPref, '0') === '1', false); window.scrollTo(0, 0); }
     requestAnimationFrame(fit);
+  },
+  // A lesson turns the scopes on or off. With them on, the page scrolls so the lesson panel
+  // hangs over them and the synth sits just below it; scrolling up shows the scopes.
+  // visible: show the scopes in full instead, with the whole instrument fitted below the panel.
+  showScopes: (on, visible = false) => {
+    document.body.classList.toggle('lesson-scopes-visible', on && visible);
+    setScopes(on, false);
+    requestAnimationFrame(() => {
+      fit();
+      const synthTop = document.querySelector('.synth').getBoundingClientRect().top + window.scrollY;
+      const pinned = document.querySelector('.appbar').offsetHeight + lessonWrap.offsetHeight;
+      window.scrollTo(0, on && !visible ? Math.max(0, synthTop - pinned - 12) : 0);
+    });
+  },
+  // A success: bring the screens into view so the smiley is seen, then put things back
+  // (hidden again if they were hidden, the page scrolled back to the synth).
+  celebrate: (seconds, restore = true) => {
+    if (maxMods && maxMods.on) { smileyPop(); return; }
+    const wasHidden = document.body.classList.contains('scopes-hidden');
+    const y = window.scrollY;
+    if (wasHidden) setScopes(true, false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    clearTimeout(celebrateTimer);
+    if (!restore) return;
+    celebrateTimer = setTimeout(() => {
+      if (lesson.mode !== 'lessons') return;
+      if (wasHidden) setScopes(false, false);
+      requestAnimationFrame(() => window.scrollTo({ top: wasHidden ? 0 : y, behavior: 'smooth' }));
+    }, seconds * 1000);
   },
 });
 document.querySelectorAll('#mode-switch button').forEach((b) => b.addEventListener('click', () => lesson.setMode(b.dataset.mode)));
@@ -374,7 +655,7 @@ if (knobs['mix.feedback']) {
     requestAnimationFrame(loop);
     const l = engine.live;
     const drive = l && engine.running ? l.drive || 0 : 0;
-    const level = Math.min(1, Math.max(0, (drive - 0.8) / 1.0)); // 0 below 0.8, full red by 1.8
+    const level = Math.min(1, Math.max(0, (drive - 1.9) / 1.1)); // dark up to two oscillators at full (peaks ~1.8); Feedback lights it, red by 3.0
     shown = Math.max(level, shown * 0.93); // light quickly, fade slowly
     lamp.style.setProperty('--glow', shown.toFixed(3));
     lamp.style.setProperty('--hue', String(Math.round(52 - 52 * shown))); // yellow -> red
@@ -384,24 +665,59 @@ if (knobs['mix.feedback']) {
 // ---- start menu: choose a synth ----
 const startMenu = new StartMenu({ skip: PREVIEW });
 document.getElementById('btn-synths').addEventListener('click', () => startMenu.open());
-// only one synth on offer: no start menu to go back to
-if (SYNTHS.length === 1) document.getElementById('btn-synths').hidden = true;
 
-// ---- lesson bar: grows over the scopes rather than pushing the synth down ----
-// The page reserves the bar's resting height. When a question, hint or feedback makes it
-// taller, the extra spreads over the scope screens and the synth stays where it is.
+// ---- lesson panel: pinned to the top of the window (see showScopes above). A question or hint
+// makes it taller and the page scrolls, rather than the synth shrinking.
 const lessonWrap = document.getElementById('lesson-wrap');
-const lessonBar = document.getElementById('lesson-bar');
-const barExpanded = () => !document.getElementById('lb-question').hidden
-  || !document.getElementById('lb-hintbox').hidden
-  || document.getElementById('lb-feedback').textContent.trim() !== '';
-new ResizeObserver(() => {
-  const resting = lessonBar.hidden ? 0 : lessonBar.offsetHeight;
-  const expanded = !lessonBar.hidden && barExpanded();
-  lessonBar.classList.toggle('overlaying', expanded);
-  if (expanded) return; // keep the reserved height; the bar overlays the scopes
-  if (Math.abs(lessonWrap.offsetHeight - resting) > 1) { lessonWrap.style.height = resting + 'px'; fit(); }
-}).observe(lessonBar);
+// (with the modules maximised they always fit the room left below it, whatever its height)
+if (maxMods) new ResizeObserver(() => { if (maxMods.on) fit(); }).observe(lessonWrap);
+
+// ---- modular synths: cables over the panel, and lamps by the output jacks ----
+// The NF-Modular's Output has an Overload light: it glows while the output limiter is working
+// (a patch too hot, or feeding back). If a runaway loop ever forces the rack to reset, say so.
+const outSection = SYNTH.modular && sections.out;
+let overLamp = null, lastResets = 0;
+if (outSection && SYNTH.id === 'nfmod') {
+  const led = document.createElement('div');
+  led.className = 'overload-led out-overload';
+  led.dataset.help = 'outoverload';
+  led.innerHTML = '<span class="overload-lamp"></span><span class="beat-label">Overload</span>';
+  (outSection.querySelector('.jack-rows') || outSection).appendChild(led);
+  overLamp = led.querySelector('.overload-lamp');
+}
+let overShown = 0;
+if (cables) {
+  requestAnimationFrame(() => cables.redraw());
+  (function lamps() {
+    requestAnimationFrame(lamps);
+    const live = engine.running && engine.live;
+    cables.showLevels(live ? live.outs : null);
+    // the sequencer's current step lights up while it runs
+    if (sections.seq) {
+      const cur = live && live.seqRun ? live.seqStep + 1 : 0;
+      for (let n = 1; n <= 8; n++) {
+        const cell = knobs[`seq.s${n}`] && knobs[`seq.s${n}`].el.parentNode;
+        if (cell) cell.classList.toggle('current', n === cur);
+      }
+    }
+    if (overLamp) {
+      const level = live ? Math.min(1, Math.max(0, ((live.over || 0) - 0.7) / 1.3)) : 0;
+      overShown = Math.max(level, overShown * 0.93);
+      overLamp.style.setProperty('--glow', overShown.toFixed(3));
+      overLamp.style.setProperty('--hue', String(Math.round(52 - 52 * overShown)));
+      if (live && live.resets > lastResets) {
+        lastResets = live.resets;
+        patchMenu.toast('That feedback loop ran away, so the rack reset itself. Try turning a level down.');
+      }
+    }
+  })();
+}
+
+// Touch screens (iPhone/iPad Safari): audio may only be allowed to start when a finger
+// lifts, so resume a waiting audio engine on every touch end as well
+document.addEventListener('touchend', () => {
+  if (engine.ctx && engine.ctx.state !== 'running' && !document.hidden) engine.ctx.resume();
+}, { capture: true, passive: true });
 
 fit();
 window.addEventListener('resize', fit);
@@ -424,6 +740,7 @@ window.synth = {
   setKeyboardOctaves: (o) => keyboard.setOctaves(o),
   get lesson() { return lesson; },
   get engine() { return engine; }, // for inspecting the audio in the console
+  get overlay() { return overlay; }, // the teaching graphs, for testing in the console
   params: PARAMS,
   noteName,
 };

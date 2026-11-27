@@ -132,7 +132,7 @@ export class Keyboard {
       const n = noteAt(e.clientX, e.clientY);
       if (n === null) return;
       e.preventDefault();
-      container.setPointerCapture(e.pointerId);
+      try { container.setPointerCapture(e.pointerId); } catch { /* pointer already gone */ }
       this.press('p' + e.pointerId, n);
     });
     container.addEventListener('pointermove', (e) => {

@@ -2,8 +2,15 @@
 // Challenge types (see lessons.js): match (hear a target and match it), goal (do something,
 // the result is checked) and question (try something, then choose the right answer).
 
-import { LESSONS, patchMatches, soundMatches, closeness, osc1Hz } from './lessons.js';
-import { defaultPatch, ALL_SECTIONS } from './params.js';
+import { LESSONS as NF1_LESSONS, patchMatches, soundMatches, closeness, osc1Hz } from './lessons.js';
+import { MOD_LESSONS } from './lessonsModular.js';
+import { NF3_LESSONS } from './lessonsNiniFoog.js';
+import { RACK_LESSONS } from './lessonsRack.js';
+import { defaultPatch, ALL_SECTIONS, SYNTH } from './params.js';
+
+// each synth with lessons has its own set
+const LESSONS = { nfm: MOD_LESSONS, nf3: NF3_LESSONS, nfmod: RACK_LESSONS }[SYNTH.id] || NF1_LESSONS;
+const INDEX_KEY = SYNTH.id === 'nf1' ? 'sl.lessonIndex' : `sl.lessonIndex.${SYNTH.id}`;
 import { Fireworks, Smiley, finale } from './fireworks.js';
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -18,10 +25,10 @@ function load(key, d) { try { const v = localStorage.getItem(key); return v == n
 function save(key, v) { try { localStorage.setItem(key, JSON.stringify(v)); } catch { /* storage unavailable */ } }
 
 export class LessonController {
-  // deps: { getPatch, setPatch, engine, scope, keyboard, lockSection, ensureAudio, onModeChange }
+  // deps: { getPatch, setPatch, engine, scope, keyboard, lockSection, ensureAudio, onModeChange, showScopes }
   constructor(deps) {
     this.d = deps;
-    this.lessonIndex = Math.min(LESSONS.length - 1, Math.max(0, load('sl.lessonIndex', 0)));
+    this.lessonIndex = Math.min(LESSONS.length - 1, Math.max(0, load(INDEX_KEY, 0)));
     this.index = -1;          // current challenge (-1 = intro screen)
     this.busy = false;        // target is playing: student input is ignored
     this.solved = false;
@@ -89,21 +96,30 @@ export class LessonController {
 
   chooseLesson(i) {
     this.lessonIndex = i;
-    save('sl.lessonIndex', i);
+    save(INDEX_KEY, i);
     $('lb-lesson').value = String(i);
     this.showIntro();
   }
 
   // ---- intro / navigation ---------------------------------------------------------------------
-  showIntro() {
+  // keep: at the end of a lesson, leave the student's last sound (and the controls) alone
+  // so they can carry on playing it under the fireworks
+  showIntro(keep = false) {
     this.index = -1;
     this.runId = (this.runId || 0) + 1;
     this.busy = false;
     document.body.classList.remove('auditioning');
     this.d.keyboard.markTarget(null);
     this.d.scope.clearTarget();
-    this.lockFor(['osc1']);
-    this.d.setPatch({});
+    // the intro shows the lesson's starting point (NF-1: Init, with only Oscillator 1 open)
+    if (!keep) {
+      this.lockFor(this.lesson.introUnlocked || ['osc1']);
+      this.d.setPatch(this.lesson.base || {});
+    }
+    // Scopes: the NF-1's lessons (no 'scopes' setting) show them in full, since matching by ear
+    // leans on them. The NF-MiniModular's lessons choose: false = off, true = on, under the panel.
+    const sc = this.lesson.scopes;
+    if (!keep && this.d.showScopes && this.mode === 'lessons') this.d.showScopes(sc !== false, sc === undefined);
     const started = this.done.some(Boolean);
     const total = this.lesson.challenges.length;
     const complete = this.done.filter(Boolean).length === total;
@@ -137,7 +153,10 @@ export class LessonController {
   }
 
   // ---- a challenge ---------------------------------------------------------------------------
-  enter(i) {
+  // carry: arrived with Next from the previous challenge. Lessons marked 'carry' (the
+  // NF-MiniModular's patching lessons) then keep the student's own patch, so it builds up step
+  // by step; otherwise (and with Reset) the challenge's starting patch is loaded.
+  enter(i, carry = false) {
     this.index = i;
     this.solved = false;
     this.lastNote = null;
@@ -151,7 +170,8 @@ export class LessonController {
     this.target = this.makeTarget(ch);
     this.lockFor(ch.unlocked);
     this.d.keyboard.markTarget(ch.showKey ? this.target.note : null);
-    this.d.setPatch(this.startOverrides);
+    if (!(carry && this.lesson.carry)) this.d.setPatch(this.startOverrides);
+    else if (this.challenge.set) this.d.setPatch({ ...this.d.getPatch(), ...this.challenge.set });
     this.d.scope.clearTarget();
 
     $('lb-start').hidden = true;
@@ -267,7 +287,7 @@ export class LessonController {
 
   state() {
     const patch = this.d.getPatch();
-    return { patch, note: this.lastNote, held: this.held > 0, f0: osc1Hz(patch, this.lastNote), lowNote: this.lowNote, highNote: this.highNote };
+    return { patch, note: this.lastNote, held: this.held > 0, heldCount: this.held, notes: this.notesPlayed || 0, f0: osc1Hz(patch, this.lastNote), lowNote: this.lowNote, highNote: this.highNote };
   }
 
   check() {
@@ -285,13 +305,20 @@ export class LessonController {
     }
   }
 
-  success(label) {
+  success(label, delay = 1500) {
     this.solved = true;
     const done = this.done.slice();
     done[this.index] = true;
     this.progress[this.lesson.id] = done;
     save('nf1.progress', this.progress);
+    // a sound that has just been played gets heard before the congratulations
+    const entered = this.enteredAt;
+    setTimeout(() => { if (this.mode === 'lessons' && this.index >= 0 && this.solved && this.enteredAt === entered) this.celebrate(label, done); }, delay);
+  }
+
+  celebrate(label, done) {
     this.smileys.forEach((s) => s.start());
+    if (this.d.celebrate) this.d.celebrate(3, done.filter(Boolean).length < this.lesson.challenges.length);
     this.renderSteps();
     this.setStatus(label, 'matched');
     const total = this.lesson.challenges.length;
@@ -301,7 +328,7 @@ export class LessonController {
       const nextIdx = this.index < total - 1 ? this.index + 1 : done.findIndex((d) => !d);
       $('lb-next').hidden = false;
       $('lb-next').textContent = 'Next ▸';
-      $('lb-next').onclick = () => this.enter(nextIdx);
+      $('lb-next').onclick = () => this.enter(nextIdx, nextIdx === this.index + 1);
     }
   }
 
@@ -317,7 +344,7 @@ export class LessonController {
     $('lm-next').classList.toggle('soon', !nextLesson);
     $('lm-replay').textContent = `Replay lesson ${this.lesson.number}`;
     setTimeout(() => { $('lesson-modal').hidden = false; }, 900);
-    this.showIntro();
+    this.showIntro(true);
   }
 
   closeModal() { $('lesson-modal').hidden = true; }
@@ -358,7 +385,7 @@ export class LessonController {
       $('lb-question').querySelectorAll('.lb-answer').forEach((b) => { b.disabled = true; });
       fb.textContent = this.challenge.question.explain;
       fb.className = 'lb-feedback right';
-      this.success('Correct!');
+      this.success('Correct!', 0);
     } else {
       btn.classList.add('wrong');
       btn.disabled = true;

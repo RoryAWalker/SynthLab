@@ -29,12 +29,15 @@
       </div>
       <button id="btn-init" class="btn free-only" data-help="init">Init</button>
       <label class="ctl check" data-help="showvalues"><input type="checkbox" id="show-values"> Show values</label>
+      <label class="ctl check modular-only" data-help="fadedcables" hidden><input type="checkbox" id="faded-cables"> See-through cables</label>
       <div class="zoom-ctl" data-help="zoom">
         <button id="zoom-out" aria-label="Zoom out">−</button>
         <button id="zoom-level" class="zoom-level" title="Fit to window">100%</button>
         <button id="zoom-in" aria-label="Zoom in">+</button>
       </div>
+      <span class="midi-light" id="midi-light" data-help="midi" hidden><i></i>MIDI</span>
       <button class="btn btn-scopes" id="btn-scopes" data-help="scopes" aria-pressed="false" hidden>Scopes</button>
+      <button class="btn btn-scopes" id="btn-modmax" data-help="modmax" aria-pressed="false" hidden>Maximise</button>
       <button class="btn btn-help" id="btn-help" data-help="help" aria-pressed="false" title="Hover help: rest on any control for a second"><span class="help-q">?</span> Help</button>
     </div>
   </header>
@@ -46,9 +49,9 @@
       <div class="lb-title" id="lb-title">Oscillators</div>
       <select class="lb-lesson" id="lb-lesson" aria-label="Choose a lesson" data-help="lesson-pick"></select>
     </div>
-    <div class="lb-steps" id="lb-steps" data-help="lesson-steps"></div>
     <div class="lb-task">
-      <div class="lb-task-head"><span class="lb-task-title" id="lb-task-title"></span><span class="lb-status" id="lb-status"></span></div>
+      <div class="lb-steps" id="lb-steps" data-help="lesson-steps"></div>
+      <div class="lb-task-head"><span class="lb-task-title" id="lb-task-title"></span><span class="lb-status" id="lb-status"></span><button class="lb-btn lb-hear" id="lb-hear" data-help="lesson-hear"><span aria-hidden="true">▶</span> Hear target</button></div>
       <div class="lb-task-text" id="lb-task-text"></div>
       <div class="lb-question" id="lb-question" hidden></div>
       <div class="lb-feedback" id="lb-feedback"></div>
@@ -59,7 +62,6 @@
     </div>
     <div class="lb-actions">
       <button class="lb-btn primary" id="lb-start">Start</button>
-      <button class="lb-btn" id="lb-hear" data-help="lesson-hear"><span aria-hidden="true">▶</span> Hear target</button>
       <button class="lb-btn hint" id="lb-hint" data-help="lesson-hint" hidden>💡 Hint</button>
       <button class="lb-btn quiet" id="lb-reset" data-help="lesson-reset">Reset controls</button>
       <label class="lb-check" id="lb-ghost-wrap" data-help="lesson-ghost"><input type="checkbox" id="lb-ghost" checked> Show target on scopes</label>
@@ -142,7 +144,7 @@
   <div class="start-menu" id="start-menu" hidden>
     <div class="sm-inner" role="dialog" aria-labelledby="sm-title">
       <button class="sm-close" id="sm-close" aria-label="Close">×</button>
-      <div class="sm-eyebrow">SynthLab</div>
+      <div class="sm-eyebrow sm-brand">SynthLab <span>by NoFoe</span></div>
       <h1 class="sm-title" id="sm-title">Choose a synth</h1>
       <div class="sm-cards" id="sm-cards"></div>
     </div>

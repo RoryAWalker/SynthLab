@@ -26,12 +26,24 @@ export class ZoomPan {
 
   get scale() { return this.base * this.zoom; }
 
+  // the room there is for the instrument: the window's width, and the height below the top bars
+  avail() {
+    const top = this.vp.getBoundingClientRect().top + window.scrollY;
+    return { w: this.vp.clientWidth - 32, h: Math.max(300, window.innerHeight - top - 20) };
+  }
+
   // Recompute the fitted scale (on load and window resize), keeping the current zoom.
   fit() {
     const designW = this.stage.offsetWidth;
     const designH = this.stage.offsetHeight;
     // parts marked data-no-fit (the open FX drawer) extend the page instead of shrinking the stage
-    const extra = [...this.stage.querySelectorAll('[data-no-fit]')].reduce((s, el) => s + (el.offsetParent ? el.offsetHeight + 8 : 0), 0);
+    // In lessons the scopes sit under the lesson panel (scroll up to see them), so they don't count either.
+    const noFit = [...this.stage.querySelectorAll('[data-no-fit]')];
+    const scopes = this.stage.querySelector('.scope-unit');
+    const b = document.body.classList;
+    if (b.contains('lesson-mode') && !b.contains('lesson-scopes-visible') && scopes) noFit.push(scopes);
+    const outer = (el) => { const cs = getComputedStyle(el); return el.offsetHeight + parseFloat(cs.marginTop) + parseFloat(cs.marginBottom); };
+    const extra = noFit.reduce((s, el) => s + (el.offsetParent ? outer(el) : 0), 0);
     const oldScale = this.scale;
     // fit the width, and the height left below the top bars, so the keyboard stays on screen
     const top = this.vp.getBoundingClientRect().top + window.scrollY;
@@ -39,7 +51,8 @@ export class ZoomPan {
     // Maximised scopes: fit the width only and let the page scroll, so the big screens don't
     // shrink the synth's controls below them.
     const fitHeight = !document.body.classList.contains('scopes-max');
-    this.base = Math.min(1, (this.vp.clientWidth - 32) / designW, fitHeight && availH > 300 ? availH / (designH - extra) : 1);
+    const most = document.body.classList.contains('modules-max') ? 2 : 1; // maximised modules may grow past life size
+    this.base = Math.min(most, (this.vp.clientWidth - 32) / designW, fitHeight && availH > 300 ? availH / (designH - extra) : most);
     this.vp.style.height = designH * this.base + 'px';
     if (this.zoom === 1) this.center();
     else { // keep the same point in the middle of the view

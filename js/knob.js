@@ -168,11 +168,19 @@ export class Knob {
     const k = this.knob;
     let startY = 0, startX = 0, startN = 0, acc = 0, dragging = false;
 
+    let lastTap = 0, moved = false;
     k.addEventListener('pointerdown', (e) => {
       if (e.button !== 0) return;
       e.preventDefault();
+      // touch: a second tap within 300 ms resets the knob, like a double-click
+      if (e.pointerType === 'touch') {
+        const now = performance.now();
+        if (now - lastTap < 300) { this.commit(this.spec.def); lastTap = 0; return; }
+        lastTap = now;
+      }
+      moved = false;
       k.focus();
-      k.setPointerCapture(e.pointerId);
+      try { k.setPointerCapture(e.pointerId); } catch { /* pointer already gone */ }
       dragging = true;
       startY = e.clientY; startX = e.clientX; startN = this.norm; acc = 0;
       this.el.classList.add('active');
@@ -181,6 +189,7 @@ export class Knob {
     k.addEventListener('pointermove', (e) => {
       if (!dragging) return;
       const d = (startY - e.clientY) + (e.clientX - startX) * 0.5;
+      if (Math.abs(d) > 4) { moved = true; lastTap = 0; } // a turn, not a tap
       if (this.stepped) {
         const steps = Math.trunc(d / 22) - acc;
         if (steps) { acc += steps; this.stepBy(steps); }

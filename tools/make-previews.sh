@@ -8,10 +8,16 @@ PROFILE="$(mktemp -d)"   # throwaway profile: never touches your own Chrome
 cd "$(dirname "$0")/.."
 shot() { # synth, width, height
   "$CHROME" --headless=new --disable-gpu --hide-scrollbars --no-first-run --user-data-dir="$PROFILE" \
-    --default-background-color=00000000 --window-size="$2,$3" --virtual-time-budget=4000 \
+    --default-background-color=00000000 --window-size="$2,$3" --virtual-time-budget=8000 \
     --screenshot="img/preview-$1.png" "$URL/?synth=$1&preview=1" 2>/dev/null
   echo "img/preview-$1.png"
 }
 shot nf1 1600 680
 shot nf3 1600 940
+shot nfm 1600 760
+shot nfmod 1880 1080
 rm -rf "$PROFILE"
+# new pictures: bump the version in the start menu so browsers do not keep showing the old ones
+V=$(date +%Y%m%d%H%M)
+sed -i '' "s/^const PREVIEW_VERSION = .*/const PREVIEW_VERSION = '$V';/" js/startMenu.js
+echo "start menu pictures: version $V"

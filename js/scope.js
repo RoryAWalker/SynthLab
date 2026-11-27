@@ -41,13 +41,24 @@ function findTrigger(buf, win) {
 }
 
 // Spectrum outline: one point per pixel column, taking the loudest bin in that column.
+// In the low end a bin spans several columns, so there the curve is interpolated smoothly
+// between bin centres (Catmull-Rom) instead of drawing flat steps.
 function spectrumPath(ctx, fb, binHz, w, h, fMin, fMax) {
+  const n = fb.length;
+  const bin = (k) => Math.max(-120, fb[Math.min(n - 1, Math.max(0, k))]);
   for (let x = 0; x <= w; x++) {
     const f0 = fMin * Math.pow(fMax / fMin, x / w);
     const f1 = fMin * Math.pow(fMax / fMin, (x + 1) / w);
-    const b0 = Math.floor(f0 / binHz), b1 = Math.max(b0 + 1, Math.ceil(f1 / binHz));
-    let m = -Infinity;
-    for (let b = b0; b < b1 && b < fb.length; b++) if (fb[b] > m) m = fb[b];
+    let m;
+    if (f1 - f0 < binHz) {
+      const pos = f0 / binHz, i = Math.floor(pos), t = pos - i;
+      const p0 = bin(i - 1), p1 = bin(i), p2 = bin(i + 1), p3 = bin(i + 2);
+      m = p1 + 0.5 * t * (p2 - p0 + t * (2 * p0 - 5 * p1 + 4 * p2 - p3 + t * (3 * (p1 - p2) + p3 - p0)));
+    } else {
+      const b0 = Math.floor(f0 / binHz), b1 = Math.max(b0 + 1, Math.ceil(f1 / binHz));
+      m = -Infinity;
+      for (let b = b0; b < b1 && b < n; b++) if (fb[b] > m) m = fb[b];
+    }
     const db = Math.max(-100, Math.min(0, m));
     ctx.lineTo(x, (-db / 100) * h);
   }
