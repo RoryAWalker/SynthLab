@@ -17,6 +17,30 @@
   <meta property="og:image:alt" content="SynthLab: the NF-1, NiniFoog, NF-MiniModular and NF-Modular synths">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="stylesheet" href="css/synth.css">
+  <!-- After an update, a browser may still hold an old copy of one of the app's files, and an old
+       file mixed with new ones can stop the app starting (a blank page). If that happens, fetch
+       every file fresh and reload, once a minute at most. The same in index.html and studio/index.html. -->
+  <script>
+    (function () {
+      var KEY = 'lab.repairAt';
+      var BROKEN = /requested module|imported module|module script|binding name|export named/i;
+      function repair(msg) {
+        if (!BROKEN.test(msg || '')) return;
+        try {
+          if (Date.now() - (+sessionStorage.getItem(KEY) || 0) < 60000) return;
+          sessionStorage.setItem(KEY, String(Date.now()));
+        } catch (e) { return; }
+        var urls = performance.getEntriesByType('resource').map(function (r) { return r.name; })
+          .filter(function (u) { return u.indexOf(location.origin) === 0; });
+        urls.push(location.href);
+        urls.reduce(function (p, u) { // one at a time
+          return p.then(function () { return fetch(u, { cache: 'reload' }).catch(function () {}); });
+        }, Promise.resolve()).then(function () { location.reload(); });
+      }
+      addEventListener('error', function (e) { repair(e.message); }, true);
+      addEventListener('unhandledrejection', function (e) { repair(e.reason && (e.reason.message || String(e.reason))); });
+    })();
+  </script>
   <!-- no synth chosen yet: the start menu shows from the first moment, not after the app has loaded -->
   <script>if (!/[?&]synth=/.test(location.search)) document.documentElement.classList.add('choosing');</script>
 </head>
