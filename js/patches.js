@@ -51,7 +51,7 @@ export class PatchMenu {
     this.sel.addEventListener('change', () => { this.loadSelected(); this.sel.blur(); });
     document.getElementById('btn-save').addEventListener('click', () => this.openSave());
     document.getElementById('btn-delete').addEventListener('click', () => this.deleteSelected());
-    document.getElementById('btn-init').addEventListener('click', () => { this.d.setPatch({}); this.select('f:Init'); });
+    document.getElementById('btn-init').addEventListener('click', () => { this.d.setPatch({}); this.select('f:' + (SYNTH.initName || 'Init')); });
 
     // ⋯ menu
     const more = document.getElementById('patch-more');
@@ -73,7 +73,7 @@ export class PatchMenu {
     this.dlg.addEventListener('keyup', (e) => e.stopPropagation()); // typing a name must not play notes
 
     this.render();
-    this.select('f:Init');
+    this.select('f:' + (SYNTH.initName || 'Init'));
   }
 
   render() {

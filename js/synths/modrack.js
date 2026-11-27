@@ -11,7 +11,7 @@
 // The modules are the NF-Modular's: their controls, sounds and help are shared with it (each
 // type names the NF-Modular module it comes from).
 
-import { PARAMS as NFP, OUTPUTS as NFO, PRESETS as NF_PRESETS, LAYOUT as NF_LAYOUT, KEYBED_SECTIONS, SIDE_SECTIONS } from './nfmod.js';
+import { PARAMS as NFP, OUTPUTS as NFO, LAYOUT as NF_LAYOUT, KEYBED_SECTIONS, SIDE_SECTIONS } from './nfmod.js';
 
 // The rack: three rows, each this wide (in the panel's own pixels: the NF-Modular's rows) with
 // this gap between modules.
@@ -157,43 +157,22 @@ export function build(layout) {
   return { rows, PARAMS, OUTPUTS, LAYOUT };
 }
 
-// ---- the NF-Modular's patches, moved into this rack ---------------------------------------
-// Its modules have fixed names (osc1, vcf, filt, lfo2...); here they are numbered instances.
-const RENAME = { osc1: 'vco1', osc2: 'vco2', vco1: 'vco1', vco2: 'vco2', vcf: 'vcf1', filt: 'vcf1', mix: 'mix1', noise: 'noise1',
-  ring: 'ring1', vca1: 'vca1', vca2: 'vca2', att: 'att1', env1: 'env1', env2: 'env2', lfo: 'lfo1', lfo2: 'mfo1', sh: 'sh1', kb: 'kb', seq: 'seq', out: 'out' };
-const renameOut = (o) => (o === 'filt.out' ? 'vcf1.lp' : o.replace(/^[a-z0-9]+/, (m) => RENAME[m] || m));
-const renameId = (id) => (id.startsWith('jack.') ? 'jack.' + renameOut(id.slice(5)) : renameOut(id));
-const NF_DEFAULT = Object.fromEntries(Object.entries(NFP).map(([id, s]) => [id, s.def]));
-// An NF-Modular patch (its differences from its starting patch) as a full patch for a rack
-// holding `layout`; cables to or from modules not in that rack are left out.
-export function fromNfModular(diff, layout) {
-  const { PARAMS, OUTPUTS } = build(layout);
-  const out = { 'rack.layout': layout };
-  Object.entries({ ...NF_DEFAULT, ...diff }).forEach(([id, v]) => {
-    const nid = renameId(id);
-    if (!(nid in PARAMS)) return;
-    if (PARAMS[nid].type === 'jack') v = String(v || '').split(',').filter(Boolean).map(renameOut).filter((o) => o in OUTPUTS).join(',');
-    out[nid] = v;
-  });
-  return out;
-}
-
-// the rack you start with: two VCOs into a Mixer, a VCF and VCA, two envelopes and an LFO, patched
-// like the NF-Modular's starting patch
-export const DEFAULT_LAYOUT = 'vco1,vco2,mix1|vcf1,vca1,out|env1,env2,lfo1';
-// the NF-Modular's set of modules
-const FULL = 'vco1,vco2,noise1,mix1|vcf1,ring1,vca1,vca2,att1,out|env1,env2,lfo1,mfo1,sh1';
-const INIT = fromNfModular({}, DEFAULT_LAYOUT);
+// ---- the starting rack and the presets -----------------------------------------------------
+// Basic Synth, the fewest modules that make a playable synth: the Keyboard's Pitch plays a VCO, its Saw
+// goes through a VCF and a VCA to the Output, and an ENV, started by the Keyboard's Gate, opens the VCA
+// for each note.
+export const DEFAULT_LAYOUT = 'vco1|vcf1,vca1,out|env1';
+const BASIC_CABLES = {
+  'jack.vco1.pitch': 'kb.pitch', 'jack.vcf1.in': 'vco1.saw', 'jack.vca1.in': 'vcf1.lp',
+  'jack.vca1.cv': 'env1.out', 'jack.env1.gate': 'kb.gate', 'jack.out.in': 'vca1.out',
+};
 // the starting cables, for the starting rack (used by defaultPatch in params.js)
-export const initCables = (patch) => (patch['rack.layout'] === DEFAULT_LAYOUT
-  ? Object.fromEntries(Object.entries(INIT).filter(([id]) => id.startsWith('jack.'))) : {});
+export const initCables = (patch) => (patch['rack.layout'] === DEFAULT_LAYOUT ? { ...BASIC_CABLES } : {});
 
+export const INIT_NAME = 'Basic Synth'; // (the first preset, loaded by Init)
 export const PRESETS = {
-  'Init': {},
+  'Basic Synth': {},
   'Empty Rack': { 'rack.layout': '|out|' },
-  'Full Rack': fromNfModular({}, FULL),
-  ...Object.fromEntries(Object.entries(NF_PRESETS).filter(([n]) => n !== 'Init' && n !== 'No Cables')
-    .map(([n, diff]) => [n, fromNfModular(diff, FULL)])),
 };
 
 // Help: each module shares the NF-Modular's help for the module it comes from
@@ -236,5 +215,6 @@ export const MODRACK = {
     text: 'An open modular rack: choose your modules from the drawer, as many as fit.',
   },
   PARAMS: START.PARAMS, LAYOUT: START.LAYOUT, KEYBED_SECTIONS, SIDE_SECTIONS, PRESETS,
+  initName: INIT_NAME,
   build, parseLayout, layoutString, initCables,
 };
