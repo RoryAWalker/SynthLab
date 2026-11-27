@@ -1,4 +1,4 @@
-/* StudioLab's own styles, on top of SynthLab's (../../css/synth.css): the processors, the studio skin and the NF-4 console. */
+/* StudioLab's own styles, on top of SynthLab's (../../css/synth.css): the processors, the studio skin and the NF-Mix4 console. */
 
 /* ===================================================================   NF-C1 compressor (body.processor): no keyboard; big screens; level meters
    ========================================================================== */
@@ -162,7 +162,7 @@ body[data-skin="studio"] .panel .section { display: flex; flex-direction: column
 body[data-skin="studio"] .panel-footer { border-top-color: var(--rule); }
 
 /* ==========================================================================
-   NF-4 console: channel strips (two narrow columns of small knobs), faders, meters,
+   NF-Mix4 console: channel strips (two narrow columns of small knobs), faders, meters,
    scribble strips. Its own colour: a warm charcoal faceplate.
    ========================================================================== */
 body[data-synth="nf4"] { --panel: #2d2b29; --panel-hi: #3a3735; --panel-lo: #24221f; --cell-w: 74px; --rule: rgba(240, 236, 230, 0.3); }
@@ -243,7 +243,7 @@ body.show-values .fader-value, .fader-cell.active .fader-value { visibility: vis
 body[data-synth="nf4"] .section[data-section="tape"] .scribble { margin-top: 2px; }
 body[data-synth="nf4"] .bezel { height: 250px; }
 
-/* ---- NF-4: tall channel strips, one knob per row, zig-zagging left and right ---- */
+/* ---- NF-Mix4: tall channel strips, one knob per row, zig-zagging left and right ---- */
 body[data-synth="nf4"] .zigzag .section-grid { grid-template-columns: 112px !important; row-gap: 0; justify-content: center; }
 body[data-synth="nf4"] .zigzag .knob-cell.small { width: 74px; justify-self: center; margin-bottom: -13px; position: relative; }
 body[data-synth="nf4"] .zigzag .knob-cell.zz-l { transform: translateX(-19px); }
@@ -260,7 +260,7 @@ body[data-synth="nf4"] .fader-body { height: 230px; }
 body[data-synth="nf4"] .meter-group.beside-fader .meter-ladder { height: 230px; }
 body[data-synth="nf4"] .strip .scribble { width: 104px; align-self: center; }
 
-/* ---- NF-4: the screens stand to the right of the console, one above the other ---- */
+/* ---- NF-Mix4: the screens stand to the right of the console, one above the other ---- */
 body[data-synth="nf4"] #stage { display: flex; align-items: flex-start; }
 body[data-synth="nf4"] .synth { order: 1; }
 body[data-synth="nf4"] .scope-unit { order: 2; flex-direction: column; width: 560px; margin: 0 0 0 18px; padding: 14px 16px 12px; gap: 10px; align-items: stretch; }
@@ -271,7 +271,7 @@ body[data-synth="nf4"] .scope-controls { flex-direction: row; justify-content: c
 body[data-synth="nf4"] .scope-controls .hold-btn { width: 110px; height: 26px; }
 body[data-synth="nf4"] .max-btn, body[data-synth="nf4"] .scope-brand { display: none; }
 
-/* ---- NF-4 meters: lights coloured by level (in dBu): green below the working level, a white
+/* ---- NF-Mix4 meters: lights coloured by level (in dBu): green below the working level, a white
    light at 0 VU (+4 dBu), amber above it, red near clipping ---- */
 .meter-ladder i.green { background: #17301f; }
 .meter-ladder i.ref { background: #2c2e2c; }

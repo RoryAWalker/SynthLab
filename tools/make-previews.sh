@@ -18,8 +18,8 @@ shot nf1 1600 680
 shot nf3 1600 940
 shot nfm 1600 760
 shot nfmod 1880 1080
-shot nfc1 1360 540 studio/
-shot nf4 1240 1100 studio/
+shot nfc1 1360 396 studio/
+shot nf4 1240 1032 studio/
 rm -rf "$PROFILE"
 # new pictures: bump the version in the start menu so browsers do not keep showing the old ones
 V=$(date +%Y%m%d%H%M)

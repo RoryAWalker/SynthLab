@@ -1,4 +1,4 @@
-// Scales shared by the NF-4 console's engine (worklet), its controls and its screens, so the
+// Scales shared by the NF-Mix4 console's engine (worklet), its controls and its screens, so the
 // numbers on the panel always match what the audio does.
 
 // fader position (0..1) -> dB: 0.75 is 0 dB (unity), the top is +10, the bottom is off

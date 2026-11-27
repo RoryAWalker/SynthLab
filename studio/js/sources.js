@@ -7,7 +7,7 @@
 // compressed or limited already (or there is nothing left for the compressor to do), should
 // peak around -1 to -3 dB, and loop cleanly. The url is relative to studio/index.html.
 // 'user' is a file the student loads from their own computer; it never leaves the browser.
-// The made-up drums, bass and keys further down are kept for the NF-4 console's song.
+// The made-up drums, bass and keys further down are kept for the NF-Mix4 console's song.
 
 export const SOURCES = [
   { id: 'drums', label: 'Drums', url: 'audio/c1-drums.wav' },
@@ -69,7 +69,7 @@ async function decode(ctx, buf) {
   return [L, R];
 }
 
-// ---- the made-up loops (now only for the NF-4's song) -------------------------------------------------------------------------
+// ---- the made-up loops (now only for the NF-Mix4's song) -------------------------------------------------------------------------
 // All at 96 BPM, two bars, with a wide range between loud and soft hits: that range is what a
 // compressor works on.
 const BPM = 96;
@@ -209,7 +209,7 @@ function makeTone(sr) {
   return [L, R];
 }
 
-// ---- the NF-4 console's song: four stems that play together, one per channel -------------
+// ---- the NF-Mix4 console's song: four stems that play together, one per channel -------------
 // Each stem arrives at the level its source really would: the two microphones (drum overheads
 // and the lead, both condenser mics) about 50 dB below the two line-level sources (bass DI and
 // keys). That gap is why a console has Mic and Line inputs and a preamp with so much gain.

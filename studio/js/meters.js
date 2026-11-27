@@ -1,4 +1,4 @@
-// The NF-4 console's meters: LED ladders on the channels, aux and main buses, and a pair of
+// The NF-Mix4 console's meters: LED ladders on the channels, aux and main buses, and a pair of
 // moving-needle meters for the main mix. A switch on the desk sets how they all behave:
 //
 //   VU  (volume units): reads the AVERAGE level, slowly (300 ms to rise), so it shows how loud

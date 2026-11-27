@@ -1,4 +1,4 @@
-// NF-4 console: four channels, two aux buses, a reverb, a bus compressor and the main mix.
+// NF-Mix4 console: four channels, two aux buses, a reverb, a bus compressor and the main mix.
 // Plays a four-track song (one stem per channel) and reports the level at every stage, so the
 // screens can show the signal flowing through.
 //

@@ -1,4 +1,4 @@
-// NF-4: a small four-channel mixing console, for learning signal flow. Each channel strip reads
+// NF-Mix4: a small four-channel mixing console, for learning signal flow. Each channel strip reads
 // from top to bottom in the order the sound flows through it: input (mic or line) and preamp
 // gain, polarity, high-pass filter, EQ, Aux 1 (pre-fader), Aux 2 (post-fader), pan and routing,
 // mute and solo, and the fader. The master section has the aux masters and a reverb (fed by
@@ -114,7 +114,7 @@ export const PRESETS = {
 
 export const NF4 = {
   id: 'nf4',
-  name: 'NF-4',
+  name: 'NF-Mix4',
   brandSub: 'FOUR-CHANNEL MIXING CONSOLE',
   skin: 'studio',
   kind: 'console',

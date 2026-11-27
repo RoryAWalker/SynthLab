@@ -72,7 +72,7 @@ export const HELP_NFC1 = {
   'meter-out': { title: 'Out meter', body: ['The peak level coming out, after Makeup. The lamp at the top lights if it reaches 0 dB, the most a digital system can take: too much Makeup will distort.'] },
 };
 
-// Entries for the NF-4 console (nf4). Each channel strip has the same controls, so its entries
+// Entries for the NF-Mix4 console (nf4). Each channel strip has the same controls, so its entries
 // are made once per channel.
 function nf4Channel(n) {
   const k = `ch${n}.`;

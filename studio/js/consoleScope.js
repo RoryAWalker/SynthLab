@@ -1,4 +1,4 @@
-// The NF-4 console's two screens, drawn in place of the synths' oscilloscope and spectrum.
+// The NF-Mix4 console's two screens, drawn in place of the synths' oscilloscope and spectrum.
 //
 // Left, SIGNAL FLOW: the selected channel's path, block by block, in the order the strip is laid
 // out, with the live level at each stage. Branches show where Aux 1 (before the fader) and Aux 2
