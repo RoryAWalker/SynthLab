@@ -15,10 +15,10 @@ body.processor .synth-body { border-radius: 0 0 6px 6px; }
 
 
 /* ==========================================================================
-   The loop player: a slim separate unit racked above the NF-C1, in black, with a little
+   The loop player: a slim separate unit racked below the NF-C1 (the C1 sits nearest its screens), in black, with a little
    green display. It feeds the compressor; it is not part of it.
    ========================================================================== */
-.player-unit { display: flex; align-items: stretch; margin-bottom: 14px; filter: drop-shadow(0 12px 16px rgba(0,0,0,0.55)); }
+.player-unit { display: flex; align-items: stretch; margin-top: 14px; filter: drop-shadow(0 12px 16px rgba(0,0,0,0.55)); }
 .player-face {
   width: 1240px; box-sizing: border-box; height: 66px; padding: 0 20px !important;
   display: flex; align-items: center; gap: 18px;

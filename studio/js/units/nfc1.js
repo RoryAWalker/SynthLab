@@ -1,6 +1,6 @@
 // NF-C1: the first of the processors, a clean compressor for learning the basics: Threshold,
 // Ratio, Attack, Release, Knee and Makeup, with Bypass to compare. A loop player (a separate
-// unit above it) feeds it, so there is always something to compress: recorded drums, bass, keys and the full band, a test tone, or a
+// unit racked below it) feeds it, so there is always something to compress: recorded drums, bass, keys and the full band, a test tone, or a
 // file of the student's own. No keyboard: the processors work on sounds, not notes.
 // Engine: js/worklet/comp-processor.js. Sounds: js/sources.js. Its graphs: js/compScope.js.
 
@@ -10,7 +10,7 @@ const db = (v, places = 1) => (v > 0.05 ? '+' : '') + v.toFixed(places) + ' dB';
 const ms = (v) => (v < 1 ? v.toFixed(2) : v < 10 ? v.toFixed(1) : Math.round(v)) + ' ms';
 
 export const PARAMS = {
-  // ---- the loop player: a separate unit above the compressor, playing the sound going in
+  // ---- the loop player: a separate unit below the compressor, playing the sound going in
   'src.play':  { type: 'step', ui: 'led', button: 'Play', label: 'Play / Stop', def: 'stop', options: [{ v: 'stop', label: 'Stopped' }, { v: 'play', label: 'Playing' }] },
   'src.sound': { type: 'step', ui: 'choice', label: 'Sound', def: 'drums', options: SOURCES.map((s) => ({ v: s.id, label: s.label })) },
 

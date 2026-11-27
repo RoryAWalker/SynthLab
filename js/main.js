@@ -719,8 +719,7 @@ lesson = new LessonController({
     setScopes(on, false);
     requestAnimationFrame(() => {
       fit();
-      // (the NF-C1: from its Loop Player, which sits above it)
-      const synthTop = document.querySelector('.player-unit, .synth').getBoundingClientRect().top + window.scrollY;
+      const synthTop = document.querySelector('.synth').getBoundingClientRect().top + window.scrollY;
       const pinned = document.querySelector('.appbar').offsetHeight + lessonWrap.offsetHeight;
       // (the processors fit everything below the lesson panel: no scrolling)
       window.scrollTo(0, on && !visible && !PROC ? Math.max(0, synthTop - pinned - 12) : 0);
@@ -880,7 +879,7 @@ function buildLoadButton() {
   return wrap;
 }
 
-// The loop player (NF-C1): a separate slim unit above the processor, playing the sound that goes
+// The loop player (NF-C1): a separate slim unit racked below the processor, playing the sound that goes
 // into it: Play, a display (what is playing, how far through the loop), the sounds, Load your own.
 function buildPlayer() {
   const P = SYNTH.PLAYER;
@@ -894,7 +893,7 @@ function buildPlayer() {
   sections[P.id] = face;
   display.before(makeControl(P.play, {}));
   display.after(makeControl(P.sound, {}), buildLoadButton());
-  document.querySelector('#stage > .synth').before(unit);
+  document.querySelector('#stage > .synth').after(unit);
   // the display follows what the engine is playing
   const state = display.querySelector('.pd-state'), now = display.querySelector('.pd-now'), bar = display.querySelector('.pd-bar i');
   let shown = '';
