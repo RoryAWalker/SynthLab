@@ -1,6 +1,7 @@
 // NF-C1: the first of the processors, a clean compressor for learning the basics: Threshold,
 // Ratio, Attack, Release, Knee and Makeup. It plays a loop through itself (Source), so there is
-// always something to compress. No keyboard: the processors work on sounds, not notes.
+// always something to compress: recorded drums, bass, keys and the full band, a test tone, or a
+// file of the student's own. No keyboard: the processors work on sounds, not notes.
 // Engine: js/worklet/comp-processor.js. Sounds: js/sources.js. Its graphs: js/compScope.js.
 
 import { SOURCES } from '../sources.js';
@@ -45,13 +46,14 @@ export const LAYOUT = [
 
 export const PRESETS = {
   'Init': {},
-  'Gentle levelling': { 'src.sound': 'keys', 'comp.thresh': -24, 'comp.ratio': 2, 'comp.knee': 12, 'comp.attack': 20, 'comp.release': 300, 'comp.makeup': 4 },
-  'Punchy drums': { 'src.sound': 'drums', 'comp.thresh': -22, 'comp.ratio': 4, 'comp.attack': 30, 'comp.release': 120, 'comp.makeup': 6 },
-  'Squashed drums': { 'src.sound': 'drums', 'comp.thresh': -38, 'comp.ratio': 10, 'comp.attack': 0.3, 'comp.release': 60, 'comp.makeup': 14 },
-  'Even bass': { 'src.sound': 'bass', 'comp.thresh': -26, 'comp.ratio': 5, 'comp.knee': 6, 'comp.attack': 8, 'comp.release': 200, 'comp.makeup': 8 },
+  'Gentle levelling': { 'src.sound': 'keys', 'comp.thresh': -24, 'comp.ratio': 2, 'comp.knee': 12, 'comp.attack': 20, 'comp.release': 300, 'comp.makeup': 8 },
+  'Punchy drums': { 'src.sound': 'drums', 'comp.thresh': -22, 'comp.ratio': 4, 'comp.attack': 30, 'comp.release': 120, 'comp.makeup': 3 },
+  'Squashed drums': { 'src.sound': 'drums', 'comp.thresh': -38, 'comp.ratio': 10, 'comp.attack': 0.3, 'comp.release': 60, 'comp.makeup': 20 },
+  'Even bass': { 'src.sound': 'bass', 'comp.thresh': -22, 'comp.ratio': 5, 'comp.knee': 6, 'comp.attack': 8, 'comp.release': 200, 'comp.makeup': 6 },
   'Limiter': { 'src.sound': 'drums', 'src.in': 6, 'comp.thresh': -6, 'comp.ratio': 20, 'comp.attack': 0.1, 'comp.release': 80 },
   'Slow attack test': { 'src.sound': 'tone', 'comp.thresh': -24, 'comp.ratio': 8, 'comp.attack': 120, 'comp.release': 400 },
-  'Pumping': { 'src.sound': 'drums', 'comp.thresh': -34, 'comp.ratio': 8, 'comp.attack': 2, 'comp.release': 600, 'comp.makeup': 12 },
+  'Glue the band': { 'src.sound': 'band', 'comp.thresh': -13, 'comp.ratio': 2, 'comp.knee': 6, 'comp.attack': 30, 'comp.release': 200, 'comp.makeup': 1 },
+  'Pumping': { 'src.sound': 'drums', 'comp.thresh': -34, 'comp.ratio': 8, 'comp.attack': 2, 'comp.release': 600, 'comp.makeup': 16 },
 };
 
 export const NFC1 = {
@@ -64,7 +66,7 @@ export const NFC1 = {
   processor: 'comp-processor',
   card: {
     tagline: 'Your first compressor',
-    text: 'See and hear what Threshold, Ratio, Attack and Release do to drums, bass and keys.',
+    text: 'See and hear what Threshold, Ratio, Attack and Release do to drums, bass, keys and a full band.',
   },
   PARAMS, LAYOUT, KEYBED_SECTIONS: [], PRESETS,
 };

@@ -17,10 +17,10 @@ export const HELP_NFC1 = {
   // ---- source
   'section:src': { title: 'Source', body: [
     'The sound going into the compressor. A compressor does nothing on its own: it reacts to whatever you put through it, so the choice of sound matters a lot.',
-    'Drums have big, short peaks: good for hearing Attack and Release. Bass and Keys have loud and soft notes: good for hearing how a compressor evens out levels. The Test tone simply steps between quiet and loud, the clearest way to see what each control does.'] },
+    'Drums have big, short peaks: good for hearing Attack and Release. Bass and Keys have loud and soft notes: good for hearing how a compressor evens out levels. The Full band is all three playing together, the way a compressor across a whole mix hears them. The Test tone simply steps between quiet and loud, the clearest way to see what each control does.'] },
   'src.play': { title: 'Play / Stop', body: ['Starts and stops the sound, looping. The space bar does the same.'] },
   'src.sound': { title: 'Sound', body: [
-    'Which sound to play through the compressor. Drums, Bass and Keys are short loops with plenty of difference between loud and soft notes. The Test tone steps between a quiet level (−30 dB) and a loud one (−6 dB) every second.',
+    'Which sound to play through the compressor. Drums, Bass and Keys are recorded loops with plenty of difference between loud and soft notes, and the Full band is the three of them together. The Test tone steps between a quiet level (−30 dB) and a loud one (−6 dB) every second.',
     'Your file plays a sound you have loaded with Load your own… (it stays on your computer).'] },
   'src.in': { title: 'Input', body: [
     'How loud the sound is when it reaches the compressor. Turning it up pushes more of the sound over the threshold, so the compressor works harder, just as turning the threshold down would.',

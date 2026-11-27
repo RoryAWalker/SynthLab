@@ -793,7 +793,11 @@ function sendSource() {
       if (patch['src.play'] === 'play') patchMenu.toast('Load a sound file first: Load your own… under the Source.');
       return;
     }
-    const chans = await loadSource(engine.ctx, id);
+    let chans;
+    try { chans = await loadSource(engine.ctx, id); } catch (e) {
+      patchMenu.toast('That sound could not be loaded. Check your connection and press Play again.');
+      return;
+    }
     if (!chans) return;
     sentSources.add(id);
     engine.post({ type: 'source', id, chans });

@@ -1,17 +1,19 @@
-// Sounds to feed the processors (the NF-C1 compressor). Until real recordings are added, the
-// loops are made here in code when they are first needed, so nothing has to be downloaded.
+// Sounds to feed the processors (the NF-C1 compressor): recordings in audio/, fetched the first
+// time they are chosen, plus a test tone made here in code.
 //
 // To add a recording: put the file in audio/ and add a line to SOURCES, e.g.
 //   { id: 'vocal', label: 'Vocal', url: 'audio/vocal.wav' },
-// and add its id to the Sound selector's options in js/synths/nfc1.js. The file should not be
+// (the Sound selector in units/nfc1.js takes its options from this list). The file should not be
 // compressed or limited already (or there is nothing left for the compressor to do), should
-// peak around -1 to -3 dB, and loop cleanly.
+// peak around -1 to -3 dB, and loop cleanly. The url is relative to studio/index.html.
 // 'user' is a file the student loads from their own computer; it never leaves the browser.
+// The made-up drums, bass and keys further down are kept for the NF-4 console's song.
 
 export const SOURCES = [
-  { id: 'drums', label: 'Drums', make: makeDrums },
-  { id: 'bass', label: 'Bass', make: makeBass },
-  { id: 'keys', label: 'Keys', make: makeKeys },
+  { id: 'drums', label: 'Drums', url: 'audio/c1-drums.wav' },
+  { id: 'bass', label: 'Bass', url: 'audio/c1-bass.wav' },
+  { id: 'keys', label: 'Keys', url: 'audio/c1-keys.wav' },
+  { id: 'band', label: 'Full band', url: 'audio/c1-band.wav' },
   { id: 'tone', label: 'Test tone', make: makeTone },
   { id: 'user', label: 'Your file' },
 ];
@@ -19,13 +21,34 @@ export const SOURCES = [
 const cache = {};
 
 // The two channels of a source at the audio's sample rate (made or fetched once, then kept).
-export async function loadSource(ctx, id) {
-  if (cache[id]) return cache[id];
+// A recording is downloaded only once, even if it is asked for again while still on its way.
+export function loadSource(ctx, id) {
+  if (cache[id]) return Promise.resolve(cache[id]);
   const s = SOURCES.find((x) => x.id === id);
-  if (!s) return null;
-  if (s.make) cache[id] = s.make(ctx.sampleRate);
-  else if (s.url) cache[id] = await decode(ctx, await (await fetch(s.url)).arrayBuffer());
-  return cache[id] || null;
+  if (!s || !(s.make || s.url)) return Promise.resolve(null);
+  if (s.make) return Promise.resolve((cache[id] = s.make(ctx.sampleRate)));
+  if (!pending[id]) {
+    pending[id] = fetchAudio(s.url)
+      .then((buf) => decode(ctx, buf))
+      .then((chans) => (cache[id] = chans))
+      .finally(() => { delete pending[id]; });
+  }
+  return pending[id];
+}
+const pending = {};
+
+// a dropped connection is tried again a couple of times before giving up
+async function fetchAudio(url, tries = 3) {
+  for (let i = 1; ; i++) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`${url}: ${res.status}`);
+      return await res.arrayBuffer();
+    } catch (e) {
+      if (i >= tries) throw e;
+      await new Promise((r) => setTimeout(r, 300 * i));
+    }
+  }
 }
 
 // A file chosen by the student: decoded in the browser and kept as the 'user' source.
@@ -45,7 +68,7 @@ async function decode(ctx, buf) {
   return [L, R];
 }
 
-// ---- the made-up loops -------------------------------------------------------------------------
+// ---- the made-up loops (now only for the NF-4's song) -------------------------------------------------------------------------
 // All at 96 BPM, two bars, with a wide range between loud and soft hits: that range is what a
 // compressor works on.
 const BPM = 96;
