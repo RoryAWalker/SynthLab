@@ -51,9 +51,9 @@ export const TYPES = {
     params: ['rate', 'lag'], ins: ['in', 'clock'], outs: ['out'] },
   // the NF-ModRack's own modules (not from the NF-Modular): their controls are defined below
   ping: { name: 'Ping', desc: 'Strike it and it rings: a bank of tuned resonators, from drum skin to bell, with feedback.', w: 688, p: 'ping', j: 'ping', help: 'ping',
-    params: ['range', 'tune', 'decay', 'partials', 'stretch', 'tone', 'drive', 'fb'], ins: ['pitch', 'strike', 'in', 'fb', 'stretch'], outs: ['out'] },
+    params: ['range', 'tune', 'decay', 'partials', 'stretch', 'tone', 'drive', 'fb'], ins: ['pitch', 'strike', 'in', 'fb', 'stretch', 'drive'], outs: ['out'] },
   string: { name: 'String', desc: 'Pluck it: a string modelled as a wave going round a tuned loop, with feedback.', w: 520, p: 'string', j: 'string', help: 'string',
-    params: ['range', 'tune', 'decay', 'tone', 'drive', 'fb'], ins: ['pitch', 'strike', 'in', 'fb'], outs: ['out'] },
+    params: ['range', 'tune', 'decay', 'tone', 'drive', 'fb'], ins: ['pitch', 'strike', 'in', 'fb', 'drive'], outs: ['out'] },
 };
 
 // ---- Ping and String: the resonators ---------------------------------------------------------
@@ -85,6 +85,7 @@ const commonIns = {
   strike: { ...NFP['jack.vco1.fm'], label: 'Strike' },
   in: { ...NFP['jack.mix.in1'], label: 'In' },
   fb: { ...NFP['jack.vco1.fm'], label: 'FB' },
+  drive: { ...NFP['jack.vco1.fm'], label: 'Drive' },
 };
 TYPES.ping.specs = {
   params: { ...common,
@@ -123,8 +124,8 @@ const PANELS = {
   lfo: { rows: [['rate', 'shape', 'rcv']], jacks: ['gate', 'rate', 'out:out'] },
   mfo: { rows: [['rate', 'shape', 'fm', ['fmmode', 'pol']]], jacks: ['gate', 'fm', 'out:out'] },
   sh: { rows: [['rate', 'lag']], jacks: ['in', 'clock', 'out:out'] },
-  ping: { rows: [['range', 'tune', 'decay', 'partials', 'stretch', 'tone', 'drive', 'fb']], jacks: ['pitch', 'strike', 'in', 'fb', 'stretch', 'out:out'] },
-  string: { rows: [['range', 'tune', 'decay', 'tone', 'drive', 'fb']], jacks: ['pitch', 'strike', 'in', 'fb', 'out:out'] },
+  ping: { rows: [['range', 'tune', 'decay', 'partials', 'stretch', 'tone', 'drive', 'fb']], jacks: ['pitch', 'strike', 'in', 'fb', 'stretch', 'drive', 'out:out'] },
+  string: { rows: [['range', 'tune', 'decay', 'tone', 'drive', 'fb']], jacks: ['pitch', 'strike', 'in', 'fb', 'drive', 'out:out'] },
 };
 
 // 'vco12' -> ['vco', 12]; the fixed modules have no number

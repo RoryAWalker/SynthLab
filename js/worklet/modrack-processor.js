@@ -358,6 +358,7 @@ function driveSetup(m, drive) {
   m.G = 1 + 14 * d * d;
   m.norm = Math.pow(m.G, -0.6);
 }
+const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 const driven = (m, y) => (m.drive ? m.norm * Math.tanh(y * m.G) : y);
 // Feedback past 100% ("too far") gets much hotter: brought back down so it is not a sudden jump in level
 // (less so with Drive up, which already squashes it)
@@ -365,7 +366,7 @@ const tooFarTrim = (fb, drive) => (fb > 1 ? 1 / (1 + (fb - 1) * 5 * (1 - 0.8 * d
 const MAX_PARTIALS = 8;
 class Ping extends Module {
   static OUTS = ['out'];
-  static INS = ['pitch', 'strike', 'in', 'fb', 'stretch'];
+  static INS = ['pitch', 'strike', 'in', 'fb', 'stretch', 'drive'];
   constructor(id) {
     super(id);
     this.ic1 = new Float64Array(MAX_PARTIALS); this.ic2 = new Float64Array(MAX_PARTIALS);
@@ -377,13 +378,14 @@ class Ping extends Module {
     this.decay = this.q(p, 'decay'); this.tone = this.q(p, 'tone'); this.fbKnob = this.q(p, 'fb');
     this.partials = this.q(p, 'partials') || 1; this.stretchKnob = this.q(p, 'stretch');
     this.envFall = Math.exp(-6.91 / (Math.max(0.02, this.decay * 0.25) * sr));
-    driveSetup(this, this.q(p, 'drive'));
+    this.driveKnob = this.q(p, 'drive');
     this.sr = sr; this.n = 0;
   }
   tick(S) {
     const sr = this.sr;
-    // pitch, Stretch and the partials' filters, worked out again every 8 samples
+    // pitch, Stretch, Drive and the partials' filters, worked out again every 8 samples
     if ((this.n++ & 7) === 0) {
+      driveSetup(this, clamp01(this.driveKnob + this.r('drive'))); // Drive input: 1 volt = the whole knob
       let f = C4 * Math.pow(2, this.oct + this.r('pitch'));
       // Drive also bends the pitch up when struck hard (as a hard-struck drum skin does), falling
       // back as the strike fades: up to about half an octave at full Drive. It follows the strikes,
@@ -453,7 +455,7 @@ class Ping extends Module {
 const MAX_DELAY = 8192;
 class StringRes extends Module {
   static OUTS = ['out'];
-  static INS = ['pitch', 'strike', 'in', 'fb'];
+  static INS = ['pitch', 'strike', 'in', 'fb', 'drive'];
   constructor(id) {
     super(id);
     this.buf = new Float64Array(MAX_DELAY); this.w = 0; this.lp = 0;
@@ -464,13 +466,14 @@ class StringRes extends Module {
   begin(p, sr) {
     this.oct = this.q(p, 'range') + this.q(p, 'tune') / 12;
     this.decay = this.q(p, 'decay'); this.tone = this.q(p, 'tone'); this.fbKnob = this.q(p, 'fb');
-    driveSetup(this, this.q(p, 'drive'));
-    this.L = 1.4 / (1 + 2 * this.drive); // and the limit inside the loop comes down: the string buzzes as it rings
+    this.driveKnob = this.q(p, 'drive');
     this.sr = sr; this.n = 0;
   }
   tick(S) {
     const sr = this.sr;
     if ((this.n++ & 7) === 0) {
+      driveSetup(this, clamp01(this.driveKnob + this.r('drive'))); // Drive input: 1 volt = the whole knob
+      this.L = 1.4 / (1 + 2 * this.drive); // and the limit inside the loop comes down: the string buzzes as it rings
       let f = C4 * Math.pow(2, this.oct + this.r('pitch'));
       f = f < 8 ? 8 : f > sr * 0.24 ? sr * 0.24 : f;
       // Tone: the loop's low-pass, its cutoff 2 to 42 times the pitch
