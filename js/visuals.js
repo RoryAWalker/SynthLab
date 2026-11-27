@@ -11,7 +11,7 @@
 //   detune     -> zoomed spectrum of the two close peaks; scope.js shows the slow beating
 
 import { PARAMS, formatValue } from './params.js';
-import { pingPartial, MATERIALS, formantsAt, VOWELS } from './synths/modrack.js';
+import { pingPartial, MATERIALS, formantsAt, VOWELS, parseLayout, moduleName } from './synths/modrack.js';
 
 const AMBER = '#ffb547';
 const AMBER_DIM = 'rgba(255, 181, 71, 0.55)';
@@ -666,8 +666,8 @@ export class Overlay {
     }
     ctx.restore();
     const name = (MATERIALS.find(([v]) => Math.abs(v - stretch) < 0.04) || [])[1];
-    const num = inst.slice(4);
-    label(ctx, `PING ${num} · ${count} PARTIAL${count > 1 ? 'S' : ''} · STRETCH ${stretch.toFixed(2)}${name ? ' · ' + name.toUpperCase() : ''}`, PAD.l, 16, AMBER, 'left', 10.5, 800);
+    const title = moduleName(inst, parseLayout(p['rack.layout'], p['rack.bays'] || 1)).toUpperCase();
+    label(ctx, `${title} · ${count} PARTIAL${count > 1 ? 'S' : ''} · STRETCH ${stretch.toFixed(2)}${name ? ' · ' + name.toUpperCase() : ''}`, PAD.l, 16, AMBER, 'left', 10.5, 800);
     label(ctx, `partial n rings at the note × n^${stretch.toFixed(2)}${Math.abs(stretch - 1) < 0.02 ? ': the harmonic series, all in tune' : stretch < 1 ? ': squeezed closer than harmonics' : ': spread wider than harmonics'}`, PAD.l, 30, HI, 'left', 10.5, 600);
     label(ctx, `note ${fmtHz(f0)} (${noteName(note)}) · Tone sets their height`, w - PAD.r, 16, AMBER_DIM, 'right', 10, 600);
     label(ctx, '┆ = harmonics (×2, ×3…), for comparison', w - PAD.r, 30, AMBER_DIM, 'right', 9.5, 600);
@@ -714,7 +714,7 @@ export class Overlay {
     const WORDS = ['father', 'bed', 'beet', 'bought', 'boot'];
     const i = Math.round(vowel), exact = Math.abs(vowel - i) < 0.08;
     const name = exact ? `"${VOWELS[i].name}" as in ${WORDS[i]}` : `between ${VOWELS[Math.floor(vowel)].name} and ${VOWELS[Math.min(4, Math.floor(vowel) + 1)].name}`;
-    label(ctx, `FORMANT ${inst.slice(7)} · VOWEL ${name.toUpperCase()}`, PAD.l, 16, AMBER, 'left', 10.5, 800);
+    label(ctx, `${moduleName(inst, parseLayout(p['rack.layout'], p['rack.bays'] || 1)).toUpperCase()} · VOWEL ${name.toUpperCase()}`, PAD.l, 16, AMBER, 'left', 10.5, 800);
     label(ctx, 'the vowel you hear is set by where F1 and F2 sit; F3 adds the voice\'s colour', PAD.l, 30, HI, 'left', 10.5, 600);
     label(ctx, `Shift ${shift > 0.005 ? '+' : ''}${shift.toFixed(2)} oct · bandwidth ${Math.round(bw)} Hz`, w - PAD.r, 16, AMBER_DIM, 'right', 10, 600);
   }

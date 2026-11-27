@@ -374,19 +374,28 @@ const FIXED_OUTPUTS = Object.fromEntries(Object.entries(NFO).filter(([id]) => /^
 const OUT_SECTION = NF_LAYOUT.flat().find((s) => s.id === 'out');
 
 // One module's controls, inputs and outputs
-function moduleDef(inst) {
+// A module's name in the rack: just its kind ('VCO') when it is the only one of its kind, numbered
+// ('VCO 1', 'VCO 2') when there are more. rows: the rack's rows of module ids.
+export function moduleName(inst, rows) {
   const [type, n] = typeOf(inst);
-  const t = TYPES[type];
+  if (!type) return inst;
+  const same = rows.flat().filter((id) => typeOf(id)[0] === type).length;
+  return same > 1 ? `${TYPES[type].name} ${n}` : TYPES[type].name;
+}
+
+function moduleDef(inst, rows) {
+  const [type, n] = typeOf(inst);
+  const t = TYPES[type], name = moduleName(inst, rows);
   const params = {}, outputs = {};
   const own = t.specs; // a module of the NF-ModRack's own (the Resonator) has its own controls
   t.params.forEach((c) => { params[`${inst}.${c}`] = { ...(own ? own.params[c] : NFP[`${t.p}.${c}`]) }; });
-  if (params[`${inst}.curve`]) params[`${inst}.curve`].label = `${t.name} ${n} shape`;
+  if (params[`${inst}.curve`] && type === 'env') params[`${inst}.curve`].label = `${name} shape`;
   t.ins.forEach((c) => { const src = own ? own.ins[c] : NFP[`jack.${t.j}.${c}`] || jack; params[`jack.${inst}.${c}`] = { ...src, def: '' }; });
-  t.outs.forEach((o) => { const src = own ? own.outs[outName(o)] : NFO[outSrc(t, o)]; outputs[`${inst}.${outName(o)}`] = { ...src, module: `${t.name} ${n}` }; });
+  t.outs.forEach((o) => { const src = own ? own.outs[outName(o)] : NFO[outSrc(t, o)]; outputs[`${inst}.${outName(o)}`] = { ...src, module: name }; });
   const P = PANELS[type];
   const full = (c) => (Array.isArray(c) ? c.map(full) : `${inst}.${c}`);
   const sock = (c) => (Array.isArray(c) ? c.map(sock) : c.startsWith('out:') ? `out:${inst}.${c.slice(4)}` : `jack.${inst}.${c}`);
-  const section = { id: inst, title: `${t.name} ${n}`, type, even: n % 2 === 0, removable: true };
+  const section = { id: inst, title: name, type, even: n % 2 === 0, removable: true };
   if (P.parts) section.parts = P.parts.map((part) => ({ rows: part.rows.map((r) => r.map(full)), jacks: part.jacks.map(sock) }));
   else { section.rows = P.rows.map((r) => r.map(full)); section.jacks = P.jacks.map(sock); }
   if (P.titleSwitch) section.titleSwitch = `${inst}.${P.titleSwitch}`;
@@ -404,7 +413,7 @@ export function build(layout, bays = 1) {
   const OUTPUTS = { ...FIXED_OUTPUTS };
   const LAYOUT = rows.map((row) => row.map((inst) => {
     if (inst === 'out') return { ...OUT_SECTION, movable: true };
-    const d = moduleDef(inst);
+    const d = moduleDef(inst, rows);
     Object.assign(PARAMS, d.params);
     Object.assign(OUTPUTS, d.outputs);
     return d.section;
@@ -660,5 +669,5 @@ export const MODRACK = {
   },
   PARAMS: START.PARAMS, LAYOUT: START.LAYOUT, KEYBED_SECTIONS, SIDE_SECTIONS, PRESETS,
   initName: INIT_NAME,
-  build, parseLayout, layoutString, initCables, rowWidth, rowUsed, MAX_BAYS,
+  build, parseLayout, layoutString, initCables, rowWidth, rowUsed, MAX_BAYS, moduleName,
 };

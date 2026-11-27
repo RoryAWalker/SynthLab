@@ -1500,3 +1500,6 @@ body[data-skin="modular"] .section[data-type="quant"].even { --mod: #63a87b; }
 body[data-skin="modular"] .section[data-type="probe"] { --mod: #3a3f46; } /* Probe: instrument grey */
 .probe-cell { display: flex; padding: 2px 0 2px 2px; }
 .scale-screen { cursor: pointer; }
+.sc-menu { font: 700 11px/1 inherit; font-family: inherit; letter-spacing: 0.04em; color: #ececec; background: #1a1c1f; border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 4px; padding: 4px 6px; cursor: pointer; max-width: 100%; }
+.sc-menu:focus-visible { outline: 1px solid #ffb547; }

@@ -784,9 +784,9 @@ export const HELP_MODRACK = {
   'out:probe.thru': { title: 'Probe: Thru', body: ['A, passed on unchanged.'] },
   'section:quant': { title: 'Quantizer', body: [
     'Snaps a pitch to the nearest note of a scale. Random steps from the S&H, a sweep from the XY pad, a Bounce: whatever goes in comes out as notes of the scale, in tune.',
-    'The keys show the scale: lit keys are in it, the root is marked ●, and the note it is playing now glows. ◂ ▸ step through ready-made scales; click keys to put notes in or take them out and make your own. Root moves the whole scale to another key.'],
+    'The keys show the scale: lit keys are in it, the root is marked ●, and the note it is playing now glows. Choose a ready-made scale from the menu, or click keys to put notes in or take them out and make your own. Root moves the whole scale to another key.'],
     tip: 'S&H Out into In, Out into a VCO\'s Pitch, and Trig into an ENV\'s Gate: a random melody that always stays in the scale.' },
-  'quant.mask': { title: 'The scale', body: ['Which notes are in the scale (the lit keys). Click a key to put it in or take it out. ◂ ▸: major, minor, the pentatonics, blues, dorian, harmonic minor, whole tone, and octaves or fifths only.'] },
+  'quant.mask': { title: 'The scale', body: ['Which notes are in the scale (the lit keys). Choose one from the menu (major, minor, the pentatonics, blues, dorian, harmonic minor, whole tone, or octaves or fifths only), or click keys to put notes in or take them out and make your own.'] },
   'quant.root': { title: 'Root', body: ['The key of the scale: the note it starts on. Turn it to play the same scale in another key.'] },
   'jack.quant.in': { title: 'Quantizer: In', body: ['A pitch, at 1 volt per octave (or any control signal: it is treated as one).'] },
   'out:quant.out': { title: 'Quantizer: Out', body: ['The nearest note of the scale, at 1 volt per octave. It only moves to another note once the input is clearly nearer it, so a wobbly input does not flicker between two.'] },

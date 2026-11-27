@@ -175,8 +175,9 @@ export class RackEdit {
 
   remove(id) {
     const rows = this.getRows().map((r) => r.filter((x) => x !== id));
-    const [type, n] = typeOf(id);
-    if (this.change(rows) && type) this.toast(`${TYPES[type].name} ${n} taken out of the rack`);
+    const [type] = typeOf(id);
+    const name = (this.root.querySelector(`.section[data-section="${id}"] .section-title > span`) || {}).textContent || (type ? TYPES[type].name : id);
+    if (this.change(rows) && type) this.toast(`${name} taken out of the rack`);
     this.refreshCards();
   }
 

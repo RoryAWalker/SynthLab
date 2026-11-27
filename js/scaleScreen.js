@@ -1,6 +1,6 @@
 // The NF-ModRack's Quantizer: its screen. One octave of keys, C to B: the lit keys are in the scale
 // (from its root), and the note it is playing now glows. Click a key to put it in or take it out
-// (making your own scale); ◂ ▸ step through the ready-made scales. Behaves like a control for the
+// (making your own scale); the menu chooses a ready-made scale. Behaves like a control for the
 // 'mask' setting: twelve 1s and 0s, the first for the root, the next for a semitone above, and so on.
 
 import { PARAMS } from './params.js';
@@ -23,19 +23,17 @@ export class ScaleScreen {
     this.el.dataset.param = id;
     this.el.innerHTML = `
       <div class="ne-bar" style="width:${W}px">
-        <span class="ne-group"><button class="ne-btn sc-prev" title="The previous scale">◂</button><button class="ne-btn sc-next" title="The next scale">▸</button></span>
-        <span class="tb-name sc-name"></span>
+        <select class="sc-menu" aria-label="Scale">${SCALES.map(([name, m]) => `<option value="${m}">${name}</option>`).join('')}<option value="" disabled>Your own scale</option></select>
       </div>
       <canvas class="ne-screen scale-screen" data-help="${id}"></canvas>`;
     this.cv = this.el.querySelector('canvas');
     this.cv.style.width = W + 'px';
     this.cv.style.height = H + 'px';
-    const step = (d) => {
-      const i = SCALES.findIndex(([, m]) => m === this.value);
-      this.commit(SCALES[(i + d + SCALES.length) % SCALES.length][1]);
-    };
-    this.el.querySelector('.sc-prev').addEventListener('click', (e) => { e.stopPropagation(); step(-1); });
-    this.el.querySelector('.sc-next').addEventListener('click', (e) => { e.stopPropagation(); step(1); });
+    this.menu = this.el.querySelector('.sc-menu');
+    this.menu.addEventListener('change', () => { if (this.menu.value) this.commit(this.menu.value); this.menu.blur(); });
+    // (keys pressed while the menu has focus must not play notes)
+    this.menu.addEventListener('keydown', (e) => e.stopPropagation());
+    this.menu.addEventListener('keyup', (e) => e.stopPropagation());
     this.cv.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); this.click(e); });
     this.set(value);
     this.loop();
@@ -43,7 +41,7 @@ export class ScaleScreen {
 
   set(value) {
     this.value = value;
-    this.el.querySelector('.sc-name').textContent = (SCALES.find(([, m]) => m === value) || ['Your own scale'])[0];
+    this.menu.value = SCALES.some(([, m]) => m === value) ? value : ''; // (one of your own: shown as such)
     this.draw();
   }
   commit(value) { if (value === this.value || !value.includes('1')) return; this.set(value); this.onChange(this.id, value); }
