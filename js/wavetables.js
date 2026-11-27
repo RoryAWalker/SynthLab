@@ -80,20 +80,26 @@ export function framesOf(str) {
 export const valid = (str) => typeof str === 'string' && str.length < 40000 && framesOf(str) !== null;
 export const tableName = (str) => (str.startsWith('b:') ? (BUILT_IN.find(([k]) => 'b:' + k === str) || [, '?'])[1] : str.slice(2, str.indexOf('|')) || 'Your sound');
 
-// An audio file made into a table: up to 64 frames spread evenly across it, each one cycle long
-// (2048 samples of the file, averaged down to 256), the end of each faded into its start so that
-// it loops without a click.
+// An audio file made into a table: frames of 2048 samples one after another from its start (as a
+// wavetable file has them), each one cycle (averaged down to 256 samples), the end of each faded into
+// its start so that it loops without a click. Anything after 64 frames, or after the last whole
+// frame, is cut off. A file shorter than one frame is stretched to make a single cycle.
 export async function tableFromFile(file) {
   const ctx = new OfflineAudioContext(1, 1, 44100);
   const buf = await ctx.decodeAudioData(await file.arrayBuffer());
   const len = buf.length, ch = buf.numberOfChannels, mono = new Float32Array(len);
   for (let c = 0; c < ch; c++) { const d = buf.getChannelData(c); for (let i = 0; i < len; i++) mono[i] += d[i] / ch; }
   const CHUNK = 2048, step = CHUNK / FRAME;
-  const n = Math.max(1, Math.min(MAX_FRAMES, Math.floor(len / CHUNK)));
   const frames = [];
+  if (len < CHUNK) { // shorter than a frame: the whole file is one cycle
+    const f = new Float32Array(FRAME);
+    for (let k = 0; k < FRAME; k++) { const x = (k / FRAME) * len, i = Math.floor(x), t = x - i; f[k] = (mono[i] || 0) * (1 - t) + (mono[Math.min(len - 1, i + 1)] || 0) * t; }
+    frames.push(f);
+  }
+  const n = Math.min(MAX_FRAMES, Math.floor(len / CHUNK));
   for (let i = 0; i < n; i++) {
-    const off = n > 1 ? Math.round((i * (len - CHUNK)) / (n - 1)) : 0, f = new Float32Array(FRAME);
-    for (let k = 0; k < FRAME; k++) { let a = 0; for (let j = 0; j < step; j++) a += mono[off + k * step + j] || 0; f[k] = a / step; }
+    const off = i * CHUNK, f = new Float32Array(FRAME);
+    for (let k = 0; k < FRAME; k++) { let a = 0; for (let j = 0; j < step; j++) a += mono[off + k * step + j]; f[k] = a / step; }
     const X = 24; // the last few samples fade into the first: a seamless loop
     for (let k = 0; k < X; k++) { const t = (k + 1) / (X + 1); f[FRAME - X + k] = f[FRAME - X + k] * (1 - t) + f[k] * t; }
     frames.push(f);
