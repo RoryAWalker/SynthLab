@@ -1472,3 +1472,4 @@ body[data-skin="modular"] .section[data-type="bounce"].even { --mod: #a386cc; }
 body[data-skin="modular"] .section[data-type="table"] { --mod: #2c8f9e; } /* Wavetable: deep teal-blue */
 body[data-skin="modular"] .section[data-type="table"].even { --mod: #44a8b6; }
 .tb-name { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; color: #c9cbcd; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+body[data-skin="modular"] .section[data-type="poly"] { --mod: #6b6f76; } /* Poly: neutral, like the Keyboard */

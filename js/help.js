@@ -761,6 +761,16 @@ export const HELP_MODRACK = {
   'jack.wave.fm': { title: 'Wave VCO: FM input', body: ['Bends the pitch by the signal here, scaled by FM Amount.'] },
   'jack.wave.sync': { title: 'Wave VCO: Sync input', body: ['Restarts the wave each time the signal here rises: with another VCO here, hard sync, a tearing, vocal sound as you sweep this one\'s pitch.'] },
   'out:wave.out': { title: 'Wave VCO: Out', body: ['The drawn wave.'] },
+  'section:poly': { title: 'Poly (chords)', body: [
+    'The Keyboard\'s Pitch and Gate carry one note: the latest. Poly gives each note you hold its own channel, with its own Pitch and Gate output, so the rack can play chords.',
+    'Paraphonic: patch Pitch 1, 2 and 3 into three VCOs, and mix them through one filter and VCA, with one envelope on the Keyboard\'s Gate. Every note sounds, but they share one filter and one envelope (which starts again at each new note). Many classic string machines and early synths worked like this.',
+    'Polyphonic, built by hand: give each channel its own VCA and ENV, its Gate into the ENV. Now each note has its own envelope: a real polyphonic voice per channel, as on a big modular system.'],
+    tip: 'Load the Paraphonic Chords preset and play a chord, then Two-Voice Poly: hear the difference when notes start and stop at different times.' },
+  'poly.voices': { title: 'Voices', body: ['How many channels it uses, from 1 to 4. Set it to the number of voices you have patched, so no note goes to a channel with nothing behind it. A new note takes the channel free the longest; when every channel is in use, it takes over the oldest note.'] },
+  ...Object.fromEntries([1, 2, 3, 4].flatMap((n) => [
+    [`out:poly.p${n}`, { title: `Poly: Pitch ${n}`, body: [`The note on channel ${n}, at 1 volt per octave (gliding with the Keyboard\'s Glide). It stays on the note after the key is let go, so a release tail keeps its pitch.`] }],
+    [`out:poly.g${n}`, { title: `Poly: Gate ${n}`, body: [`High while the note on channel ${n} is held. Into an ENV\'s Gate, it gives that channel its own envelope.`] }],
+  ])),
   'section:table': { title: 'Wavetable oscillator', body: [
     'An oscillator that plays from a table of waves: a row of single cycles (frames), each a different shape. Position moves along the row, gliding smoothly between neighbouring frames, so turning it (or patching an LFO or envelope into its input) makes the tone change and move as it plays.',
     'Built-in tables (◂ ▸): Basic (sine, triangle, saw, square), Harmonics (one more harmonic each frame), PWM (a narrowing pulse), Vowels (A E I O U) and Sync (a hard-sync sweep).',

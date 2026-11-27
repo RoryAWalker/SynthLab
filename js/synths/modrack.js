@@ -58,6 +58,8 @@ export const TYPES = {
     params: ['range', 'tune', 'decay', 'tone', 'drive', 'fb'], ins: ['pitch', 'strike', 'in', 'fb', 'drive'], outs: ['out'] },
   wave: { name: 'Wave VCO', desc: 'An oscillator whose waveform you draw: one cycle, freehand or with nodes.', w: 698, p: 'wave', j: 'wave', help: 'wave',
     params: ['nodes', 'range', 'tune', 'fm'], ins: ['pitch', 'fm', 'sync'], outs: ['out'] },
+  poly: { name: 'Poly', desc: 'The keyboard\'s notes on separate outputs (Pitch and Gate 1-4), for chords: paraphonic, or polyphonic built by hand.', w: 241, p: 'poly', j: 'poly', help: 'poly',
+    params: ['voices'], ins: [], outs: ['p1', 'p2', 'p3', 'p4', 'g1', 'g2', 'g3', 'g4'] },
   table: { name: 'Wavetable', desc: 'An oscillator that sweeps through a table of waves: built-in ones, or any audio file you load.', w: 662, p: 'table', j: 'table', help: 'table',
     params: ['table', 'pos', 'range', 'tune', 'fm'], ins: ['pitch', 'pos', 'fm', 'sync'], outs: ['out'] },
   formant: { name: 'Formant', desc: 'Makes any sound talk: three filters tuned like a voice, sweeping A, E, I, O, U.', w: 352, p: 'formant', j: 'formant', help: 'formant',
@@ -162,6 +164,15 @@ TYPES.xy.specs = {
   ins: { gate: { ...NFP['jack.env1.gate'] } },
   outs: { x: { label: 'X' }, y: { label: 'Y' }, gate: { label: 'Gate' } },
 };
+// Poly: how many channels it uses (so that notes only go where something is patched)
+TYPES.poly.specs = {
+  params: {
+    // (a word in the title: click it to change)
+    voices: { type: 'step', ui: 'word', label: 'Voices', def: 4, options: [4, 1, 2, 3].map((n) => ({ v: n, label: `${n} voice${n > 1 ? 's' : ''}` })) },
+  },
+  ins: {},
+  outs: Object.fromEntries([1, 2, 3, 4].flatMap((n) => [[`p${n}`, { label: `Pitch ${n}` }], [`g${n}`, { label: `Gate ${n}` }]])),
+};
 // Wavetable: the table (a built-in one, or made from an audio file: see wavetables.js), Position in it
 TYPES.table.specs = {
   params: {
@@ -222,7 +233,7 @@ TYPES.string.specs = {
   outs: { out: { label: 'Out', audio: true } },
 };
 // The order of the drawer: sources, shaping, modulation
-export const DRAWER = [['Sources', ['vco', 'wave', 'table', 'noise', 'ping', 'string', 'mix']], ['Shaping', ['vcf', 'formant', 'ring', 'vca', 'att']], ['Modulation', ['env', 'draw', 'bounce', 'xy', 'lfo', 'mfo', 'sh']]];
+export const DRAWER = [['Sources', ['poly', 'vco', 'wave', 'table', 'noise', 'ping', 'string', 'mix']], ['Shaping', ['vcf', 'formant', 'ring', 'vca', 'att']], ['Modulation', ['env', 'draw', 'bounce', 'xy', 'lfo', 'mfo', 'sh']]];
 // always in the rack: the Output (in a row, and can be moved), the Keyboard (on the keyboard) and
 // the Sequencer (its own column)
 const OUT_W = 100;
@@ -246,6 +257,8 @@ const PANELS = {
   // the pad on the left, its knobs and sockets beside it
   xy: { titleSwitch: 'mode', screen: 'path', jacksBeside: true, rows: [['rate', 'smooth', 'pol']], jacks: ['gate', 'out:x', 'out:y', 'out:gate'] },
   formant: { rows: [['vowel', 'shift', 'res', 'mix']], jacks: ['in', 'vowel', 'shift', 'out:out'] },
+  // its outputs in two rows: the four Pitches over the four Gates
+  poly: { titleSwitch: 'voices', rows: [], jacks: [['out:p1', 'out:p2', 'out:p3', 'out:p4'], ['out:g1', 'out:g2', 'out:g3', 'out:g4']] },
   table: { screen: 'table', jacksBeside: true, rows: [['pos', 'range', 'tune', 'fm']], jacks: ['pitch', 'pos', 'fm', 'sync', 'out:out'] },
   // its sockets under its knobs, beside the drawing screen, so the screen has the module's whole height
   wave: { screen: 'nodes', jacksBeside: true, rows: [['range', 'tune', 'fm']], jacks: ['pitch', 'fm', 'sync', 'out:out'] },
@@ -316,7 +329,7 @@ function moduleDef(inst) {
   t.outs.forEach((o) => { const src = own ? own.outs[outName(o)] : NFO[outSrc(t, o)]; outputs[`${inst}.${outName(o)}`] = { ...src, module: `${t.name} ${n}` }; });
   const P = PANELS[type];
   const full = (c) => (Array.isArray(c) ? c.map(full) : `${inst}.${c}`);
-  const sock = (c) => (c.startsWith('out:') ? `out:${inst}.${c.slice(4)}` : `jack.${inst}.${c}`);
+  const sock = (c) => (Array.isArray(c) ? c.map(sock) : c.startsWith('out:') ? `out:${inst}.${c.slice(4)}` : `jack.${inst}.${c}`);
   const section = { id: inst, title: `${t.name} ${n}`, type, even: n % 2 === 0, removable: true };
   if (P.parts) section.parts = P.parts.map((part) => ({ rows: part.rows.map((r) => r.map(full)), jacks: part.jacks.map(sock) }));
   else { section.rows = P.rows.map((r) => r.map(full)); section.jacks = P.jacks.map(sock); }
@@ -520,6 +533,24 @@ export const PRESETS = {
     ...C('vca1.in', 'formant1.out'), ...C('vca1.cv', 'env1.out'), ...C('env1.gate', 'xy1.gate'), ...C('out.in', 'vca1.out'),
     'vco1.range': -1, 'formant1.vowel': 2, 'formant1.res': 0.7, 'xy1.pol': 'bi', 'xy1.smooth': 0.06,
     'env1.a': 0.02, 'env1.s': 1, 'env1.r': 0.4, 'out.vol': 0.45,
+  },
+  // three VCOs playing three notes of a chord through one filter and one envelope: paraphonic
+  'Paraphonic Chords': {
+    'rack.layout': 'vco1,vco2,vco3|poly1,mix1,vcf1,vca1,out|env1,env2',
+    ...C('vco1.pitch', 'poly1.p1'), ...C('vco2.pitch', 'poly1.p2'), ...C('vco3.pitch', 'poly1.p3'),
+    ...C('mix1.in1', 'vco1.saw'), ...C('mix1.in2', 'vco2.saw'), ...C('mix1.in3', 'vco3.saw'), ...C('vcf1.in', 'mix1.out'), ...C('vcf1.cv', 'env2.out'),
+    ...C('vca1.in', 'vcf1.lp'), ...C('vca1.cv', 'env1.out'), ...C('env1.gate', 'kb.gate'), ...C('env2.gate', 'kb.gate'), ...C('out.in', 'vca1.out'),
+    'poly1.voices': 3, 'vco2.tune': 0.06, 'vco3.tune': -0.06, 'mix1.l1': 6, 'mix1.l2': 6, 'mix1.l3': 6,
+    'vcf1.cutoff': 900, 'vcf1.res': 0.3, 'vcf1.cv': 0.35, 'env1.a': 0.08, 'env1.s': 0.9, 'env1.r': 0.6, 'env2.d': 1.2, 'env2.s': 0.3, 'kb.mode': 'legato', 'out.vol': 0.75,
+  },
+  // two complete voices, each with its own envelope (its Gate from Poly): polyphony, built by hand
+  'Two-Voice Poly': {
+    'rack.layout': 'poly1,vco1,vco2|vca1,vca2,mix1,out|env1,env2',
+    ...C('vco1.pitch', 'poly1.p1'), ...C('vco2.pitch', 'poly1.p2'), ...C('env1.gate', 'poly1.g1'), ...C('env2.gate', 'poly1.g2'),
+    ...C('vca1.in', 'vco1.saw'), ...C('vca1.cv', 'env1.out'), ...C('vca2.in', 'vco2.saw'), ...C('vca2.cv', 'env2.out'),
+    ...C('mix1.in1', 'vca1.out'), ...C('mix1.in2', 'vca2.out'), ...C('out.in', 'mix1.out'),
+    'poly1.voices': 2, 'mix1.l1': 7, 'mix1.l2': 7, 'env1.a': 0.01, 'env1.d': 0.8, 'env1.s': 0.5, 'env1.r': 0.9,
+    'env2.a': 0.01, 'env2.d': 0.8, 'env2.s': 0.5, 'env2.r': 0.9, 'env2.curve': 'curved', 'out.vol': 0.8,
   },
   // a 16-step on/off pattern drawn with Snap, looping on the VCA: hold a chord and it chops it in rhythm
   'Drawn Gate': {

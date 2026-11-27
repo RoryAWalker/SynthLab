@@ -856,6 +856,51 @@ class Wavetable extends Module {
   }
 }
 
+// Poly: the keyboard's notes, one per channel, for paraphonic and polyphonic patches. Each held note
+// is given a channel (of Voices, up to 4): the one that has been free the longest, or, when all are
+// in use, the one holding the oldest note. Each channel has its own Pitch (gliding with the
+// keyboard's Glide) and Gate; a channel's Pitch stays where it was after its key is let go, so a
+// release tail keeps its note. (The note events come from the processor: noteOn / noteOff.)
+const POLY = 4;
+class Poly extends Module {
+  static OUTS = ['p1', 'p2', 'p3', 'p4', 'g1', 'g2', 'g3', 'g4'];
+  static INS = [];
+  constructor(id) {
+    super(id);
+    this.ch = Array.from({ length: POLY }, () => ({ note: 60, at: 60, held: false, since: 0, gap: 0 }));
+    this.clock = 0; this.voices = POLY;
+  }
+  noteOn(note) {
+    const ch = this.ch.slice(0, this.voices);
+    let c = ch.find((x) => x.held && x.note === note);
+    if (!c) c = ch.filter((x) => !x.held).sort((a, b) => a.since - b.since)[0] || ch.slice().sort((a, b) => a.since - b.since)[0];
+    if (c.held) c.gap = 64; // (taking over a held note: a short gap, so its envelope starts again)
+    if (!this.glide) c.at = note;
+    c.note = note; c.held = true; c.since = ++this.clock;
+  }
+  noteOff(note) { this.ch.forEach((c) => { if (c.held && c.note === note) { c.held = false; c.since = ++this.clock; } }); }
+  allOff() { this.ch.forEach((c) => { c.held = false; }); }
+  // (also as soon as the rack is wired, before any sound: a note may come first)
+  setup(p) { this.voices = Math.max(1, Math.min(POLY, p[`${this.id}.voices`] || POLY)); }
+  begin(p, sr) {
+    this.setup(p);
+    this.ch.forEach((c, i) => { if (i >= this.voices) c.held = false; });
+    this.glide = p['kb.glide'] > 0.0005;
+    this.glideCoef = this.glide ? 1 - Math.exp(-4.6 / (p['kb.glide'] * sr)) : 1;
+  }
+  tick(S) {
+    const o = this.o;
+    for (let i = 0; i < POLY; i++) {
+      const c = this.ch[i];
+      c.at += (c.note - c.at) * this.glideCoef;
+      S[o + i] = (c.at - 60) / 12;
+      let g = c.held ? 1 : 0;
+      if (c.gap > 0) { c.gap--; g = 0; }
+      S[o + POLY + i] = g;
+    }
+  }
+}
+
 // Draw: a shape you draw (nodes joined by lines that can bend; see js/drawShape.js, which has the
 // same sums), played over Time. Once: start to end when the Gate rises (holding at the sustain node
 // while the Gate stays high), a custom envelope. Loop: round and round (the end jumps back to the
@@ -983,7 +1028,7 @@ class Seq extends Module {
   }
 }
 
-const TYPES = { vco: VCO, noise: Noise, mix: Mixer, vcf: VCF, ring: Ring, vca: VCA, att: Att, env: Env, lfo: LFO, mfo: MFO, sh: SH, ping: Ping, string: StringRes, draw: Draw, formant: Formant, xy: XY, wave: WaveVCO, bounce: Bounce, table: Wavetable };
+const TYPES = { vco: VCO, noise: Noise, mix: Mixer, vcf: VCF, ring: Ring, vca: VCA, att: Att, env: Env, lfo: LFO, mfo: MFO, sh: SH, ping: Ping, string: StringRes, draw: Draw, formant: Formant, xy: XY, wave: WaveVCO, bounce: Bounce, table: Wavetable, poly: Poly };
 const typeOf = (id) => (id === 'out' ? Out : id === 'seq' ? Seq : TYPES[(/^([a-z]+)\d+$/.exec(id) || [])[1]]);
 
 class ModRackProcessor extends AudioWorkletProcessor {
@@ -1016,15 +1061,19 @@ class ModRackProcessor extends AudioWorkletProcessor {
         this.target = m.note;
         this.trig = Math.round(TRIG_SECONDS * sampleRate);
         if (this.notes.length === 1 && !(this.p['kb.glide'] > 0.0005)) this.note = m.note;
+        // (the Poly modules; the rack wired first, if it has just changed, so that none miss the note)
+        if (this.dirty && this.p['rack.layout'] !== undefined) this.compile();
+        this.order.forEach((mod) => { if (mod.noteOn) mod.noteOn(m.note); });
         break;
       }
       case 'noteOff': {
         const i = this.notes.indexOf(m.note);
         if (i >= 0) this.notes.splice(i, 1);
         if (this.notes.length) this.target = this.notes[this.notes.length - 1];
+        this.order.forEach((mod) => { if (mod.noteOff) mod.noteOff(m.note); });
         break;
       }
-      case 'allOff': this.notes = []; break;
+      case 'allOff': this.notes = []; this.order.forEach((mod) => { if (mod.allOff) mod.allOff(); }); break;
       // a Wavetable's frames, from the page (made band-limited here, once)
       case 'table': WAVETABLES[m.id] = m.frames.map(bandLimitFrame); break;
     }
@@ -1055,6 +1104,7 @@ class ModRackProcessor extends AudioWorkletProcessor {
       });
     });
     this.mods = mods; this.order = order; this.slot = slot; this.nSlots = n;
+    order.forEach((m) => { if (m.setup) m.setup(p); });
     this.outMod = mods.out || null;
     // the envelopes and filter the panel's graphs follow: the first of each
     this.env1 = order.find((m) => m instanceof Env) || null;
