@@ -11,7 +11,7 @@
 //   detune     -> zoomed spectrum of the two close peaks; scope.js shows the slow beating
 
 import { PARAMS, formatValue } from './params.js';
-import { pingPartial, MATERIALS } from './synths/modrack.js';
+import { pingPartial, MATERIALS, formantsAt, VOWELS } from './synths/modrack.js';
 
 const AMBER = '#ffb547';
 const AMBER_DIM = 'rgba(255, 181, 71, 0.55)';
@@ -58,6 +58,7 @@ export function overlayGroup(key, p = {}) {
   const id = key.split('=')[0];
   if (/^osc[123]\.wave$/.test(id)) return 'harm';
   if (/^ping\d+\.(partials|stretch|tone)$/.test(id) || /^jack\.ping\d+\.stretch$/.test(id)) return 'ping'; // the NF-ModRack's Ping
+  if (/^formant\d+\.(vowel|shift|res)$/.test(id) || /^jack\.formant\d+\.(vowel|shift)$/.test(id)) return 'formant'; // and its Formant
   if (/^osc[123]\.range$/.test(id) || id === 'ctrl.tune') return 'range';
   if (['ctrl.glide', 'ctrl.mode', 'kb.glide', 'kb.mode', 'perf.glideon'].includes(id)) return 'glide';
   if (id === 'mix.osc1' || id === 'mix.osc2') return 'mix';
@@ -217,6 +218,7 @@ export class Overlay {
     else if (this.group === 'lfo') this.drawLfo(ctx, w, h, box);
     else if (this.group === 'harm') this.drawHarmonics(ctx, w, h, spectrum);
     else if (this.group === 'ping') this.drawPing(ctx, w, h);
+    else if (this.group === 'formant') this.drawFormant(ctx, w, h);
     else if (this.group === 'range') this.drawRange(ctx, w, h, box);
     else if (this.group === 'glide') this.drawGlide(ctx, w, h, box);
     else if (this.group === 'detune') this.drawDetune(ctx, w, h);
@@ -669,6 +671,52 @@ export class Overlay {
     label(ctx, `partial n rings at the note × n^${stretch.toFixed(2)}${Math.abs(stretch - 1) < 0.02 ? ': the harmonic series, all in tune' : stretch < 1 ? ': squeezed closer than harmonics' : ': spread wider than harmonics'}`, PAD.l, 30, HI, 'left', 10.5, 600);
     label(ctx, `note ${fmtHz(f0)} (${noteName(note)}) · Tone sets their height`, w - PAD.r, 16, AMBER_DIM, 'right', 10, 600);
     label(ctx, '┆ = harmonics (×2, ×3…), for comparison', w - PAD.r, 30, AMBER_DIM, 'right', 9.5, 600);
+  }
+
+  // ---- the NF-ModRack's Formant: the filter's response, with its three peaks ----------------------
+  drawFormant(ctx, w, h) {
+    const p = this.getPatch();
+    const inst = /formant\d+/.exec(this.param)[0];
+    if (p[`${inst}.vowel`] === undefined) return;
+    const vowel = p[`${inst}.vowel`], shift = p[`${inst}.shift`], res = p[`${inst}.res`];
+    const fm = formantsAt(vowel, shift), bw = 40 + 200 * (1 - res);
+    const fMin = 20, fMax = 20000;
+    const xOf = (f) => (Math.log(f / fMin) / Math.log(fMax / fMin)) * w;
+    const top = 46, bottom = h - 22;
+    const yOf = (db) => top + (-Math.max(-48, Math.min(0, db)) / 48) * (bottom - top);
+    // the three band-passes added together (each unity at its centre, times its level)
+    const resp = (f) => {
+      let re = 0, im = 0;
+      fm.forEach(({ f: fc, g }) => {
+        const k = Math.min(2, bw / fc), x = f / fc;
+        // H = k s / (s^2 + k s + 1), s = jx
+        const dr = 1 - x * x, di = k * x, mag2 = dr * dr + di * di;
+        re += g * (k * x * di) / mag2; im += g * (k * x * dr) / mag2;
+      });
+      return 20 * Math.log10(Math.hypot(re, im) + 1e-9);
+    };
+    ctx.save();
+    const path = new Path2D();
+    for (let px = 0; px <= w; px += 2) {
+      const f = fMin * Math.pow(fMax / fMin, px / w), y = yOf(resp(f));
+      if (px) path.lineTo(px, y); else path.moveTo(px, y);
+    }
+    const fill = new Path2D(path); fill.lineTo(w, bottom); fill.lineTo(0, bottom); fill.closePath();
+    ctx.fillStyle = 'rgba(255, 181, 71, 0.14)'; ctx.fill(fill);
+    ctx.strokeStyle = AMBER; ctx.lineWidth = 2; ctx.stroke(path);
+    fm.forEach(({ f }, n) => {
+      const x = xOf(f), y = yOf(resp(f));
+      ctx.fillStyle = HI; ctx.beginPath(); ctx.arc(x, y, 3.5, 0, Math.PI * 2); ctx.fill();
+      label(ctx, `F${n + 1}`, x, y - 16, HI, 'center', 10, 800);
+      label(ctx, fmtHz(f), x, y - 5, AMBER_DIM, 'center', 9.5, 600);
+    });
+    ctx.restore();
+    const WORDS = ['father', 'bed', 'beet', 'bought', 'boot'];
+    const i = Math.round(vowel), exact = Math.abs(vowel - i) < 0.08;
+    const name = exact ? `"${VOWELS[i].name}" as in ${WORDS[i]}` : `between ${VOWELS[Math.floor(vowel)].name} and ${VOWELS[Math.min(4, Math.floor(vowel) + 1)].name}`;
+    label(ctx, `FORMANT ${inst.slice(7)} · VOWEL ${name.toUpperCase()}`, PAD.l, 16, AMBER, 'left', 10.5, 800);
+    label(ctx, 'the vowel you hear is set by where F1 and F2 sit; F3 adds the voice\'s colour', PAD.l, 30, HI, 'left', 10.5, 600);
+    label(ctx, `Shift ${shift > 0.005 ? '+' : ''}${shift.toFixed(2)} oct · bandwidth ${Math.round(bw)} Hz`, w - PAD.r, 16, AMBER_DIM, 'right', 10, 600);
   }
 
   // ---- oscillator range -----------------------------------------------------------------------

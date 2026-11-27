@@ -55,6 +55,8 @@ export const TYPES = {
     params: ['range', 'tune', 'decay', 'partials', 'stretch', 'tone', 'drive', 'fb'], ins: ['pitch', 'strike', 'in', 'fb', 'stretch', 'drive'], outs: ['out'] },
   string: { name: 'String', desc: 'Pluck it: a string modelled as a wave going round a tuned loop, with feedback.', w: 520, p: 'string', j: 'string', help: 'string',
     params: ['range', 'tune', 'decay', 'tone', 'drive', 'fb'], ins: ['pitch', 'strike', 'in', 'fb', 'drive'], outs: ['out'] },
+  formant: { name: 'Formant', desc: 'Makes any sound talk: three filters tuned like a voice, sweeping A, E, I, O, U.', w: 352, p: 'formant', j: 'formant', help: 'formant',
+    params: ['vowel', 'shift', 'res', 'mix'], ins: ['in', 'vowel', 'shift'], outs: ['out'] },
   draw: { name: 'Draw', desc: 'Draw any shape: a custom envelope (Once), or loop it round or bounce it back and forth as an LFO.', w: 682, p: 'draw', j: 'draw', help: 'draw',
     params: ['mode', 'nodes', 'time', 'amt', 'pol'], ins: ['gate', 'time'], outs: ['out', 'end'] },
 };
@@ -100,6 +102,37 @@ TYPES.ping.specs = {
   ins: { ...commonIns, stretch: { ...NFP['jack.vco1.fm'], label: 'Stretch' } },
   outs: { out: { label: 'Out', audio: true } },
 };
+// Formant: three band-pass filters at the formants (resonances) of a voice singing a vowel. Vowel
+// glides through A E I O U; Shift moves all three together (a larger or smaller voice).
+// The formants (Hz) and their levels: average adult values; the engine has the same table.
+export const VOWELS = [
+  { name: 'A', f: [730, 1090, 2440], g: [1, 0.6, 0.22] },  // as in "father"
+  { name: 'E', f: [530, 1840, 2480], g: [1, 0.35, 0.25] }, // "bed"
+  { name: 'I', f: [270, 2290, 3010], g: [1, 0.25, 0.2] },  // "beet"
+  { name: 'O', f: [570, 840, 2410], g: [1, 0.5, 0.1] },    // "bought"
+  { name: 'U', f: [300, 870, 2240], g: [1, 0.25, 0.08] },  // "boot"
+];
+// the formants at a Vowel setting (0..4, gliding between neighbours) and Shift (octaves)
+export function formantsAt(vowel, shift) {
+  const v = Math.min(4, Math.max(0, vowel)), i = Math.min(3, Math.floor(v)), t = v - i;
+  const a = VOWELS[i], b = VOWELS[i + 1], k = Math.pow(2, shift);
+  return [0, 1, 2].map((n) => ({ f: Math.exp(Math.log(a.f[n]) * (1 - t) + Math.log(b.f[n]) * t) * k, g: a.g[n] * (1 - t) + b.g[n] * t }));
+}
+const vowelName = (v) => { const i = Math.round(v); return Math.abs(v - i) < 0.08 ? VOWELS[i].name : `${VOWELS[Math.floor(v)].name}→${VOWELS[Math.min(4, Math.floor(v) + 1)].name}`; };
+TYPES.formant.specs = {
+  params: {
+    vowel: { type: 'cont', label: 'Vowel', min: 0, max: 4, def: 0, curve: 'lin', unit: '', fmt: vowelName,
+      marks: VOWELS.map((v, i) => [i, v.name]) },
+    shift: { type: 'cont', label: 'Shift', min: -1, max: 1, def: 0, curve: 'lin', unit: 'oct',
+      fmt: (v) => (Math.abs(v) < 0.01 ? '0 (adult)' : (v > 0 ? '+' : '') + v.toFixed(2) + ' oct' + (v > 0.4 ? ' (small)' : v < -0.4 ? ' (large)' : '')),
+      marks: [[-1, '−1'], [-0.5, '−.5'], [0, '0'], [0.5, '+.5'], [1, '+1']] },
+    res: { type: 'cont', label: 'Res', min: 0, max: 1, def: 0.5, curve: 'lin', unit: '%', fmt: pct, marks: [[0, 'soft'], [0.5, '50'], [1, 'sharp']] },
+    mix: { type: 'cont', label: 'Mix', min: 0, max: 1, def: 1, curve: 'lin', unit: '%', fmt: (v) => (v < 0.005 ? 'dry' : v > 0.995 ? 'all formant' : pct(v)),
+      marks: [[0, 'dry'], [0.5, '50'], [1, 'wet']] },
+  },
+  ins: { in: { ...NFP['jack.mix.in1'], label: 'In' }, vowel: { ...NFP['jack.vco1.fm'], label: 'Vowel' }, shift: { ...NFP['jack.vco1.fm'], label: 'Shift' } },
+  outs: { out: { label: 'Out', audio: true } },
+};
 // Draw: the shape (nodes), how long it takes (Time: 1 ms to 30 s, so it is an envelope or an LFO),
 // Amount, and Uni (0..1) or Bi (-1..1)
 const fmtTime = (v) => (v < 1 ? (v < 0.01 ? (v * 1000).toFixed(1) : Math.round(v * 1000)) + ' ms' : v.toFixed(v < 10 ? 2 : 1) + ' s');
@@ -124,7 +157,7 @@ TYPES.string.specs = {
   outs: { out: { label: 'Out', audio: true } },
 };
 // The order of the drawer: sources, shaping, modulation
-export const DRAWER = [['Sources', ['vco', 'noise', 'ping', 'string', 'mix']], ['Shaping', ['vcf', 'ring', 'vca', 'att']], ['Modulation', ['env', 'draw', 'lfo', 'mfo', 'sh']]];
+export const DRAWER = [['Sources', ['vco', 'noise', 'ping', 'string', 'mix']], ['Shaping', ['vcf', 'formant', 'ring', 'vca', 'att']], ['Modulation', ['env', 'draw', 'lfo', 'mfo', 'sh']]];
 // always in the rack: the Output (in a row, and can be moved), the Keyboard (on the keyboard) and
 // the Sequencer (its own column)
 const OUT_W = 100;
@@ -145,6 +178,7 @@ const PANELS = {
   sh: { rows: [['rate', 'lag']], jacks: ['in', 'clock', 'out:out'] },
   ping: { rows: [['range', 'tune', 'decay', 'partials', 'stretch', 'tone', 'drive', 'fb']], jacks: ['pitch', 'strike', 'in', 'fb', 'stretch', 'drive', 'out:out'] },
   string: { rows: [['range', 'tune', 'decay', 'tone', 'drive', 'fb']], jacks: ['pitch', 'strike', 'in', 'fb', 'drive', 'out:out'] },
+  formant: { rows: [['vowel', 'shift', 'res', 'mix']], jacks: ['in', 'vowel', 'shift', 'out:out'] },
   // the drawing screen on the left, its knobs beside it
   draw: { titleSwitch: 'mode', screen: 'nodes', rows: [['time', 'amt', 'pol']], jacks: ['gate', 'time', 'out:out', 'out:end'] },
 };

@@ -536,6 +536,58 @@ class StringRes extends Module {
   ok() { return Number.isFinite(this.y + this.lp + this.apY + this.dcY); }
 }
 
+// Formant: three band-pass filters (zero-delay-feedback state-variable filters, as in the VCF) at
+// the formants of a voice singing a vowel, added together. Their bandwidths are fixed in Hz (as a
+// voice's are, about 40-240 Hz, narrower with Res), so the higher formants are sharper in Q.
+// (The vowel table is also in modrack.js, for the panel's graph.)
+const VOWEL_TABLE = [
+  [[730, 1090, 2440], [1, 0.6, 0.22]], [[530, 1840, 2480], [1, 0.35, 0.25]], [[270, 2290, 3010], [1, 0.25, 0.2]],
+  [[570, 840, 2410], [1, 0.5, 0.1]], [[300, 870, 2240], [1, 0.25, 0.08]]];
+class Formant extends Module {
+  static OUTS = ['out'];
+  static INS = ['in', 'vowel', 'shift'];
+  constructor(id) { super(id); this.ic1 = [0, 0, 0]; this.ic2 = [0, 0, 0]; this.c = [[], [], []]; this.n = 0; this.y = 0; }
+  begin(p, sr) {
+    this.vowel = this.q(p, 'vowel'); this.shift = this.q(p, 'shift'); this.res = this.q(p, 'res'); this.mix = this.q(p, 'mix');
+    this.sr = sr; this.n = 0;
+  }
+  tick(S) {
+    const sr = this.sr;
+    if ((this.n++ & 7) === 0) {
+      // Vowel input: 1 volt moves it 2 vowels; Shift input: 1 volt moves it an octave
+      let v = this.vowel + this.r('vowel') * 2; v = v < 0 ? 0 : v > 4 ? 4 : v;
+      let sh = this.shift + this.r('shift'); sh = sh < -2 ? -2 : sh > 2 ? 2 : sh;
+      const i = Math.min(3, Math.floor(v)), t = v - i, A = VOWEL_TABLE[i], B = VOWEL_TABLE[i + 1], k = Math.pow(2, sh);
+      const bw = 40 + 200 * (1 - this.res);
+      for (let n = 0; n < 3; n++) {
+        let f = Math.exp(Math.log(A[0][n]) * (1 - t) + Math.log(B[0][n]) * t) * k;
+        f = f > sr * 0.45 ? sr * 0.45 : f < 20 ? 20 : f;
+        const g = Math.tan(Math.PI * f / sr), kk = Math.min(2, bw / f), a1 = 1 / (1 + g * (g + kk));
+        const c = this.c[n];
+        c[0] = kk; c[1] = a1; c[2] = g * a1; c[3] = g * g * a1;
+        c[4] = A[1][n] * (1 - t) + B[1][n] * t; // its level
+      }
+      // sharper formants pass less of a broad sound: made up so it stays about as loud
+      this.makeup = 2.5 + 5 * this.res;
+    }
+    const x = this.r('in');
+    let y = 0;
+    for (let n = 0; n < 3; n++) {
+      const c = this.c[n];
+      const v3 = x - this.ic2[n];
+      const v1 = c[1] * this.ic1[n] + c[2] * v3;
+      const v2 = this.ic2[n] + c[2] * this.ic1[n] + c[3] * v3;
+      this.ic1[n] = 2 * v1 - this.ic1[n]; this.ic2[n] = 2 * v2 - this.ic2[n];
+      y += c[4] * c[0] * v1; // (k times the band-pass: unity at the formant's centre)
+    }
+    y *= this.makeup;
+    this.y = y;
+    S[this.o] = lim(x + (y - x) * this.mix);
+  }
+  reset() { this.ic1 = [0, 0, 0]; this.ic2 = [0, 0, 0]; this.y = 0; }
+  ok() { return Number.isFinite(this.y + this.ic1[0] + this.ic1[1] + this.ic1[2]); }
+}
+
 // Draw: a shape you draw (nodes joined by lines that can bend; see js/drawShape.js, which has the
 // same sums), played over Time. Once: start to end when the Gate rises (holding at the sustain node
 // while the Gate stays high), a custom envelope. Loop: round and round (the end jumps back to the
@@ -663,7 +715,7 @@ class Seq extends Module {
   }
 }
 
-const TYPES = { vco: VCO, noise: Noise, mix: Mixer, vcf: VCF, ring: Ring, vca: VCA, att: Att, env: Env, lfo: LFO, mfo: MFO, sh: SH, ping: Ping, string: StringRes, draw: Draw };
+const TYPES = { vco: VCO, noise: Noise, mix: Mixer, vcf: VCF, ring: Ring, vca: VCA, att: Att, env: Env, lfo: LFO, mfo: MFO, sh: SH, ping: Ping, string: StringRes, draw: Draw, formant: Formant };
 const typeOf = (id) => (id === 'out' ? Out : id === 'seq' ? Seq : TYPES[(/^([a-z]+)\d+$/.exec(id) || [])[1]]);
 
 class ModRackProcessor extends AudioWorkletProcessor {
