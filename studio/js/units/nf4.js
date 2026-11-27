@@ -23,13 +23,13 @@ const hz = (v) => (v >= 1000 ? (v / 1000).toFixed(v < 10000 ? 1 : 0) + ' kHz' : 
 
 // Patch points. An input socket is a setting naming the output plugged into it ('' = nothing),
 // so cables save and reset with the rest of the settings (see ../../js/cables.js).
-// (label: as printed on the patch bay, whose rows say Out and In; name: in full)
+// (label: as printed on the patch bay; name: in full)
 export const OUTPUTS = {
-  'ch1.send': { name: 'Channel 1 Send', label: '1 Send' }, 'ch2.send': { name: 'Channel 2 Send', label: '2 Send' },
-  'ch3.send': { name: 'Channel 3 Send', label: '3 Send' }, 'ch4.send': { name: 'Channel 4 Send', label: '4 Send' },
+  'ch1.send': { name: 'Channel 1 Send', label: 'Ch 1 Send' }, 'ch2.send': { name: 'Channel 2 Send', label: 'Ch 2 Send' },
+  'ch3.send': { name: 'Channel 3 Send', label: 'Ch 3 Send' }, 'ch4.send': { name: 'Channel 4 Send', label: 'Ch 4 Send' },
   'aux1.out': { name: 'Aux 1', label: 'Aux 1' }, 'aux2.out': { name: 'Aux 2', label: 'Aux 2' },
-  'rev.out': { name: 'Reverb Out', label: 'Rev' }, 'dl.out': { name: 'Delay Out', label: 'Dly' },
-  'oc.out': { name: 'Compressor 1 Out', label: 'C1' }, 'oc2.out': { name: 'Compressor 2 Out', label: 'C2' },
+  'rev.out': { name: 'Reverb Out', label: 'Reverb' }, 'dl.out': { name: 'Delay Out', label: 'Delay' },
+  'oc.out': { name: 'Compressor 1 Out', label: 'Comp 1' }, 'oc2.out': { name: 'Compressor 2 Out', label: 'Comp 2' },
 };
 Object.values(OUTPUTS).forEach((o) => { o.audio = true; });
 const fullName = (out) => (OUTPUTS[out] ? OUTPUTS[out].name : 'nothing');
@@ -66,7 +66,7 @@ function channel(n) {
       marks: [[100, '100'], [1000, '1k'], [8000, '8k']] },
     [k + 'lf']: eqGain('Low'),
     [k + 'eq']: onOff('EQ in', 'EQ', 'on'),
-    [k + 'ret']: jack(`${n} Ret`), // the insert point's return, on the patch bay (its Send is an output)
+    [k + 'ret']: jack(`Ch ${n} Return`), // the insert point's return, on the patch bay (its Send is an output)
     [k + 'aux1']: send('Aux 1 (pre)'),
     [k + 'aux2']: send('Aux 2 (post)'),
     [k + 'pan']: { type: 'cont', label: 'Pan', min: -1, max: 1, def: 0, curve: 'lin', small: true,
@@ -84,9 +84,9 @@ export const PARAMS = {
   // the Multitrack Player (a separate unit)
   'tape.play': { type: 'step', ui: 'led', button: 'Play', label: 'Play / Stop', def: 'stop', options: [{ v: 'stop', label: 'Stopped' }, { v: 'play', label: 'Playing' }] },
   // two FX Returns: each a plain input (on the patch bay) with one level pot
-  'fxr.in': jack('FX 1'),
+  'fxr.in': jack('FX Return 1'),
   'fxr.level': send('FX 1', 0),
-  'fxr2.in': jack('FX 2'),
+  'fxr2.in': jack('FX Return 2'),
   'fxr2.level': send('FX 2', 0),
   // aux masters (their outputs are sockets)
   'aux1.master': send('Aux 1', 0),
@@ -102,25 +102,25 @@ export const PARAMS = {
 
   // ---- outboard (separate units, patched in with cables) ----
   // Reverb: 100% wet (the dry sound stays on the desk)
-  'rev.in': jack('Rev'),
+  'rev.in': jack('Reverb'),
   'rev.time': { type: 'cont', label: 'Time', min: 0.4, max: 5, def: 1.8, curve: 'log', unit: 's', small: true, fmt: (v) => v.toFixed(1) + ' s',
     marks: [[0.4, '.4'], [1, '1'], [2, '2'], [5, '5']] },
   'rev.tone': { type: 'cont', label: 'Tone', min: 0, max: 1, def: 0.5, curve: 'lin', small: true, fmt: (v) => (v < 0.34 ? 'dark' : v > 0.66 ? 'bright' : 'natural'),
     marks: [[0, 'dark'], [1, 'bright']] },
   // Compressor: for a channel's insert point (fixed 10 ms attack, 150 ms release)
-  'oc.in': jack('C1'),
+  'oc.in': jack('Comp 1'),
   'oc.thresh': { type: 'cont', label: 'Threshold', min: -40, max: 0, def: -20, curve: 'lin', unit: 'dB', small: true, fmt: fmtDb, marks: [[-40, '−40'], [-20, '−20'], [0, '0']] },
   'oc.ratio': { type: 'cont', label: 'Ratio', min: 1, max: 20, def: 4, curve: 'log', unit: ':1', small: true,
     fmt: (v) => (v >= 19.5 ? '20:1 (heavy limiting)' : v >= 9.95 ? Math.round(v) + ':1 (limiting)' : v.toFixed(1) + ':1'), marks: [[1, '1'], [2, '2'], [4, '4'], [10, '10'], [20, '20']] },
   'oc.gain': { type: 'cont', label: 'Gain', min: 0, max: 24, def: 0, curve: 'lin', unit: 'dB', small: true, fmt: fmtDb, marks: [[0, '0'], [12, '12'], [24, '24']] },
   // Compressor 2: the same again, for a second channel
-  'oc2.in': jack('C2'),
+  'oc2.in': jack('Comp 2'),
   'oc2.thresh': { type: 'cont', label: 'Threshold', min: -40, max: 0, def: -20, curve: 'lin', unit: 'dB', small: true, fmt: fmtDb, marks: [[-40, '−40'], [-20, '−20'], [0, '0']] },
   'oc2.ratio': { type: 'cont', label: 'Ratio', min: 1, max: 20, def: 4, curve: 'log', unit: ':1', small: true,
     fmt: (v) => (v >= 19.5 ? '20:1 (heavy limiting)' : v >= 9.95 ? Math.round(v) + ':1 (limiting)' : v.toFixed(1) + ':1'), marks: [[1, '1'], [2, '2'], [4, '4'], [10, '10'], [20, '20']] },
   'oc2.gain': { type: 'cont', label: 'Gain', min: 0, max: 24, def: 0, curve: 'lin', unit: 'dB', small: true, fmt: fmtDb, marks: [[0, '0'], [12, '12'], [24, '24']] },
   // Delay: one echo, 100% wet; Feedback brings it round again (repeats)
-  'dl.in': jack('Dly'),
+  'dl.in': jack('Delay'),
   'dl.time': { type: 'cont', label: 'Time', min: 40, max: 1200, def: 430, curve: 'log', unit: 'ms', small: true, fmt: (v) => Math.round(v) + ' ms',
     marks: [[40, '40'], [150, '150'], [430, '430'], [1200, '1.2k']] },
   'dl.fb': { type: 'cont', label: 'Feedback', min: 0, max: 0.9, def: 0.35, curve: 'lin', small: true, fmt: (v) => Math.round(v * 100) + '%',
@@ -154,12 +154,14 @@ export const LAYOUT = [
    { id: 'main', title: 'Main', rows: [['mon.src']], fader: 'main.fader', meters: [['mainL', 'L', 'mainmeter'], ['mainR', 'R', 'mainmeter']] }],
 ];
 
-// The patch bay: every patch point in one place, outputs on the top row and inputs on the bottom,
-// so the usual patches are short hops straight down (a channel's Send over its Return, Aux 2 over
-// the Reverb's In, the Reverb's Out over FX Return 1...).
-export const PATCHBAY = { id: 'bay', title: 'Patch Bay', rows: [
-  ['#Out', 'out:ch1.send', 'out:ch2.send', 'out:ch3.send', 'out:ch4.send', 'out:aux1.out', 'out:aux2.out', 'out:rev.out', 'out:dl.out', 'out:oc.out', 'out:oc2.out'],
-  ['#In', 'ch1.ret', 'ch2.ret', 'ch3.ret', 'ch4.ret', 'dl.in', 'rev.in', 'fxr.in', 'fxr2.in', 'oc.in', 'oc2.in'],
+// The patch bay: a tall unit beside the desk with every patch point, one row per pair: an output
+// on the left, the input it usually feeds on the right (a channel's Send beside its Return, Aux 2
+// beside the Reverb's In, the Reverb's Out beside FX Return 1...). null: a gap between groups.
+export const PATCHBAY = { id: 'bay', title: 'Patch Bay', pairs: [
+  ['out:ch1.send', 'ch1.ret'], ['out:ch2.send', 'ch2.ret'], ['out:ch3.send', 'ch3.ret'], ['out:ch4.send', 'ch4.ret'], null,
+  ['out:aux1.out', 'dl.in'], ['out:aux2.out', 'rev.in'], null,
+  ['out:rev.out', 'fxr.in'], ['out:dl.out', 'fxr2.in'], null,
+  ['out:oc.out', 'oc.in'], ['out:oc2.out', 'oc2.in'],
 ] };
 // The separate units: the outboard rack (beside the screens) and the Multitrack Player (under the
 // desk). No sockets on them (they are on the patch bay); io: their little In and Out meters.

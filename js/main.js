@@ -960,19 +960,23 @@ function buildOutboard() {
   };
   const mini = () => { const m = document.createElement('div'); m.className = 'mini-meter'; m.innerHTML = '<i></i>'.repeat(5); return m; };
   const minis = []; // [key, the meter]
+  // the patch bay: a tall unit standing between the desk and the screens, one row per pair
+  // (an output on the left, the input it usually feeds on the right), with room for full labels
   if (SYNTH.PATCHBAY && cables) {
     const B = SYNTH.PATCHBAY;
-    const face = unitOf('patchbay', `<div class="ob-brand" data-help="section:${B.id}"><span class="brand-mark">NoFoe</span><span class="ob-name">${B.title.toUpperCase()}</span></div>`);
-    const bay = document.createElement('div');
-    bay.className = 'section bay';
-    bay.dataset.section = B.id;
-    bay.appendChild(cables.buildStrip(B.rows));
-    face.appendChild(bay);
-    sections[B.id] = bay;
-    bay.querySelectorAll('.jack-cell').forEach((cell) => {
-      const key = cell.dataset.param || (cell.dataset.help || '').replace(/^out:/, '');
-      const m = mini(); cell.appendChild(m); minis.push([key, m]);
+    const unit = document.createElement('section');
+    unit.className = 'patchbay-v';
+    unit.innerHTML = `<div class="pb-head" data-help="section:${B.id}">${B.title}</div><div class="pb-cols"><span>Out</span><span>In</span></div><div class="pb-rows section" data-section="${B.id}"></div>
+      <div class="pb-foot"><span class="brand-mark">NoFoe</span></div>`;
+    const rows = unit.querySelector('.pb-rows');
+    B.pairs.forEach((pair) => {
+      const row = document.createElement('div');
+      row.className = pair ? 'pb-row' : 'pb-gap';
+      if (pair) row.append(cables.makeOut(pair[0].slice(4)), cables.makeIn(pair[1]));
+      rows.appendChild(row);
     });
+    sections[B.id] = rows;
+    document.getElementById('stage').appendChild(unit);
   }
   SYNTH.OUTBOARD.forEach((sec) => {
     const face = unitOf('ob-' + sec.id, `<div class="ob-brand" data-help="section:${sec.id}"><span class="brand-mark">NoFoe</span><span class="ob-name">${sec.brandSub}</span></div>`);
