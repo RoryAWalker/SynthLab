@@ -3,6 +3,7 @@
 // it into dB. Same interface as Knob: .el, .set(value), .commit(value).
 
 import { PARAMS, formatValue } from '../../js/params.js';
+const UNITY = 0.75; // the fader position for 0 dB (see consoleMath.js)
 import { faderPos } from './consoleMath.js';
 
 const MARKS = [[10, '+10'], [5, '+5'], [0, '0'], [-5, '5'], [-10, '10'], [-20, '20'], [-30, '30'], [-40, '40'], [-60, '60']];
@@ -50,9 +51,9 @@ export class Fader {
     s.addEventListener('pointerdown', (e) => {
       if (e.button !== 0) return;
       e.preventDefault();
-      if (e.pointerType === 'touch') { // double tap: back to unity
+      { // a double click (or double tap): back to unity, 0 dB
         const now = performance.now();
-        if (now - lastTap < 300) { this.commit(this.spec.def); lastTap = 0; return; }
+        if (now - lastTap < 350) { this.commit(UNITY); lastTap = 0; return; }
         lastTap = now;
       }
       s.focus();
@@ -79,7 +80,7 @@ export class Fader {
     };
     s.addEventListener('pointerup', end);
     s.addEventListener('pointercancel', end);
-    s.addEventListener('dblclick', () => this.commit(this.spec.def));
+    // (a double click is caught on pointerdown, above: back to unity)
     s.addEventListener('wheel', (e) => { e.preventDefault(); this.commit(this.value + (e.deltaY < 0 ? 1 : -1) * (e.shiftKey ? 0.002 : 0.01)); }, { passive: false });
     s.addEventListener('keydown', (e) => {
       const step = e.shiftKey ? 0.002 : 0.01;

@@ -38,8 +38,8 @@ const knobs = {};
 const sections = {};
 let help = null; // HelpPanel, created at boot
 let lesson = null; // LessonController, created at boot
-// Modular synths: jack sockets and patch cables (cables.js)
-const cables = SYNTH.modular ? new Cables(document.getElementById('stage'), { getPatch: () => patch, onChange: (id, v) => onKnob(id, v), controls: knobs }) : null;
+// Modular synths (and patchable units, e.g. the NF-Mix4 and its outboard): jack sockets and patch cables (cables.js)
+const cables = SYNTH.modular || SYNTH.patchable ? new Cables(document.getElementById('stage'), { getPatch: () => patch, onChange: (id, v) => onKnob(id, v), controls: knobs }) : null;
 const overlay = new Overlay(() => patch, engine); // teaching graphs on the spectrum display
 // the console's meters (VU or PPM), see meters.js
 const consoleMeters = SYNTH.kind === 'console' ? new ConsoleMeters(engine, () => patch) : null;
@@ -151,6 +151,9 @@ function buildSection(sec) {
 }
 
 function makeControl(id, sec) {
+  // a patch socket used as a control in a grid (the NF-Mix4's insert points and aux outputs)
+  if (id.startsWith('out:')) return cables.makeOut(id.slice(4));
+  if (PARAMS[id] && PARAMS[id].type === 'jack') return cables.makeIn(id);
   const spec = PARAMS[id];
   const k = spec.ui === 'toggle' ? new Toggle(id, patch[id], onKnob)
     : spec.ui === 'led' ? new LedButton(id, patch[id], onKnob)
@@ -374,7 +377,7 @@ function buildToolbar() {
 
   // See-through cables (modular synths): off by default, remembered
   const faded = document.getElementById('faded-cables');
-  if (faded && SYNTH.modular) {
+  if (faded && (SYNTH.modular || SYNTH.patchable)) { // (and the patchable units, e.g. the NF-Mix4)
     faded.parentNode.hidden = false;
     faded.checked = loadPref('sl.cablesFaded', '0') === '1';
     document.body.classList.toggle('cables-faded', faded.checked);
@@ -432,6 +435,7 @@ document.querySelector('.np-model').innerHTML = nameHtml(SYNTH.name); // name pl
 document.querySelector('.brand-sub').textContent = SYNTH.brandSub;
 document.title = `${LAB_NAME} · ${SYNTH.name}`;
 buildPanel();
+if (SYNTH.OUTBOARD) buildOutboard();
 if (SYNTH.PLAYER) buildPlayer();
 refreshScales(); // e.g. Osc 3 Frequency starts in Hz when Osc 3 is an LFO
 alignRows();
@@ -830,7 +834,8 @@ function sendSource() {
   if (SYNTH.kind === 'console') {
     if (sentSources.has('song')) return;
     sentSources.add('song');
-    Promise.resolve(ensureAudio()).then(() => engine.post({ type: 'source', chans: loadSong(engine.ctx) }));
+    Promise.resolve(ensureAudio()).then(async () => engine.post({ type: 'source', chans: await loadSong(engine.ctx) }))
+      .catch(() => { sentSources.delete('song'); patchMenu.toast('The song could not be loaded. Check your connection and press Play again.'); });
     return;
   }
   const id = patch['src.sound'];
@@ -887,24 +892,122 @@ function buildPlayer() {
   unit.className = 'player-unit';
   unit.innerHTML = `<div class="cheek left"></div><div class="player-face section" data-section="${P.id}">
     <div class="player-brand" data-help="section:${P.id}"><span class="brand-mark">NoFoe</span><span class="player-name">${P.title}</span></div>
-    <div class="player-display" data-help="${P.sound}"><div class="pd-row"><span class="pd-state"></span><span class="pd-now"></span></div><div class="pd-bar"><i></i></div></div>
+    <div class="player-display" data-help="${P.sound || 'section:' + P.id}"><div class="pd-row"><span class="pd-state"></span><span class="pd-now"></span></div><div class="pd-bar"><i></i></div></div>
     <div class="lock-veil"><span>LOCKED</span></div></div><div class="cheek right"></div>`;
   const face = unit.querySelector('.player-face'), display = unit.querySelector('.player-display');
   sections[P.id] = face;
   display.before(makeControl(P.play, {}));
-  display.after(makeControl(P.sound, {}), buildLoadButton());
-  document.querySelector('#stage > .synth').after(unit);
+  // a choice of sounds and Load your own (the NF-C1), or one song (the NF-Mix4's multitrack: P.text)
+  if (P.sound) display.after(makeControl(P.sound, {}), buildLoadButton());
+  // a tiny meter per track (the NF-Mix4's multitrack: P.tracks, levels from P.trackDb)
+  const trackBars = [];
+  if (P.tracks) {
+    const box = document.createElement('div');
+    box.className = 'pl-tracks';
+    box.dataset.help = 'trackmeters';
+    P.tracks.forEach((name, i) => {
+      const t = document.createElement('div');
+      t.className = 'pl-track';
+      t.title = `Track ${i + 1}: ${name}`;
+      t.innerHTML = `<div class="pl-bar"><i></i></div><span>${i + 1}</span>`;
+      box.appendChild(t);
+      trackBars.push({ el: t.querySelector('i'), v: 0 });
+    });
+    display.after(box);
+  }
+  const synth = document.querySelector('#stage > .synth');
+  // the console (with its rack beside it): the desk and its player share one column
+  if (SYNTH.OUTBOARD) {
+    const col = document.createElement('div');
+    col.className = 'console-col';
+    synth.before(col);
+    col.append(synth, unit);
+  } else synth.after(unit);
   // the display follows what the engine is playing
   const state = display.querySelector('.pd-state'), now = display.querySelector('.pd-now'), bar = display.querySelector('.pd-bar i');
   let shown = '';
   (function tick() {
     requestAnimationFrame(tick);
-    const id = patch[P.sound], opt = PARAMS[P.sound].options.find((o) => o.v === id);
-    const name = id === 'user' ? (userFileName() || 'No file loaded') : (opt ? opt.label : '');
+    const id = P.sound ? patch[P.sound] : null, opt = P.sound ? PARAMS[P.sound].options.find((o) => o.v === id) : null;
+    const name = !P.sound ? P.text : id === 'user' ? (userFileName() || 'No file loaded') : (opt ? opt.label : '');
     const live = engine.live || {}, playing = patch[P.play] === 'play' && engine.running && live.playing;
     const text = `${playing ? '▶' : '■'}|${name}`;
     if (text !== shown) { shown = text; state.textContent = playing ? '▶' : '■'; now.textContent = name; now.title = name; display.classList.toggle('playing', !!playing); }
     bar.style.transform = `scaleX(${playing || live.pos ? Math.min(1, live.pos || 0) : 0})`;
+    if (trackBars.length) { // rise at once, fall back smoothly
+      const dbs = playing && P.trackDb ? P.trackDb(live) : null;
+      trackBars.forEach((b, i) => {
+        const v = dbs ? Math.max(0, Math.min(1, (dbs[i] + 48) / 48)) : 0;
+        b.v = Math.max(v, b.v * 0.9);
+        b.el.style.transform = `scaleY(${b.v.toFixed(3)})`;
+      });
+    }
+  })();
+}
+
+// The NF-Mix4's outboard rack, beside the screens: the patch bay on top (every patch point, as
+// sockets: outputs above, inputs below), then the separate units (reverb, delay, compressors), each
+// with its few controls and little In and Out meters, so students can see they have patched it.
+function buildOutboard() {
+  const rack = document.createElement('div');
+  rack.className = 'outboard-rack';
+  const unitOf = (cls, inner) => {
+    const unit = document.createElement('section');
+    unit.className = 'outboard-unit ' + cls;
+    unit.innerHTML = `<div class="cheek left"></div><div class="outboard-face">${inner}</div><div class="cheek right"></div>`;
+    rack.appendChild(unit);
+    return unit.querySelector('.outboard-face');
+  };
+  const mini = () => { const m = document.createElement('div'); m.className = 'mini-meter'; m.innerHTML = '<i></i>'.repeat(5); return m; };
+  const minis = []; // [key, the meter]
+  // the patch bay: a tall unit standing between the desk and the screens, one row per pair
+  // (an output on the left, the input it usually feeds on the right), with room for full labels
+  if (SYNTH.PATCHBAY && cables) {
+    const B = SYNTH.PATCHBAY;
+    const unit = document.createElement('section');
+    unit.className = 'patchbay-v';
+    unit.innerHTML = `<div class="pb-head" data-help="section:${B.id}">${B.title}</div><div class="pb-cols"><span>Out</span><span>In</span></div><div class="pb-rows section" data-section="${B.id}"></div>
+      <div class="pb-foot"><span class="brand-mark">NoFoe</span></div>`;
+    const rows = unit.querySelector('.pb-rows');
+    B.pairs.forEach((pair) => {
+      const row = document.createElement('div');
+      row.className = pair ? 'pb-row' : 'pb-gap';
+      if (pair) row.append(cables.makeOut(pair[0].slice(4)), cables.makeIn(pair[1]));
+      rows.appendChild(row);
+    });
+    sections[B.id] = rows;
+    document.getElementById('stage').appendChild(unit);
+  }
+  SYNTH.OUTBOARD.forEach((sec) => {
+    const face = unitOf('ob-' + sec.id, `<div class="ob-brand" data-help="section:${sec.id}"><span class="brand-mark">NoFoe</span><span class="ob-name">${sec.brandSub}</span></div>`);
+    face.appendChild(buildSection(sec));
+    if (sec.io) {
+      const io = document.createElement('div');
+      io.className = 'ob-io';
+      sec.io.forEach((key, i) => {
+        const row = document.createElement('div');
+        row.className = 'io-row';
+        row.dataset.help = 'iometer';
+        row.innerHTML = `<span>${i ? 'Out' : 'In'}</span>`;
+        const m = mini(); row.appendChild(m); minis.push([key, m]);
+        io.appendChild(row);
+      });
+      face.appendChild(io);
+    }
+    if (sec.gr && consoleMeters) face.appendChild(consoleMeters.ladder(sec.gr, 'GR', 'ocgrmeter'));
+  });
+  document.getElementById('stage').appendChild(rack);
+  // the mini meters: five tiny lights each, is anything arriving at an input / leaving an output?
+  const STEPS = [-48, -36, -24, -12, -3]; // dBFS, one light each
+  const state = minis.map(([key, m]) => ({ key, lights: [...m.children], v: -140 }));
+  (function miniLoop() {
+    requestAnimationFrame(miniLoop);
+    const live = engine.running && engine.live && engine.live.console ? engine.live : null;
+    state.forEach((mm) => {
+      const db = live ? ((live.insDb && live.insDb[mm.key]) ?? (live.outsDb && live.outsDb[mm.key]) ?? -140) : -140;
+      mm.v = Math.max(db, mm.v - 1.5); // falls about 90 dB a second
+      mm.lights.forEach((l, i) => l.classList.toggle('on', mm.v >= STEPS[i]));
+    });
   })();
 }
 
@@ -974,6 +1077,18 @@ if (PROC && SYNTH.kind !== 'console') {
       if (v >= 0) m.clipAt = now;
       m.clip.classList.toggle('on', now - m.clipAt < 1200);
     });
+  })();
+}
+// The console's ear protection (see console-processor.js): say why the sound has been turned down
+if (SYNTH.kind === 'console') {
+  let told = -1e9;
+  (function protLoop() {
+    requestAnimationFrame(protLoop);
+    const l = engine.running && engine.live;
+    if (l && l.protect > 3 && performance.now() - told > 20000) {
+      told = performance.now();
+      patchMenu.toast('Very loud: the output is being turned down to protect your ears. Look for a feedback loop (a bus patched back into a channel that feeds it), or turn something down.');
+    }
   })();
 }
 if (PROC) {
