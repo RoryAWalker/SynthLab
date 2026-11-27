@@ -479,12 +479,17 @@ class StringRes extends Module {
       // Tone: the loop's low-pass, its cutoff 2 to 42 times the pitch
       this.lpA = Math.min(1, 1 - Math.exp(-TWO_PI * f * (2 + 40 * this.tone * this.tone) / sr));
       const w = TWO_PI * f / sr, b = 1 - this.lpA;
-      const R = this.dcR = Math.exp(-TWO_PI * f * 0.1 / sr); // DC blocker: a high-pass at a tenth of the pitch
-      // loss each time round so that it falls 60 dB in Decay, allowing for what the filters take off
-      // the note itself (it may be above 1: nothing builds up below the note, the low-pass holds the rest)
       const lpGain = this.lpA / Math.hypot(1 - b * Math.cos(w), b * Math.sin(w));
+      // DC blocker: a high-pass below the note. It shifts each harmonic's timing a little differently;
+      // corrected exactly for the note, the harmonics are left a hair flat, which matters only when
+      // Feedback holds the string at its limit and locks them together (the note is then pulled flat).
+      // So it sits far below the note (1/200 of it), except where the loop has to be boosted to make up
+      // a dark Tone's loss: then it rises (up to 1/10 of the note) to stop a rumble building up below the note.
+      const boost = Math.max(Math.exp(-6.91 / (f * this.decay)), 1) / lpGain - 1;
+      const R = this.dcR = Math.exp(-TWO_PI * f * Math.min(0.1, 0.005 + Math.max(0, boost) * 2) / sr);
       const hpGain = Math.hypot(1 - Math.cos(w), Math.sin(w)) / Math.hypot(1 - R * Math.cos(w), R * Math.sin(w));
-      this.g = Math.min(2, Math.exp(-6.91 / (f * this.decay)) / (lpGain * hpGain));
+      this.unity = 1 / (lpGain * hpGain); // the loop gain that just holds the note (for Feedback's sustain)
+      this.g = Math.min(2, Math.exp(-6.91 / (f * this.decay)) * this.unity);
       // one period round the loop, less the filters' own delay at this pitch
       const lpDelay = Math.atan2(b * Math.sin(w), 1 - b * Math.cos(w)) / w;
       const hpDelay = -(Math.atan2(Math.sin(w), 1 - Math.cos(w)) - Math.atan2(R * Math.sin(w), 1 - R * Math.cos(w))) / w;
@@ -515,7 +520,8 @@ class StringRes extends Module {
     this.dcX = this.lp; this.dcY = hp;
     // Feedback up to 90%: rings longer (up to 10 times); past 90% the loop gains a little each time
     // round and sings on; past 100% ("too far") it gains a lot and is driven hard into its limit
-    const loop = fb < 0.9 ? Math.pow(this.g, 1 - fb / 0.9 * 0.9) : fb <= 1 ? 1 + (fb - 0.9) * 0.5 : 1.05 + (fb - 1) * 1.5;
+    // (both relative to the gain that just holds the note, so a dark Tone sings on as well as a bright one)
+    const loop = fb < 0.9 ? Math.pow(this.g, 1 - fb / 0.9 * 0.9) : this.unity * (fb <= 1 ? 1 + (fb - 0.9) * 0.5 : 1.05 + (fb - 1) * 1.5);
     let v = ex + hp * loop;
     // the limit inside the loop: soft at Drive 0; lower and harder with Drive, so the string
     // saturates as it rings (thicker, buzzier, the harder it is plucked)
