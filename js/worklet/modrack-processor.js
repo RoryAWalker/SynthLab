@@ -416,7 +416,8 @@ class Ping extends Module {
     fb = fb < 0 ? 0 : fb > 1.5 ? 1.5 : fb;
     const st = this.r('strike');
     let hit = 0;
-    if (st > 0.5 && this.strikeWas <= 0.5) { hit = (st > 2 ? 2 : st) * 0.45; this.env = Math.min(1.5, this.env + (st > 2 ? 2 : st)); }
+    // (any rise counts, however small: a strike's strength is its level, e.g. the Bounce's softer and softer hits)
+    if (st > 0.001 && this.strikeWas <= 0.001) { hit = (st > 2 ? 2 : st) * 0.45; this.env = Math.min(1.5, this.env + (st > 2 ? 2 : st)); }
     this.strikeWas = st;
     const x = this.r('in');
     // Feedback up to 100%: into the note only (unity loop gain at about 90%). Past 100% ("too far") it
@@ -502,7 +503,7 @@ class StringRes extends Module {
     let fb = this.fbKnob + this.r('fb');
     fb = fb < 0 ? 0 : fb > 1.5 ? 1.5 : fb;
     const st = this.r('strike');
-    if (st > 0.5 && this.strikeWas <= 0.5) { this.burst = Math.max(2, Math.round(this.len)); this.burstAmp = st > 2 ? 2 : st; }
+    if (st > 0.001 && this.strikeWas <= 0.001) { this.burst = Math.max(2, Math.round(this.len)); this.burstAmp = st > 2 ? 2 : st; } // (any rise counts)
     this.strikeWas = st;
     let ex = this.r('in') * 0.5;
     if (this.burst > 0) { // the pluck: one period of noise, as bright as Tone
@@ -751,7 +752,8 @@ class Bounce extends Module {
   }
   begin(p, sr) {
     this.mode = this.q(p, 'mode'); this.timeK = this.q(p, 'time'); this.bounceK = this.q(p, 'bounce'); this.H = this.q(p, 'height');
-    this.sr = sr; this.trigN = Math.round(TRIG_SECONDS * sr);
+    // (its triggers last 1 ms, not the usual 5: near rest the bounces come only a few ms apart, and each must be its own trigger)
+    this.sr = sr; this.trigN = Math.round(0.001 * sr);
   }
   // the flights from a height h0 and upward speed v0: start times and the speed off the floor
   plan(h0, v0) {

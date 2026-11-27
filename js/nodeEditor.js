@@ -11,7 +11,7 @@
 import { PARAMS } from './params.js';
 import { parse, serialize, valueAt, simplify, bend, MAX_NODES } from './drawShape.js';
 
-const W = 404, H = 112;           // the screen, in panel pixels
+const W0 = 404, H0 = 112;         // the screen's usual size, in panel pixels (spec.screen: [width, height] for another)
 const PAD = 7;                    // room round the edge for the nodes
 const HIT = 9;                    // how close (panel pixels) counts as on a node
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -26,6 +26,7 @@ export class NodeEditor {
     this.id = id;
     this.inst = id.split('.')[0];
     this.spec = PARAMS[id];
+    [this.W, this.H] = this.spec.screen || [W0, H0];
     this.onChange = onChange;
     this.tool = 'edit';
     this.snap = 0;
@@ -41,8 +42,9 @@ export class NodeEditor {
       </div>
       <canvas class="ne-screen" data-help="${id}"></canvas>`;
     this.cv = this.el.querySelector('canvas');
-    this.cv.style.width = W + 'px';
-    this.cv.style.height = H + 'px';
+    this.cv.style.width = this.W + 'px';
+    this.el.querySelector('.ne-bar').style.width = this.W + 'px';
+    this.cv.style.height = this.H + 'px';
     this.el.querySelectorAll('[data-tool]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); this.setTool(b.dataset.tool); }));
     this.snapBtn = this.el.querySelector('.ne-snap');
     this.snapBtn.addEventListener('click', (e) => { e.stopPropagation(); this.snap = SNAPS[(SNAPS.indexOf(this.snap) + 1) % SNAPS.length]; this.snapBtn.textContent = 'Snap: ' + (this.snap || 'Off'); this.draw(); });
@@ -83,12 +85,12 @@ export class NodeEditor {
   save() { this.commit(serialize(this.shape)); }
 
   // ---- positions ---------------------------------------------------------------------------
-  px(n) { return [PAD + n.x * (W - 2 * PAD), PAD + (1 - n.y) * (H - 2 * PAD)]; }
+  px(n) { return [PAD + n.x * (this.W - 2 * PAD), PAD + (1 - n.y) * (this.H - 2 * PAD)]; }
   // a pointer position as shape coordinates (the panel is scaled, so measure the screen's real size)
   at(e) {
     const r = this.cv.getBoundingClientRect();
-    const x = ((e.clientX - r.left) / r.width) * W, y = ((e.clientY - r.top) / r.height) * H;
-    return { x: clamp((x - PAD) / (W - 2 * PAD), 0, 1), y: clamp(1 - (y - PAD) / (H - 2 * PAD), 0, 1), cx: x, cy: y };
+    const x = ((e.clientX - r.left) / r.width) * this.W, y = ((e.clientY - r.top) / r.height) * this.H;
+    return { x: clamp((x - PAD) / (this.W - 2 * PAD), 0, 1), y: clamp(1 - (y - PAD) / (this.H - 2 * PAD), 0, 1), cx: x, cy: y };
   }
   snapTo(v) { return this.snap ? Math.round(v * this.snap) / this.snap : v; }
   nodeAt(p) {
@@ -236,23 +238,23 @@ export class NodeEditor {
   draw() {
     if (!this.shape) return; // (not set yet)
     const cv = this.cv, k = 2; // drawn at twice the size, so it stays sharp when the panel is zoomed
-    if (cv.width !== W * k) { cv.width = W * k; cv.height = H * k; }
+    if (cv.width !== this.W * k) { cv.width = this.W * k; cv.height = this.H * k; }
     const ctx = cv.getContext('2d');
     ctx.setTransform(k, 0, 0, k, 0, 0);
     ctx.fillStyle = '#06100a';
-    ctx.fillRect(0, 0, W, H);
+    ctx.fillRect(0, 0, this.W, this.H);
     // grid: quarters (or the Snap grid), and the middle level
     const g = this.snap || 4;
     ctx.strokeStyle = this.snap ? 'rgba(120, 220, 160, 0.16)' : 'rgba(120, 220, 160, 0.09)';
     ctx.lineWidth = 1;
     for (let i = 1; i < g; i++) {
-      const x = PAD + (i / g) * (W - 2 * PAD) + 0.5;
-      ctx.beginPath(); ctx.moveTo(x, PAD); ctx.lineTo(x, H - PAD); ctx.stroke();
-      const y = PAD + (i / g) * (H - 2 * PAD) + 0.5;
-      if (this.snap) { ctx.beginPath(); ctx.moveTo(PAD, y); ctx.lineTo(W - PAD, y); ctx.stroke(); }
+      const x = PAD + (i / g) * (this.W - 2 * PAD) + 0.5;
+      ctx.beginPath(); ctx.moveTo(x, PAD); ctx.lineTo(x, this.H - PAD); ctx.stroke();
+      const y = PAD + (i / g) * (this.H - 2 * PAD) + 0.5;
+      if (this.snap) { ctx.beginPath(); ctx.moveTo(PAD, y); ctx.lineTo(this.W - PAD, y); ctx.stroke(); }
     }
     ctx.strokeStyle = 'rgba(120, 220, 160, 0.14)';
-    ctx.beginPath(); ctx.moveTo(PAD, H / 2 + 0.5); ctx.lineTo(W - PAD, H / 2 + 0.5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(PAD, this.H / 2 + 0.5); ctx.lineTo(this.W - PAD, this.H / 2 + 0.5); ctx.stroke();
 
     const { nodes, sus } = this.shape;
     const mode = NodeEditor.mode(this.inst);
@@ -260,7 +262,7 @@ export class NodeEditor {
       ctx.fillStyle = 'rgba(120, 220, 160, 0.5)';
       ctx.font = '700 9px "Helvetica Neue", Arial, sans-serif';
       ctx.textAlign = 'left';
-      ctx.fillText('+1', 2, PAD + 7); ctx.fillText('0', 2, H / 2 - 2); ctx.fillText('−1', 2, H - PAD - 1);
+      ctx.fillText('+1', 2, PAD + 7); ctx.fillText('0', 2, this.H / 2 - 2); ctx.fillText('−1', 2, this.H - PAD - 1);
     }
     // the sustain node (Once mode): a dashed line and S
     if (sus >= 0 && !this.cycle) {
@@ -268,12 +270,12 @@ export class NodeEditor {
       ctx.save();
       ctx.strokeStyle = mode === 'once' ? 'rgba(140, 220, 255, 0.7)' : 'rgba(140, 220, 255, 0.25)';
       ctx.setLineDash([3, 3]);
-      ctx.beginPath(); ctx.moveTo(sx + 0.5, PAD); ctx.lineTo(sx + 0.5, H - PAD); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(sx + 0.5, PAD); ctx.lineTo(sx + 0.5, this.H - PAD); ctx.stroke();
       ctx.restore();
       ctx.fillStyle = mode === 'once' ? 'rgba(140, 220, 255, 0.9)' : 'rgba(140, 220, 255, 0.35)';
       ctx.font = '700 10px "Helvetica Neue", Arial, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(mode === 'once' ? 'SUS' : 'SUS (Once only)', sx, H - 1);
+      ctx.fillText(mode === 'once' ? 'SUS' : 'SUS (Once only)', sx, this.H - 1);
     }
     // the shape: filled underneath (to the 0 line, for a waveform), and its line
     const path = new Path2D();
@@ -291,8 +293,8 @@ export class NodeEditor {
       if (bx === ax) path.lineTo(bx, this.px(b)[1]);
     }
     const fill = new Path2D(path);
-    const base = this.cycle ? H / 2 : H - PAD;
-    fill.lineTo(W - PAD, base); fill.lineTo(PAD, base); fill.closePath();
+    const base = this.cycle ? this.H / 2 : this.H - PAD;
+    fill.lineTo(this.W - PAD, base); fill.lineTo(PAD, base); fill.closePath();
     ctx.fillStyle = 'rgba(255, 181, 71, 0.12)';
     ctx.fill(fill);
     ctx.strokeStyle = '#ffb547';
@@ -327,11 +329,11 @@ export class NodeEditor {
     // Sus pressed with no node selected: say how
     if (this.flash && performance.now() - this.flash < 1800) {
       ctx.fillStyle = 'rgba(6, 16, 10, 0.85)';
-      ctx.fillRect(W / 2 - 150, H / 2 - 12, 300, 22);
+      ctx.fillRect(this.W / 2 - 150, this.H / 2 - 12, 300, 22);
       ctx.fillStyle = '#8cdcff';
       ctx.font = '600 11px "Helvetica Neue", Arial, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('Click a node in Edit first, then Sus', W / 2, H / 2 + 3);
+      ctx.fillText('Click a node in Edit first, then Sus', this.W / 2, this.H / 2 + 3);
       setTimeout(() => this.draw(), 1850);
     }
     this.susBtn.classList.toggle('on', sus >= 0);
