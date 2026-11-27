@@ -763,11 +763,9 @@ export const HELP_MODRACK = {
   'out:formant.out': { title: 'Formant: Out', body: ['The talking sound.'] },
   'section:xy': { title: 'XY (pad)', body: [
     'Two control signals played by hand: drag the puck around the pad and its X and Y outputs follow, across and up. Patch them to anything: a VCF\'s Freq and a Formant\'s Vowel, say, to play two things at once with one finger.',
-    'It can also remember movements: press Rec, move on the pad, and let go. The movement is recorded (up to 30 s), saved with the patch, and plays back in Loop. Touch the pad at any time to take over.',
-    'Size makes it one row tall (a small pad beside its knobs) or two rows tall (a big pad, reaching into the row below, or above from the bottom row).'],
+    'It can also remember movements: press Rec, move on the pad, and let go. The movement is recorded (up to 30 s), saved with the patch, and plays back in Loop. Touch the pad at any time to take over.'],
     tip: 'X into a VCF\'s Freq, Y into its Res, then Rec a slow circle: a filter sweep that loops by itself.' },
   'xy.path': { title: 'The pad', body: ['Drag on it: X (across) and Y (up) follow your finger. Rec records your next movement; Clear forgets it. The faint line is the recording; the puck shows where the outputs are.'] },
-  'xysize': { title: 'Size', body: ['One or two rows tall. Two rows gives a much bigger pad, for finer movements; it reaches into the next row (the one above, from the bottom row), and the modules there move aside. If there is no room there, it stays one row tall.'] },
   'xy.mode': { title: 'Live, Loop or Once', body: ['Click the word to choose. Live: the outputs follow the pad. Loop: the recording plays round and round (a rising Gate restarts it). Once: it plays once each time the Gate rises. Touching the pad always takes over.'] },
   'xy.mode=live': { title: 'Live', body: ['The outputs follow the pad.'] },
   'xy.mode=loop': { title: 'Loop', body: ['The recording plays round and round. A rising Gate restarts it from the beginning.'] },

@@ -1,10 +1,10 @@
 // The NF-ModRack's XY module: the pad. Behaves like a control for its recording (the 'path' setting:
 // set / commit), and moves the module's other settings as you play it: x and y (where the puck is),
-// touch (a finger on the pad), mode (Live / Loop / Once) and size (1 or 2 rows tall).
+// touch (a finger on the pad) and mode (Live / Loop / Once).
 //
 //   Drag on the pad: X and Y follow (always, in any mode: a finger takes over from a recording).
 //   Rec: the next movement is recorded (up to 30 s), then plays back in Loop.
-//   Clear: forget the recording.   Size: 1 or 2 rows tall.
+//   Clear: forget the recording.
 
 import { PARAMS } from './params.js';
 
@@ -22,17 +22,14 @@ export class XYPad {
     this.inst = id.split('.')[0];
     this.spec = PARAMS[id];
     this.onChange = onChange;
-    const p = XYPad.getPatch();
-    this.tall = p[`${this.inst}.size`] === '2';
-    this.S = this.tall ? 270 : 176; // (one row: the sockets sit beside the knobs, so the pad has the whole height) // the pad's size (panel pixels): larger at two rows tall
+    this.S = 176; // the pad's size (panel pixels): the sockets sit beside the knobs, so the pad has the module's whole height
     this.el = document.createElement('div');
-    this.el.className = 'xy-cell' + (this.tall ? ' tall' : '');
+    this.el.className = 'xy-cell';
     this.el.dataset.param = id;
     this.el.innerHTML = `
       <div class="ne-bar xy-bar" style="min-width:${this.S}px">
         <button class="ne-btn xy-rec" title="Record your next movement on the pad">● Rec</button>
         <button class="ne-btn xy-clear" title="Forget the recording">Clear</button>
-        <button class="ne-btn xy-size" data-help="xysize" title="One or two rows tall">${this.tall ? '2 rows' : '1 row'}</button>
       </div>
       <canvas class="xy-screen" data-help="${id}"></canvas>`;
     this.cv = this.el.querySelector('canvas');
@@ -40,7 +37,6 @@ export class XYPad {
     this.recBtn = this.el.querySelector('.xy-rec');
     this.recBtn.addEventListener('click', (e) => { e.stopPropagation(); this.armed = !this.armed; this.recBtn.classList.toggle('armed', this.armed); this.draw(); });
     this.el.querySelector('.xy-clear').addEventListener('click', (e) => { e.stopPropagation(); this.commit(''); if (XYPad.getPatch()[`${this.inst}.mode`] !== 'live') this.onChange(`${this.inst}.mode`, 'live'); });
-    this.el.querySelector('.xy-size').addEventListener('click', (e) => { e.stopPropagation(); this.onChange(`${this.inst}.size`, this.tall ? '1' : '2'); });
     this.cv.addEventListener('pointerdown', (e) => this.down(e));
     this.cv.addEventListener('pointermove', (e) => this.move(e));
     this.cv.addEventListener('pointerup', () => this.up());
@@ -162,7 +158,7 @@ export class XYPad {
     ctx.fillStyle = this.held ? '#fff' : '#ffb547';
     ctx.shadowColor = 'rgba(255, 220, 150, 1)';
     ctx.shadowBlur = this.held ? 14 : 8;
-    ctx.beginPath(); ctx.arc(cx, cy, this.tall ? 7 : 5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx, cy, 5, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
     ctx.font = '700 9px "Helvetica Neue", Arial, sans-serif';
     ctx.fillStyle = 'rgba(120, 220, 160, 0.5)';

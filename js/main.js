@@ -60,7 +60,6 @@ function buildSection(sec) {
   el.className = 'section';
   el.dataset.section = sec.id;
   if (sec.type) { el.dataset.type = sec.type; el.classList.toggle('even', sec.even); } // the NF-ModRack: coloured by kind of module
-  if (isTall(sec.id)) el.classList.add('tall'); // (two rows tall: see placeTall)
   // (an untitled section, e.g. the NiniFoog's switch columns on the section lines, has no help of its own)
   const titleHelp = sec.title ? ` data-help="section:${sec.id}"` : '';
   el.innerHTML = `<div class="section-title"${titleHelp}><span>${sec.title}</span></div><div class="section-grid"></div><div class="lock-veil"><span>LOCKED</span></div>`;
@@ -166,8 +165,8 @@ function buildSection(sec) {
   if (sec.jacks && cables) {
     const strip = cables.buildStrip(sec.jacks);
     // the sockets under the knobs, beside the screen, so the screen can use the module's whole
-    // height (the NF-ModRack's XY at one row tall)
-    if (sec.jacksBeside && sec.screen && !isTall(sec.id)) {
+    // height (the NF-ModRack's XY)
+    if (sec.jacksBeside && sec.screen) {
       const col = document.createElement('div');
       col.className = 'side-col';
       grid.replaceWith(col);
@@ -251,7 +250,6 @@ function buildPanel() {
     // keyboard, and signals in the rack flow from left to right
     SIDE_SECTIONS.forEach((sec) => { const el = buildSection(sec); el.classList.add('rack-side'); root.appendChild(el); });
     root.appendChild(rowsBox);
-    placeTall();
     const perf = document.getElementById('perf-sections');
     KEYBED_SECTIONS.forEach((sec) => perf.appendChild(buildSection(sec)));
     const fx = document.getElementById('fx-sections');
@@ -292,45 +290,6 @@ function buildRackRows(rowsBox) {
   });
 }
 
-// Two-row modules (the NF-ModRack's XY at size 2): each stands in its own row and reaches down into
-// the next (up, from the bottom row), overlapping it; the modules there step aside (a spacer in
-// front of the first that would be covered). Runs whenever the rows are built.
-function isTall(id) { return !!SYNTH.openRack && patch[`${id}.size`] === '2'; }
-function placeTall() {
-  if (!SYNTH.openRack) return;
-  const rowEls = [...document.querySelectorAll('#sections > .rack-rows > .rack-row')];
-  rowEls.forEach((r) => r.querySelectorAll('.tall-gap').forEach((g) => g.remove()));
-  const GAP = 8;
-  rowEls.forEach((rowEl, ri) => {
-    rowEl.querySelectorAll(':scope > .section.tall').forEach((sec) => {
-      const ti = ri < rowEls.length - 1 ? ri + 1 : ri - 1, target = rowEls[ti];
-      // measure both rows without it (so that it does not stretch its own row), then span them
-      sec.style.setProperty('height', '1px', 'important');
-      sec.style.margin = '0';
-      const own = rowEl.offsetHeight, reach = target.offsetHeight + GAP, down = ti > ri;
-      sec.style.setProperty('height', own + reach + 'px', 'important'); // (over the rows' usual height: auto)
-      sec.style.marginBottom = down ? -reach + 'px' : '';
-      sec.style.marginTop = down ? '' : -reach + 'px';
-      const x0 = sec.offsetLeft, x1 = x0 + sec.offsetWidth;
-      const hit = [...target.querySelectorAll(':scope > .section')].find((m) => m.offsetLeft + m.offsetWidth > x0 - GAP);
-      if (hit && hit.offsetLeft < x1 + GAP) {
-        const gap = document.createElement('div');
-        gap.className = 'tall-gap';
-        gap.style.width = Math.max(0, x1 - hit.offsetLeft) + 'px';
-        hit.before(gap);
-      }
-    });
-  });
-}
-// room for the XY to become two rows tall: in the row it would reach into
-function roomToGrow(inst) {
-  const rows = SYNTH.parseLayout(patch['rack.layout']);
-  const ri = rows.findIndex((r) => r.includes(inst));
-  if (ri < 0) return false;
-  const ti = SYNTH.reachRow(ri);
-  return SYNTH.rowUsed(rows[ti]) + SYNTH.tallInto(rows, ti, (id) => id === inst || isTall(id)) <= SYNTH.ROW_WIDTH;
-}
-
 // ---- the NF-ModRack: choose the modules --------------------------------------------------
 // The rack's modules are the patch's 'rack.layout'. Changing them changes which controls and
 // sockets exist: PARAMS, the outputs and LAYOUT are updated in place (everything else reads
@@ -350,7 +309,6 @@ function rebuildRack() {
   const rowsBox = document.querySelector('#sections .rack-rows');
   rowsBox.querySelectorAll('.section').forEach((el) => delete sections[el.dataset.section]);
   buildRackRows(rowsBox);
-  placeTall();
   for (const id in knobs) if (!knobs[id].el.isConnected) delete knobs[id];
   cables.prune();
   builtLayout = patch['rack.layout'];
@@ -409,19 +367,6 @@ function ensureAudio() {
 }
 
 function onKnob(id, value) {
-  // the NF-ModRack: a setting that changes the rack's layout (the XY's size)
-  if (SYNTH.openRack && PARAMS[id] && PARAMS[id].relayout && value !== patch[id]) {
-    const inst = id.split('.')[0];
-    if (value === '2' && !roomToGrow(inst)) {
-      patchMenu.toast('No room for it to be two rows tall: the row it reaches into is too full. Take a module out of that row, or move it.');
-      return;
-    }
-    patch[id] = value;
-    engine.setParam(id, value);
-    rebuildRack();
-    if (patchMenu) patchMenu.markEdited();
-    return;
-  }
   const before = { ...patch };
   patch[id] = value;
   restartMeasure(); // the meters start again (see measure)
@@ -931,7 +876,7 @@ if (knobs['mix.feedback']) {
 if (SYNTH.openRack && !PREVIEW) {
   rackEdit = new RackEdit({
     root: document.getElementById('sections'), button: document.getElementById('btn-modules'),
-    getRows: () => SYNTH.parseLayout(patch['rack.layout']), isTall,
+    getRows: () => SYNTH.parseLayout(patch['rack.layout']),
     change: changeRack, toast: (t) => patchMenu.toast(t),
   });
 }

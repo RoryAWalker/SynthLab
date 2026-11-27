@@ -7,7 +7,7 @@
 //   × in a module's title bar takes it out (with its cables).
 // Each row is as wide as a row of the NF-Modular's case: a module only goes in where it fits.
 
-import { TYPES, DRAWER, ROW_WIDTH, GAP, widthOf, fits as fitsRow, newId, typeOf, tallInto } from './synths/modrack.js';
+import { TYPES, DRAWER, ROW_WIDTH, GAP, widthOf, fits as fitsRow, newId, typeOf } from './synths/modrack.js';
 
 const el = (tag, cls, parent, html) => {
   const e = document.createElement(tag);
@@ -22,9 +22,8 @@ const HOME_ROW = { Sources: 0, Shaping: 1, Modulation: 2 };
 export class RackEdit {
   // root: the panel's #sections; getRows(): the rack's rows of module ids; change(rows): try a new
   // rack (true if it changed); toast(text)
-  // isTall(id): a module two rows tall (it takes room in the next row too)
-  constructor({ root, button, getRows, change, toast, isTall = () => false }) {
-    Object.assign(this, { root, getRows, change, toast, isTall });
+  constructor({ root, button, getRows, change, toast }) {
+    Object.assign(this, { root, getRows, change, toast });
     this.drag = null;
     this.buildDrawer();
     button.hidden = false;
@@ -106,8 +105,8 @@ export class RackEdit {
     if (sec) { sec.classList.add('just-added'); setTimeout(() => sec.classList.remove('just-added'), 900); }
   }
 
-  // room in row ri for a module (allowing for two-row modules reaching into it)
-  fits(rows, ri, id) { return fitsRow(rows[ri], id, tallInto(rows, ri, this.isTall)); }
+  // room in row ri for a module
+  fits(rows, ri, id) { return fitsRow(rows[ri], id); }
 
   // ---- grips and remove buttons on the modules ---------------------------------------------
   decorate() {

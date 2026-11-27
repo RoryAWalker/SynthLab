@@ -57,8 +57,8 @@ export const TYPES = {
     params: ['range', 'tune', 'decay', 'tone', 'drive', 'fb'], ins: ['pitch', 'strike', 'in', 'fb', 'drive'], outs: ['out'] },
   formant: { name: 'Formant', desc: 'Makes any sound talk: three filters tuned like a voice, sweeping A, E, I, O, U.', w: 352, p: 'formant', j: 'formant', help: 'formant',
     params: ['vowel', 'shift', 'res', 'mix'], ins: ['in', 'vowel', 'shift'], outs: ['out'] },
-  xy: { name: 'XY', desc: 'A pad to play two control signals at once by hand, and record your movements to loop them. One or two rows tall.', w: 480, p: 'xy', j: 'xy', help: 'xy',
-    params: ['mode', 'size', 'path', 'x', 'y', 'touch', 'rate', 'smooth', 'pol'], ins: ['gate'], outs: ['x', 'y', 'gate'] },
+  xy: { name: 'XY', desc: 'A pad to play two control signals at once by hand, and record your movements to loop them.', w: 480, p: 'xy', j: 'xy', help: 'xy',
+    params: ['mode', 'path', 'x', 'y', 'touch', 'rate', 'smooth', 'pol'], ins: ['gate'], outs: ['x', 'y', 'gate'] },
   draw: { name: 'Draw', desc: 'Draw any shape: a custom envelope (Once), or loop it round or bounce it back and forth as an LFO.', w: 682, p: 'draw', j: 'draw', help: 'draw',
     params: ['mode', 'nodes', 'time', 'amt', 'pol'], ins: ['gate', 'time'], outs: ['out', 'end'] },
 };
@@ -136,13 +136,11 @@ TYPES.formant.specs = {
   outs: { out: { label: 'Out', audio: true } },
 };
 // XY: a pad. x, y: where the puck is (0..1, set by hand); touch: 1 while a finger is on the pad;
-// path: a recorded movement ("duration;x,y;x,y;..." at a steady 50 points a second); size: 1 or 2
-// rows tall. Rate: how fast the recording plays; Smooth: a glide on the outputs.
+// path: a recorded movement ("duration;x,y;x,y;..." at a steady 50 points a second). Rate: how fast the recording plays; Smooth: a glide on the outputs.
 const validPath = (v) => typeof v === 'string' && v.length < 40000 && /^(\d+(\.\d+)?)?(;\d(\.\d+)?,\d(\.\d+)?)*$/.test(v);
 TYPES.xy.specs = {
   params: {
     mode: { type: 'step', ui: 'word', label: 'XY mode', def: 'live', options: [{ v: 'live', label: 'Live' }, { v: 'loop', label: 'Loop' }, { v: 'once', label: 'Once' }] },
-    size: { type: 'step', label: 'Size', def: '1', relayout: true, options: [{ v: '1', label: '1 row' }, { v: '2', label: '2 rows' }] },
     path: { type: 'nodes', ui: 'xy', label: 'Pad', def: '', valid: validPath,
       fmt: (v) => { const n = v ? v.split(';').length - 1 : 0; return n ? `recording: ${(Number(v.split(';')[0]) || 0).toFixed(1)} s` : 'no recording'; } },
     x: { type: 'cont', label: 'X', min: 0, max: 1, def: 0.5, curve: 'lin', unit: '', fmt: (v) => v.toFixed(2) },
@@ -202,7 +200,7 @@ const PANELS = {
   sh: { rows: [['rate', 'lag']], jacks: ['in', 'clock', 'out:out'] },
   ping: { rows: [['range', 'tune', 'decay', 'partials', 'stretch', 'tone', 'drive', 'fb']], jacks: ['pitch', 'strike', 'in', 'fb', 'stretch', 'drive', 'out:out'] },
   string: { rows: [['range', 'tune', 'decay', 'tone', 'drive', 'fb']], jacks: ['pitch', 'strike', 'in', 'fb', 'drive', 'out:out'] },
-  // the pad on the left (or, two rows tall, across the top), its knobs beside (or below) it
+  // the pad on the left, its knobs and sockets beside it
   xy: { titleSwitch: 'mode', screen: 'path', jacksBeside: true, rows: [['rate', 'smooth', 'pol']], jacks: ['gate', 'out:x', 'out:y', 'out:gate'] },
   formant: { rows: [['vowel', 'shift', 'res', 'mix']], jacks: ['in', 'vowel', 'shift', 'out:out'] },
   // the drawing screen on the left, its knobs beside it
@@ -242,17 +240,7 @@ export function parseLayout(str) {
 }
 export const layoutString = (rows) => rows.map((r) => r.join(',')).join('|');
 export const rowUsed = (row) => row.reduce((a, id, i) => a + widthOf(id) + (i ? GAP : 0), 0);
-// extra: room taken in this row by a two-row module reaching in from the next row (see tallInto)
-export const fits = (row, inst, extra = 0) => rowUsed(row) + (row.length ? GAP : 0) + widthOf(inst) + extra <= ROW_WIDTH;
-// Two-row modules (the XY at size 2) sit in their row and reach down into the next one (up, from
-// the bottom row). The row they reach into: 
-export const reachRow = (ri) => (ri < ROWS - 1 ? ri + 1 : ri - 1);
-// the room taken in row ri by two-row modules reaching into it; isTall(id) says which are two rows
-export function tallInto(rows, ri, isTall) {
-  let w = 0;
-  rows.forEach((row, r) => { if (r !== ri && reachRow(r) === ri) row.forEach((id) => { if (isTall(id)) w += widthOf(id) + GAP; }); });
-  return w;
-}
+export const fits = (row, inst) => rowUsed(row) + (row.length ? GAP : 0) + widthOf(inst) <= ROW_WIDTH;
 // the lowest free number for a new module of this type
 export function newId(rows, type) {
   const used = new Set(rows.flat());
@@ -366,5 +354,5 @@ export const MODRACK = {
   },
   PARAMS: START.PARAMS, LAYOUT: START.LAYOUT, KEYBED_SECTIONS, SIDE_SECTIONS, PRESETS,
   initName: INIT_NAME,
-  build, parseLayout, layoutString, initCables, reachRow, rowUsed, tallInto, ROW_WIDTH,
+  build, parseLayout, layoutString, initCables,
 };
