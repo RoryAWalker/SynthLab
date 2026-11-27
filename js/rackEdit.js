@@ -57,7 +57,10 @@ export class RackEdit {
         const pct = Math.round((t.w / ROW_WIDTH) * 100);
         card.innerHTML = `<div class="md-name">${t.name}</div><div class="md-desc">${t.desc}</div>
           <div class="md-size" title="How much of a row it takes"><span style="width:${pct}%"></span></div>`;
-        card.addEventListener('pointerdown', (e) => this.start(e, { type, group, card }));
+        card.addEventListener('pointerdown', (e) => { this.hidePic(); this.start(e, { type, group, card }); });
+        // a picture of the module while the pointer rests on its card
+        card.addEventListener('pointerenter', () => { if (!this.drag) this.showPic(type, card); });
+        card.addEventListener('pointerleave', () => this.hidePic());
         card.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.addSomewhere(type, group); } });
       });
     });
@@ -66,13 +69,42 @@ export class RackEdit {
     d.addEventListener('keyup', (e) => e.stopPropagation());
   }
 
+  // the picture beside the drawer (img/modules/<type>.webp, made by tools/make-module-pictures.mjs)
+  showPic(type, card) {
+    if (!this.pic) {
+      this.pic = el('div', 'md-pic', document.body, '<img alt=""><span></span>');
+      this.pic.querySelector('img').addEventListener('error', () => { this.pic.hidden = true; });
+      this.pic.querySelector('img').addEventListener('load', () => this.placePic()); // (centred again once it has its size)
+    }
+    const t = TYPES[type], img = this.pic.querySelector('img');
+    img.src = `img/modules/${type}.webp`;
+    this.pic.querySelector('span').textContent = `${t.name} · ${Math.round((t.w / ROW_WIDTH) * 100)}% of a row`;
+    this.picCard = card;
+    this.pic.hidden = false;
+    this.placePic();
+  }
+  // beside the drawer, level with the card (and inside the window)
+  placePic() {
+    if (!this.pic || this.pic.hidden || !this.picCard) return;
+    const d = this.drawer.getBoundingClientRect(), c = this.picCard.getBoundingClientRect();
+    this.pic.style.right = window.innerWidth - d.left + 10 + 'px';
+    const h = this.pic.offsetHeight || 230;
+    this.pic.style.top = Math.max(8, Math.min(window.innerHeight - h - 8, c.top + c.height / 2 - h / 2)) + 'px';
+  }
+  hidePic() { if (this.pic) this.pic.hidden = true; }
+
   setOpen(open) {
+    if (!open) this.hidePic();
     this.open = open;
     this.drawer.hidden = !open;
     this.button.classList.toggle('on', open);
     this.button.setAttribute('aria-pressed', String(open));
     document.body.classList.toggle('drawer-open', open);
-    if (open) this.refreshCards();
+    if (open) {
+      this.refreshCards();
+      // (load the pictures now, so that each appears at once)
+      if (!this.preloaded) { this.preloaded = true; Object.keys(TYPES).forEach((t) => { new Image().src = `img/modules/${t}.webp`; }); }
+    }
   }
 
   // a card is dimmed when its module would fit in no row

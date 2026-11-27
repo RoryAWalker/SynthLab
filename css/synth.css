@@ -1487,3 +1487,8 @@ body.open-rack .rack-rows:not(.max-rows) > .rack-row { width: var(--row-w, 1573p
 .rg-btn:hover:not(:disabled) { background: #3b3220; border-color: #8a6a2c; color: #ffd9a0; }
 .rg-btn:disabled { opacity: 0.3; cursor: default; }
 .rg-n { font-size: 12px; font-weight: 800; color: #a9abae; }
+/* the module drawer: a picture of the module the pointer rests on, beside the drawer */
+.md-pic { position: fixed; z-index: 61; width: 420px; padding: 8px; border-radius: 8px; pointer-events: none;
+  background: rgba(24,25,28,0.97); border: 1px solid #3a3c40; box-shadow: 0 10px 30px rgba(0,0,0,0.6); }
+.md-pic img { display: block; width: 100%; height: auto; border-radius: 4px; }
+.md-pic span { display: block; margin-top: 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #a9abae; }
