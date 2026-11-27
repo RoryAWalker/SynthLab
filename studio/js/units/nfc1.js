@@ -18,7 +18,8 @@ export const PARAMS = {
   'comp.thresh':  { type: 'cont', label: 'Threshold', min: -60, max: 0, def: -20, curve: 'lin', unit: 'dB', fmt: (v) => db(v),
                     marks: [[-60, '−60'], [-40, '−40'], [-20, '−20'], [0, '0']] },
   'comp.ratio':   { type: 'cont', label: 'Ratio', min: 1, max: 20, def: 4, curve: 'log', unit: ':1',
-                    fmt: (v) => (v >= 19.5 ? '20:1 (limiting)' : (v < 10 ? v.toFixed(1) : Math.round(v)) + ':1'),
+                    // from 10:1 a compressor is limiting; 20:1 (the most it goes to) is heavy limiting
+                    fmt: (v) => (v >= 19.5 ? '20:1 (heavy limiting)' : v >= 9.95 ? Math.round(v) + ':1 (limiting)' : v.toFixed(1) + ':1'),
                     marks: [[1, '1'], [2, '2'], [4, '4'], [10, '10'], [20, '20']] },
   'comp.knee':    { type: 'cont', label: 'Knee', min: 0, max: 24, def: 0, curve: 'lin', unit: 'dB',
                     fmt: (v) => (v < 0.5 ? 'hard' : v.toFixed(0) + ' dB soft'), marks: [[0, 'hard'], [12, '12'], [24, '24']] },

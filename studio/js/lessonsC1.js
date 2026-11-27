@@ -107,16 +107,16 @@ export const C1_LESSONS = [
       },
       {
         type: 'goal', title: 'A limiter',
-        text: 'Turn the Ratio up to 20:1. The curve above the threshold goes almost flat: hardly anything gets past. A compressor set this hard is called a limiter, and it is used to stop peaks going over a level.',
+        text: 'Turn the Ratio up to 10:1 or more. The curve above the threshold goes nearly flat: very little gets past. From 10:1 a compressor is said to be limiting, and it is used to stop peaks going much over a level; 20:1 is heavy limiting.',
         unlocked: OPEN, controls: ['comp.ratio'],
         make: (c) => ({ start: { ...FLAT, 'src.sound': 'drums', 'comp.thresh': -18 }, note: c.note }),
-        check: (s) => s.patch['comp.ratio'] >= 15,
-        progress: (s) => clamp01(Math.log(s.patch['comp.ratio'] / 4) / Math.log(15 / 4)),
-        hint: 'Turn the Ratio clockwise, all the way.',
+        check: (s) => s.patch['comp.ratio'] >= 10,
+        progress: (s) => clamp01(Math.log(s.patch['comp.ratio'] / 4) / Math.log(10 / 4)),
+        hint: 'Turn the Ratio clockwise, to 10 or beyond.',
       },
       {
         title: 'Match the threshold',
-        text: 'The test tone steps between quiet (−30 dB) and loud (−6 dB). Listen to the target: which steps get turned down, and by how much? Then set the Threshold to match. After you have heard it, the target shows on the screens in blue.',
+        text: 'The test tone steps between quiet (−30 dB) and loud (−6 dB). Listen to the target: which steps get turned down, and by how much? Then set the Threshold to match.',
         unlocked: OPEN, controls: ['comp.thresh'],
         start: { ...FLAT, 'src.sound': 'tone', 'comp.ratio': 8 }, compare: ['comp.thresh'],
         make: (c) => ({ patch: { 'comp.thresh': c.pick([-40, -20, -12]) }, note: c.note }),
@@ -136,7 +136,7 @@ export const C1_LESSONS = [
         unlocked: OPEN, controls: ['comp.thresh', 'comp.ratio'],
         start: { ...FLAT, 'src.sound': 'bass', 'comp.thresh': -20 }, compare: ['comp.thresh', 'comp.ratio'],
         make: (c) => ({ patch: { 'comp.thresh': c.pick([-36, -30, -12]), 'comp.ratio': c.pick([2, 8, 20]) }, note: c.note }),
-        hint: 'Get the threshold first, with the blue target line on the Levels screen as a guide, then the ratio from the shape of the blue curve.',
+        hint: 'Get the threshold first (if you are stuck, open the screens with Scopes: the blue line on the Levels screen is the target), then the ratio from the shape of the blue curve.',
       },
     ],
   },
@@ -410,7 +410,7 @@ export const C1_LESSONS = [
         unlocked: OPEN, controls: ['comp.thresh', 'comp.ratio', 'comp.bypass'],
         start: { ...FLAT, 'src.sound': 'bass', 'comp.attack': 8, 'comp.release': 200 }, compare: ['comp.thresh', 'comp.ratio'],
         make: (c) => ({ patch: { 'comp.thresh': c.pick([-30, -24, -18]), 'comp.ratio': c.pick([3, 6]) }, note: c.note }),
-        hint: 'Threshold first: watch where the blue target line sits after you have heard it. Then the ratio, from the angle of the blue curve.',
+        hint: 'Threshold first: how much of the bass is touched? If you are stuck, open the screens with Scopes and look for the blue target line. Then the ratio, from the angle of the blue curve.',
       },
       {
         title: 'Punchy drums',
@@ -426,7 +426,7 @@ export const C1_LESSONS = [
         unlocked: OPEN, controls: ['comp.thresh', 'comp.ratio', 'comp.release', 'comp.bypass'],
         start: { ...FLAT, 'src.sound': 'vocals', 'comp.knee': 6, 'comp.attack': 5 }, compare: ['comp.thresh', 'comp.ratio', 'comp.release'],
         make: (c) => ({ patch: { 'comp.thresh': c.pick([-36, -28]), 'comp.ratio': c.pick([2, 5]), 'comp.release': c.pick([60, 400]) }, note: c.note }),
-        hint: 'Get the amount right first (threshold and ratio, with the blue ghosts), then listen to how the vocal recovers between phrases for the release.',
+        hint: 'Get the amount right first (threshold and ratio; the screens, opened with Scopes, show the target in blue), then listen to how the vocal recovers between phrases for the release.',
       },
       {
         title: 'Glue the band',
@@ -473,7 +473,12 @@ export const C1_LESSONS = [
   },
 ];
 
-// Bypass is always open: comparing with the untouched sound is half of using a compressor
+// Bypass is always open: comparing with the untouched sound is half of using a compressor.
+// Matches are by ear: the screens start off (the Scopes button opens them, target and all).
 C1_LESSONS.forEach((l) => l.challenges.forEach((ch) => {
   if (Array.isArray(ch.controls) && !ch.controls.includes('comp.bypass')) ch.controls.push('comp.bypass');
+  if (!ch.type || ch.type === 'match') {
+    ch.scopes = false;
+    ch.text += ' The screens are off for this one, so use your ears (Scopes, top right, opens them; the target shows in blue).';
+  }
 }));

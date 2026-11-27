@@ -508,16 +508,16 @@ body.help-open .help-panel.visible { display: block; animation: help-in 0.15s ea
 body.lesson-mode .free-only { display: none; }
 
 .lesson-bar {
-  display: grid; grid-template-columns: auto minmax(260px, 1fr) auto; gap: 26px; align-items: center;
-  padding: 14px 24px;
+  display: grid; grid-template-columns: 262px minmax(260px, 1fr) auto; gap: 24px; align-items: center;
+  padding: 10px 24px;
   background: linear-gradient(#202227, #1a1c20);
   border-bottom: 1px solid #2e3137;
 }
 .lesson-bar[hidden] { display: none; }
 .lb-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent); }
-.lb-title { font-size: 22px; font-weight: 700; color: #fff; white-space: nowrap; }
-/* the challenge numbers: a compact row above the question, wrapping if there are many */
-.lb-steps { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+.lb-title { font-size: 22px; font-weight: 700; color: #fff; line-height: 1.15; }
+/* the challenge numbers: under the lesson menu on the left, wrapping if there are many */
+.lb-steps { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; max-width: 262px; }
 .lb-step {
   width: 22px; height: 22px; border-radius: 50%; padding: 0; cursor: pointer;
   font: 700 10.5px var(--font); color: #c9ccd1;
@@ -534,14 +534,14 @@ body.lesson-mode .free-only { display: none; }
 @keyframes step-pop { 0% { transform: scale(1); } 40% { transform: scale(1.35); } 100% { transform: scale(1); } }
 .lb-task-head { display: flex; align-items: center; gap: 12px; margin-bottom: 3px; }
 .lb-task-title { font-size: 16px; font-weight: 700; color: #fff; }
-.lb-task-text { font-size: 13.5px; line-height: 1.5; color: #c3c6cc; max-width: 70ch; }
+.lb-task-text { font-size: 13.5px; line-height: 1.5; color: #c3c6cc; max-width: 130ch; }
 .lb-status { font-size: 11px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; padding: 3px 9px; border-radius: 20px; }
 .lb-status:empty { display: none; }
 .lb-status.listen { background: #22344a; color: #9fd0ff; animation: listen-pulse 1s ease-in-out infinite; }
 .lb-status.turn { background: #2b2d33; color: #d8dade; }
 .lb-status.matched { background: #2f8a55; color: #fff; animation: step-pop 0.5s ease-out; }
 @keyframes listen-pulse { 50% { opacity: 0.55; } }
-.lb-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+.lb-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
 .lb-btn {
   font: 600 13px var(--font); color: #e6e7ea; background: #2c2e34; border: 1px solid #41444c;
   border-radius: 8px; padding: 8px 14px; cursor: pointer; white-space: nowrap;
@@ -556,7 +556,7 @@ body.lesson-mode .free-only { display: none; }
 @media (max-width: 1250px) {
   .lesson-bar { grid-template-columns: auto 1fr; }
   .lb-task { grid-column: 2; }
-  .lb-actions { grid-column: 1 / -1; justify-content: flex-start; }
+  .lb-actions { grid-column: 1 / -1; flex-direction: row; flex-wrap: wrap; justify-content: flex-start; align-items: center; }
 }
 
 /* while the target plays, the student can only listen */
@@ -922,24 +922,24 @@ body.preview #fit { margin: 0; }
 
 /* ---- lessons 2+: picker, questions, hints ---- */
 .lb-lesson { margin-top: 6px; font-size: 11.5px; padding: 3px 6px; max-width: 200px; }
-.lb-question { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.lb-question { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .lb-prompt { flex-basis: 100%; font-size: 14.5px; font-weight: 700; color: #fff; line-height: 1.45; margin-bottom: 2px; }
 .lb-question[hidden] { display: none; }
 .lb-answer {
   font: 600 13px var(--font); text-align: left; color: #e6e7ea; background: #2a2d33; border: 1px solid #454850;
-  border-radius: 8px; padding: 8px 12px; cursor: pointer; max-width: 420px; line-height: 1.35;
+  border-radius: 8px; padding: 8px 12px; cursor: pointer; flex: 1 1 0; min-width: 180px; line-height: 1.35; /* the answers share the row */
 }
 .lb-answer:hover:not(:disabled) { background: #33373e; border-color: #6a6e76; }
 .lb-answer.right { background: #2f8a55; border-color: #49c07c; color: #fff; }
 .lb-answer.wrong { background: #4a2427; border-color: #8b3a40; color: #f3c4c7; animation: shake 0.3s; }
 .lb-answer:disabled { cursor: default; }
 @keyframes shake { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
-.lb-feedback { margin-top: 8px; font-size: 13.5px; line-height: 1.5; max-width: 80ch; }
+.lb-feedback { margin-top: 8px; font-size: 13.5px; line-height: 1.5; max-width: 130ch; }
 .lb-feedback:empty { display: none; }
 .lb-feedback.wrong { color: #f3b4a6; }
 .lb-feedback.right { color: #a9efc6; }
 .lb-btn.hint { background: #3b3220; border-color: #8a6a2c; color: #ffd9a0; animation: listen-pulse 1.4s ease-in-out 3; }
-.lb-hintbox { margin-top: 10px; padding: 10px 12px; border-radius: 8px; background: #23211b; border-left: 3px solid var(--accent); max-width: 80ch; }
+.lb-hintbox { margin-top: 10px; padding: 10px 12px; border-radius: 8px; background: #23211b; border-left: 3px solid var(--accent); max-width: 130ch; }
 .lb-hintbox[hidden] { display: none; }
 .lb-hint-text { font-size: 13.5px; line-height: 1.5; color: #e6dcc8; }
 .lb-heat { display: flex; align-items: center; gap: 10px; margin-top: 8px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #9ec7ff; }

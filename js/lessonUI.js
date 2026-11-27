@@ -116,6 +116,7 @@ export class LessonController {
   // so they can carry on playing it under the fireworks
   showIntro(keep = false) {
     this.index = -1;
+    this.chScopes = undefined;
     this.runId = (this.runId || 0) + 1;
     this.busy = false;
     document.body.classList.remove('auditioning');
@@ -179,6 +180,13 @@ export class LessonController {
     const ch = this.challenge;
     this.target = this.makeTarget(ch);
     this.lockFor(ch.unlocked, ch.controls);
+    // a challenge can turn the screens off for itself (the NF-C1's matches: by ear, not by eye;
+    // the Scopes button still opens them). The next challenge goes back to the lesson's setting.
+    if (this.d.showScopes && (ch.scopes !== undefined || this.chScopes !== undefined)) {
+      const sc = ch.scopes !== undefined ? ch.scopes : this.lesson.scopes;
+      this.d.showScopes(sc !== false, sc === undefined);
+    }
+    this.chScopes = ch.scopes;
     this.d.keyboard.markTarget(ch.showKey ? this.target.note : null);
     if (PROC) this.d.ensureAudio();
     if (!(carry && this.lesson.carry)) this.d.setPatch(this.withLoop(this.startOverrides));
@@ -406,7 +414,10 @@ export class LessonController {
   renderQuestion(q) {
     const wrap = $('lb-question');
     wrap.hidden = false;
-    q.options.forEach((opt) => {
+    // in a random order each time, so the right answer is not always in the same place
+    const opts = [...q.options];
+    for (let i = opts.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [opts[i], opts[j]] = [opts[j], opts[i]]; }
+    opts.forEach((opt) => {
       const b = document.createElement('button');
       b.className = 'lb-answer';
       b.textContent = opt.text;

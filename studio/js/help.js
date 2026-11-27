@@ -12,7 +12,7 @@ export const HELP_NFC1 = {
     'The compressor\'s rule, as a graph: across the bottom is the level going in, up the side is the level coming out. The dotted diagonal is 1:1, where out equals in (no change).',
     'Below the threshold the amber curve follows the diagonal. Above it, the curve bends over: with a ratio of 4:1, going 12 dB further in only takes the output 3 dB further up.',
     'The dot shows where the music is on the curve right now. The ring shows where the sound really comes out: it lags behind the dot because the gain reduction takes time to arrive (Attack) and to let go (Release).'],
-    tip: 'Turn the Ratio slowly from 1 to 20 and watch the line above the threshold flatten. At 20:1 it is almost flat: a limiter.' },
+    tip: 'Turn the Ratio slowly from 1 to 20 and watch the line above the threshold flatten. From 10:1 it is nearly flat: limiting. At 20:1, heavy limiting.' },
 
   // ---- source
   'section:src': { title: 'Loop player', body: [
@@ -35,7 +35,7 @@ export const HELP_NFC1 = {
     'Lower the threshold and more of the sound goes over it, so more of it is compressed. On the Levels screen it is the dashed line; on the transfer curve it is where the line bends.'],
     tip: 'With Drums playing, lower the Threshold until the GR meter flickers on the loudest hits only. That is a light touch; keep going and every hit is turned down.' },
   'comp.ratio': { title: 'Ratio', body: [
-    'How hard the sound over the threshold is turned down. At 4:1, for every 4 dB the input goes over the threshold, the output only goes 1 dB over. At 2:1 it is gentle; at 10:1 and above it is very strong; at 20:1 almost nothing gets past the threshold, which is limiting.',
+    'How hard the sound over the threshold is turned down. At 4:1, for every 4 dB the input goes over the threshold, the output only goes 1 dB over. At 2:1 it is gentle and at 4:1 firm. From 10:1 up it is limiting: very little gets past the threshold. 20:1, the top of the knob, is heavy limiting. (A brick-wall limiter, which lets nothing at all past, is a separate tool.)',
     'At 1:1 nothing happens at all, whatever the threshold.'],
     tip: 'Ratio only matters for what is over the threshold. If nothing reaches the threshold, turning the Ratio changes nothing: try it.' },
   'comp.knee': { title: 'Knee', body: [
