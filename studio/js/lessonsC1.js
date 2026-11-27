@@ -16,7 +16,11 @@ const live = (s) => s.live || { playing: false, grMax: 0, grAvg: 0, inDb: -120, 
 const playing = (s) => live(s).playing;
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 // start points: plain settings, so only what the challenge is about is doing anything
-const FLAT = { 'comp.thresh': 0, 'comp.ratio': 4, 'comp.knee': 0, 'comp.attack': 10, 'comp.release': 150, 'comp.makeup': 0, 'comp.auto': 'off', 'comp.bypass': 'off' };
+// Auto makeup is on, so heavy settings do not leave the sound too quiet to hear: what changes is
+// the compression, not the volume. It is off (MANUAL) only where the level is the point: Lesson 3's
+// makeup challenges and Lesson 4's own settings, where setting the level is part of the job.
+const FLAT = { 'comp.thresh': 0, 'comp.ratio': 4, 'comp.knee': 0, 'comp.attack': 10, 'comp.release': 150, 'comp.makeup': 0, 'comp.auto': 'on', 'comp.bypass': 'off' };
+const MANUAL = { ...FLAT, 'comp.auto': 'off' };
 
 export const C1_LESSONS = [
   // ===================================================================================
@@ -24,7 +28,7 @@ export const C1_LESSONS = [
     id: 'c1-amount',
     number: 1,
     title: 'Threshold and Ratio',
-    summary: 'What a compressor does: it turns the loud parts down. Threshold says where it starts, Ratio says how hard it pushes.',
+    summary: 'What a compressor does: it turns the loud parts down. Threshold says where it starts, Ratio says how hard it pushes. Auto makeup (lit, under Makeup) keeps the level steady so you hear the compression, not just a drop in volume; Lesson 3 explains it.',
     doneText: 'You can now set how much a compressor works: Threshold decides what gets turned down, Ratio decides by how much, and the GR meter shows you the result.',
     base: { ...FLAT, 'src.sound': 'drums' },
     introUnlocked: [],
@@ -273,7 +277,7 @@ export const C1_LESSONS = [
         type: 'question', title: 'Quieter?',
         text: 'The drums are compressed. Press Bypass (under Meters) to hear them without the compressor, then press it again to bring it back. Do it a few times.',
         unlocked: OPEN, controls: ['comp.bypass'],
-        make: (c) => ({ start: { ...FLAT, 'src.sound': 'drums', 'comp.thresh': -30, 'comp.ratio': 6 }, note: c.note }),
+        make: (c) => ({ start: { ...MANUAL, 'src.sound': 'drums', 'comp.thresh': -30, 'comp.ratio': 6 }, note: c.note }),
         revealWhen: (s) => s.patch['comp.bypass'] === 'on',
         hint: 'The Bypass button is above the meters. Its light comes on while the compressor is bypassed.',
         question: {
@@ -290,7 +294,7 @@ export const C1_LESSONS = [
         type: 'goal', title: 'Make it up',
         text: 'Turn up the Makeup until the compressed drums are as loud as they are with Bypass. Use your ears and the meters: the Out meter should read about the same as the In meter.',
         unlocked: OPEN, controls: ['comp.makeup', 'comp.bypass'],
-        make: (c) => ({ start: { ...FLAT, 'src.sound': 'drums', 'comp.thresh': -30, 'comp.ratio': 6 }, note: c.note }),
+        make: (c) => ({ start: { ...MANUAL, 'src.sound': 'drums', 'comp.thresh': -30, 'comp.ratio': 6 }, note: c.note }),
         check: (s) => playing(s) && !live(s).bypassed && Math.abs(live(s).outDb - live(s).inDb) <= 1.5,
         progress: (s) => (live(s).bypassed ? 0 : clamp01(1 - Math.abs(live(s).outDb - live(s).inDb) / 12)),
         hint: 'Turn the Makeup up a few dB at a time and compare the In and Out meters. Press Bypass now and then to check by ear (but switch it off again to finish).',
@@ -299,7 +303,7 @@ export const C1_LESSONS = [
         type: 'question', title: 'Why match the level?',
         text: 'Engineers always match the loudness before they compare with Bypass. Think about why.',
         unlocked: OPEN, controls: ['comp.makeup', 'comp.bypass'],
-        make: (c) => ({ start: { ...FLAT, 'src.sound': 'drums', 'comp.thresh': -30, 'comp.ratio': 6, 'comp.makeup': 10 }, note: c.note }),
+        make: (c) => ({ start: { ...MANUAL, 'src.sound': 'drums', 'comp.thresh': -30, 'comp.ratio': 6, 'comp.makeup': 10 }, note: c.note }),
         question: {
           prompt: 'Why match the loudness before comparing with Bypass?',
           options: [
@@ -314,7 +318,7 @@ export const C1_LESSONS = [
         type: 'goal', title: 'Auto makeup',
         text: 'Switch on Auto under the Makeup pot. Then turn the Threshold a long way down, to −40 dB or lower, and watch the Makeup pot turn by itself.',
         unlocked: OPEN, controls: ['comp.thresh', 'comp.auto', 'comp.bypass'],
-        make: (c) => ({ start: { ...FLAT, 'src.sound': 'drums', 'comp.thresh': -20, 'comp.ratio': 6 }, note: c.note }),
+        make: (c) => ({ start: { ...MANUAL, 'src.sound': 'drums', 'comp.thresh': -20, 'comp.ratio': 6 }, note: c.note }),
         check: (s) => s.patch['comp.auto'] === 'on' && s.patch['comp.thresh'] <= -40,
         progress: (s) => (s.patch['comp.auto'] === 'on' ? 0.5 : 0) + clamp01((-20 - s.patch['comp.thresh']) / 20) * 0.5,
         hint: 'The Auto button is under the Makeup pot. Press it (its light comes on), then turn the Threshold anticlockwise.',
@@ -372,7 +376,7 @@ export const C1_LESSONS = [
         title: 'Match the makeup',
         text: 'Listen to how loud the target is, compared with yours. Set the Makeup to match.',
         unlocked: OPEN, controls: ['comp.makeup'],
-        start: { ...FLAT, 'src.sound': 'drums', 'comp.thresh': -30, 'comp.ratio': 6 }, compare: ['comp.makeup'],
+        start: { ...MANUAL, 'src.sound': 'drums', 'comp.thresh': -30, 'comp.ratio': 6 }, compare: ['comp.makeup'],
         make: (c) => ({ patch: { 'comp.makeup': c.pick([6, 12, 18]) }, note: c.note }),
         hint: 'Watch the Out meter during the target, then turn the Makeup until yours reads the same.',
       },
@@ -440,7 +444,7 @@ export const C1_LESSONS = [
         type: 'goal', title: 'Your vocal setting',
         text: 'Your turn, no target: set up the vocal yourself so it is turned down by 3 to 8 dB on average and comes out as loud as it goes in (Out matching In). Every control is yours.',
         unlocked: OPEN, controls: null,
-        make: (c) => ({ start: { ...FLAT, 'src.sound': 'vocals' }, note: c.note }),
+        make: (c) => ({ start: { ...MANUAL, 'src.sound': 'vocals' }, note: c.note }),
         check: (s) => playing(s) && !live(s).bypassed && live(s).grAvg >= 3 && live(s).grAvg <= 8 && Math.abs(live(s).outDb - live(s).inDb) <= 1.5,
         progress: (s) => { const l = live(s); if (l.bypassed) return 0; const g = l.grAvg < 3 ? clamp01(l.grAvg / 3) : l.grAvg > 8 ? clamp01(1 - (l.grAvg - 8) / 8) : 1; return g * 0.6 + clamp01(1 - Math.abs(l.outDb - l.inDb) / 12) * 0.4; },
         hint: 'Threshold and Ratio until the GR meter shows a few dB most of the time, a fast-ish attack (5 to 10 ms) and a medium release (100 to 200 ms), then Makeup (or Auto) until Out matches In.',
@@ -449,7 +453,7 @@ export const C1_LESSONS = [
         type: 'goal', title: 'Your band setting',
         text: 'And the full band: gentle glue, about 2 to 4 dB of gain reduction on average, with the drums still punching through, and matched in level.',
         unlocked: OPEN, controls: null,
-        make: (c) => ({ start: { ...FLAT, 'src.sound': 'band' }, note: c.note }),
+        make: (c) => ({ start: { ...MANUAL, 'src.sound': 'band' }, note: c.note }),
         check: (s) => playing(s) && !live(s).bypassed && live(s).grAvg >= 2 && live(s).grAvg <= 4 && s.patch['comp.attack'] >= 10 && Math.abs(live(s).outDb - live(s).inDb) <= 1.5,
         progress: (s) => { const l = live(s); if (l.bypassed) return 0; const g = l.grAvg < 2 ? clamp01(l.grAvg / 2) : l.grAvg > 4 ? clamp01(1 - (l.grAvg - 4) / 8) : 1; return g * 0.5 + clamp01(s.patch['comp.attack'] / 10) * 0.2 + clamp01(1 - Math.abs(l.outDb - l.inDb) / 12) * 0.3; },
         hint: 'A low ratio (2:1) and a threshold where the GR meter just moves, an attack of 10 ms or more so the drums get through, then Makeup or Auto to match the level.',

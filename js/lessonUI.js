@@ -256,7 +256,8 @@ export class LessonController {
     if (!PROC) return p;
     const now = this.d.getPatch();
     const sound = p['src.sound'] || now['src.sound'];
-    return { ...p, 'src.sound': sound, 'src.play': this.mode === 'lessons' && this.index >= 0 ? 'play' : (now['src.play'] || 'stop') };
+    // the loop plays during a challenge; the lesson's start screen is quiet (Start begins it)
+    return { ...p, 'src.sound': sound, 'src.play': this.mode === 'lessons' && this.index >= 0 ? 'play' : 'stop' };
   }
 
   resetControls() {

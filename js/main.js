@@ -277,6 +277,7 @@ function ensureAudio() {
 function onKnob(id, value) {
   const before = { ...patch };
   patch[id] = value;
+  restartMeasure(); // the meters start again (see measure)
   // a control that moves another (e.g. Osc 3 Frequency snapping to 0 when Osc 3 becomes an oscillator)
   const extra = SYNTH.linked && SYNTH.linked(id, before, patch);
   if (extra) for (const k in extra) { if (patch[k] !== extra[k]) { onKnob(k, extra[k]); if (knobs[k]) knobs[k].set(extra[k]); } }
@@ -300,6 +301,7 @@ function refreshScales() {
 
 function setPatch(p) {
   patch = { ...defaultPatch(), ...p };
+  restartMeasure(); // the meters start again (see measure)
   refreshScales();
   for (const id in knobs) knobs[id].set(patch[id]);
   engine.setPatch(patch);
@@ -321,10 +323,19 @@ function lockControls(ids) {
 
 // What the NF-C1's meters have shown over the last two seconds, for lessons that ask for, say,
 // "about 6 dB of gain reduction": playing, peak and average gain reduction (dB), and the average
-// level in and out (dBFS, before the listening level).
+// level in and out (dBFS, before the listening level). Only since the last change of setting, and
+// only once the meters have had 1.5 s to settle: until then it reports nothing (not playing), so
+// a goal can't be passed on readings left over from before (Bypass pressed in the last challenge,
+// or the compressor still releasing the last challenge's gain reduction).
+let measureSince = 0;
+// (a function declaration, safe to call while the page is still starting up, before scope exists)
+function restartMeasure() { try { measureSince = scope && scope.n !== undefined ? scope.n : 0; } catch { /* not started yet */ } }
 function measure() {
   if (!scope || !scope.inp) return null;
-  const live = engine.live || {}, frames = Math.min(scope.n, Math.round(2 * (scope.rate || 375)));
+  const rate = scope.rate || 375, since = scope.n - measureSince;
+  if (since < 1.5 * rate) return { playing: false, settling: true, grMax: 0, grAvg: 0, inDb: -120, outDb: -120, bypassed: patch['comp.bypass'] === 'on' };
+  // (the first 0.75 s after a change is left out: the compressor is still letting go of the old setting)
+  const live = engine.live || {}, frames = Math.min(since - Math.round(0.75 * rate), Math.round(2 * rate));
   let grMax = 0, grSum = 0, pin = 0, pout = 0;
   for (let a = 0; a < frames; a++) {
     const k = (scope.n - 1 - a + scope.cap) % scope.cap;
