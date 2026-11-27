@@ -308,9 +308,92 @@ const BASIC_CABLES = {
 export const initCables = (patch) => (patch['rack.layout'] === DEFAULT_LAYOUT ? { ...BASIC_CABLES } : {});
 
 export const INIT_NAME = 'Basic Synth'; // (the first preset, loaded by Init)
+// ---- presets: what the NF-ModRack's own modules can do that the NF-Modular cannot --------------
+const C = (input, output) => ({ ['jack.' + input]: output }); // a cable
+// a recorded XY movement: a slow circle (2 s), as the pad would record it (50 points a second)
+const CIRCLE = '2;' + Array.from({ length: 101 }, (_, i) => {
+  const a = (i / 100) * Math.PI * 2, r = (v) => Math.round(v * 1000) / 1000;
+  return `${r(0.5 + 0.4 * Math.cos(a))},${r(0.5 + 0.4 * Math.sin(a))}`;
+}).join(';');
+// a drawn shape in steps (Draw, with Snap): levels, one per step
+const steps = (levels) => '-1;' + levels.flatMap((y, i) => [`${i / levels.length},${y},0`, `${(i + 1) / levels.length},${y},0`]).join(';');
 export const PRESETS = {
   'Basic Synth': {},
   'Empty Rack': { 'rack.layout': '|out|' },
+  // a String and a Ping struck together, both driven hard inside their rings, then into the Mixer at 11
+  // on Drive: a huge, distorted, metallic pluck that the filter envelope closes down
+  'Massive Pluck': {
+    'rack.layout': 'string1,ping1|mix1,vcf1,vca1,out|env1,env2',
+    ...C('string1.pitch', 'kb.pitch'), ...C('string1.strike', 'kb.trig'), ...C('ping1.pitch', 'kb.pitch'), ...C('ping1.strike', 'kb.trig'),
+    ...C('mix1.in1', 'string1.out'), ...C('mix1.in2', 'ping1.out'), ...C('vcf1.in', 'mix1.out'), ...C('vcf1.cv', 'env2.out'),
+    ...C('vca1.in', 'vcf1.lp'), ...C('vca1.cv', 'env1.out'), ...C('env1.gate', 'kb.gate'), ...C('env2.gate', 'kb.gate'), ...C('out.in', 'vca1.out'),
+    'string1.drive': 1, 'string1.fb': 0.8, 'string1.tone': 0.85, 'string1.decay': 2.5,
+    'ping1.drive': 1, 'ping1.fb': 0.6, 'ping1.partials': 3, 'ping1.stretch': 1, 'ping1.tone': 0.7, 'ping1.decay': 1.5, 'ping1.range': -1,
+    'mix1.l1': 11, 'mix1.l2': 9, 'mix1.mode': 'drive', 'vcf1.cutoff': 1800, 'vcf1.res': 0.35, 'vcf1.cv': 0.45,
+    'env1.a': 0.001, 'env1.d': 1.6, 'env1.s': 0.25, 'env1.r': 0.7, 'env2.a': 0.001, 'env2.d': 0.5, 'env2.s': 0.1, 'env2.r': 0.5, 'out.vol': 0.75,
+  },
+  // Ping with three partials at 1, 4 and 9 times the note (Stretch 2), like a marimba's tuned bars
+  'Wooden Bars': {
+    'rack.layout': 'ping1|out|',
+    ...C('ping1.pitch', 'kb.pitch'), ...C('ping1.strike', 'kb.trig'), ...C('out.in', 'ping1.out'),
+    'ping1.partials': 3, 'ping1.stretch': 2, 'ping1.tone': 0.45, 'ping1.decay': 0.9, 'out.vol': 0.9,
+  },
+  // drum-machine toms: one partial, driven, so each hit bends up and falls back; the Sequencer plays them
+  'Ping Toms': {
+    'rack.layout': 'ping1|out|',
+    ...C('ping1.pitch', 'seq.pitch'), ...C('ping1.strike', 'seq.trig'), ...C('out.in', 'ping1.out'),
+    'ping1.partials': 1, 'ping1.drive': 0.75, 'ping1.decay': 0.35, 'ping1.range': -1,
+    'seq.run': 'run', 'seq.rate': 6, 'seq.s1': 0, 'seq.s2': -5, 'seq.s3': 0, 'seq.s4': 7, 'seq.s5': 0, 'seq.s6': -5, 'seq.s7': 3, 'seq.s8': -12, 'seq.g6': 'off', 'out.vol': 0.9,
+  },
+  // eight inharmonic partials singing on through Feedback, their spacing drifting slowly (an LFO on Stretch)
+  'Gong Drone': {
+    'rack.layout': 'ping1|att1,out|lfo1',
+    ...C('ping1.pitch', 'kb.pitch'), ...C('ping1.strike', 'kb.trig'), ...C('att1.in1', 'lfo1.out'), ...C('ping1.stretch', 'att1.out1'), ...C('out.in', 'ping1.out'),
+    'ping1.partials': 8, 'ping1.stretch': 1.27, 'ping1.tone': 0.8, 'ping1.decay': 6, 'ping1.fb': 0.95, 'ping1.drive': 0.35, 'ping1.range': -1,
+    'att1.a1': 0.25, 'lfo1.rate': 0.12, 'lfo1.shape': 'sine', 'out.vol': 0.8,
+  },
+  // no strike at all: noise into Ping's In makes the partials sound bowed, swelling in with an envelope
+  'Bowed Glass': {
+    'rack.layout': 'noise1,ping1|vca1,out|env1',
+    ...C('ping1.pitch', 'kb.pitch'), ...C('ping1.in', 'noise1.white'), ...C('vca1.in', 'ping1.out'), ...C('vca1.cv', 'env1.out'),
+    ...C('env1.gate', 'kb.gate'), ...C('out.in', 'vca1.out'),
+    'ping1.partials': 4, 'ping1.stretch': 1.08, 'ping1.tone': 0.55, 'ping1.decay': 3, 'ping1.range': 1,
+    'env1.a': 0.8, 'env1.d': 0.5, 'env1.s': 1, 'env1.r': 1.5, 'out.vol': 0.9,
+  },
+  // a String pushed too far (Feedback past 100%): a raw, screaming sustain, like a guitar feeding back
+  'Screaming String': {
+    'rack.layout': 'string1|vca1,out|env1',
+    ...C('string1.pitch', 'kb.pitch'), ...C('string1.strike', 'kb.trig'), ...C('vca1.in', 'string1.out'), ...C('vca1.cv', 'env1.out'),
+    ...C('env1.gate', 'kb.gate'), ...C('out.in', 'vca1.out'),
+    'string1.fb': 1.3, 'string1.drive': 0.6, 'string1.tone': 0.6, 'string1.decay': 2,
+    'env1.a': 0.005, 'env1.d': 0.3, 'env1.s': 1, 'env1.r': 0.25, 'out.vol': 0.7,
+  },
+  // a drawn shape, looping, moves the Formant's Vowel: the bass "says" a word on every note
+  'Talking Bass': {
+    'rack.layout': 'vco1,formant1|vca1,env1,out|draw1',
+    ...C('vco1.pitch', 'kb.pitch'), ...C('formant1.in', 'vco1.saw'), ...C('formant1.vowel', 'draw1.out'), ...C('draw1.gate', 'kb.gate'),
+    ...C('vca1.in', 'formant1.out'), ...C('vca1.cv', 'env1.out'), ...C('env1.gate', 'kb.gate'), ...C('out.in', 'vca1.out'),
+    'vco1.range': -1, 'formant1.vowel': 0, 'formant1.res': 0.7,
+    'draw1.mode': 'loop', 'draw1.time': 0.6, 'draw1.nodes': '-1;0,0.9,-0.4;0.3,0.2,0.3;0.55,1,0;0.8,0.45,0;1,0.9,0',
+    'env1.a': 0.003, 'env1.d': 0.4, 'env1.s': 0.8, 'env1.r': 0.15, 'out.vol': 0.6,
+  },
+  // a recorded circle on the XY pad, looping: X sweeps the filter, Y its resonance
+  'XY Filter Dance': {
+    'rack.layout': 'vco1,vco2,mix1|vcf1,vca1,out|env1,xy1',
+    ...C('vco1.pitch', 'kb.pitch'), ...C('vco2.pitch', 'kb.pitch'), ...C('mix1.in1', 'vco1.saw'), ...C('mix1.in2', 'vco2.saw'),
+    ...C('vcf1.in', 'mix1.out'), ...C('vcf1.cv', 'xy1.x'), ...C('vcf1.res', 'xy1.y'), ...C('vca1.in', 'vcf1.lp'), ...C('vca1.cv', 'env1.out'),
+    ...C('env1.gate', 'kb.gate'), ...C('out.in', 'vca1.out'),
+    'vco2.tune': 0.1, 'mix1.l1': 7, 'mix1.l2': 6, 'vcf1.cutoff': 700, 'vcf1.res': 0.45, 'vcf1.cv': 0.45,
+    'xy1.mode': 'loop', 'xy1.path': CIRCLE, 'xy1.smooth': 0.05, 'env1.a': 0.02, 'env1.s': 0.9, 'env1.r': 0.5,
+  },
+  // a 16-step on/off pattern drawn with Snap, looping on the VCA: hold a chord and it chops it in rhythm
+  'Drawn Gate': {
+    'rack.layout': 'vco1,vco2,mix1|vcf1,vca1,out|draw1',
+    ...C('vco1.pitch', 'kb.pitch'), ...C('vco2.pitch', 'kb.pitch'), ...C('mix1.in1', 'vco1.saw'), ...C('mix1.in2', 'vco2.sq'),
+    ...C('vcf1.in', 'mix1.out'), ...C('vca1.in', 'vcf1.lp'), ...C('vca1.cv', 'draw1.out'), ...C('draw1.gate', 'kb.gate'), ...C('out.in', 'vca1.out'),
+    'vco2.tune': 7, 'vcf1.cutoff': 2600, 'vcf1.res': 0.3, 'vcf1.cv': 0, 'vca1.level': 0, 'vca1.cv': 1,
+    'draw1.mode': 'loop', 'draw1.time': 2, 'draw1.nodes': steps([1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 0.6, 1, 0, 1, 0.6, 0.3]),
+  },
 };
 
 // Help: each module shares the NF-Modular's help for the module it comes from
