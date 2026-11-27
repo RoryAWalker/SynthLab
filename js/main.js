@@ -915,7 +915,14 @@ function buildPlayer() {
     });
     display.after(box);
   }
-  document.querySelector('#stage > .synth').after(unit);
+  const synth = document.querySelector('#stage > .synth');
+  // the console (with its rack beside it): the desk and its player share one column
+  if (SYNTH.OUTBOARD) {
+    const col = document.createElement('div');
+    col.className = 'console-col';
+    synth.before(col);
+    col.append(synth, unit);
+  } else synth.after(unit);
   // the display follows what the engine is playing
   const state = display.querySelector('.pd-state'), now = display.querySelector('.pd-now'), bar = display.querySelector('.pd-bar i');
   let shown = '';
@@ -938,37 +945,61 @@ function buildPlayer() {
   })();
 }
 
-// The NF-Mix4's outboard: separate rack units (a reverb, a compressor) beside the screens, each with
-// its few controls and its In and Out sockets, patched to the desk with cables.
+// The NF-Mix4's outboard rack, beside the screens: the patch bay on top (every patch point, as
+// sockets: outputs above, inputs below), then the separate units (reverb, delay, compressors), each
+// with its few controls and little In and Out meters, so students can see they have patched it.
 function buildOutboard() {
   const rack = document.createElement('div');
   rack.className = 'outboard-rack';
-  SYNTH.OUTBOARD.forEach((sec) => {
+  const unitOf = (cls, inner) => {
     const unit = document.createElement('section');
-    unit.className = 'outboard-unit';
-    unit.innerHTML = `<div class="cheek left"></div><div class="outboard-face"><div class="ob-brand"><span class="brand-mark">NoFoe</span><span class="ob-name">${sec.brandSub}</span></div></div><div class="cheek right"></div>`;
-    const face = unit.querySelector('.outboard-face');
-    face.appendChild(buildSection(sec));
-    if (sec.gr && consoleMeters) face.appendChild(consoleMeters.ladder(sec.gr, 'GR', sec.gr + 'meter'));
+    unit.className = 'outboard-unit ' + cls;
+    unit.innerHTML = `<div class="cheek left"></div><div class="outboard-face">${inner}</div><div class="cheek right"></div>`;
     rack.appendChild(unit);
+    return unit.querySelector('.outboard-face');
+  };
+  const mini = () => { const m = document.createElement('div'); m.className = 'mini-meter'; m.innerHTML = '<i></i>'.repeat(5); return m; };
+  const minis = []; // [key, the meter]
+  if (SYNTH.PATCHBAY && cables) {
+    const B = SYNTH.PATCHBAY;
+    const face = unitOf('patchbay', `<div class="ob-brand" data-help="section:${B.id}"><span class="brand-mark">NoFoe</span><span class="ob-name">${B.title.toUpperCase()}</span></div>`);
+    const bay = document.createElement('div');
+    bay.className = 'section bay';
+    bay.dataset.section = B.id;
+    bay.appendChild(cables.buildStrip(B.rows));
+    face.appendChild(bay);
+    sections[B.id] = bay;
+    bay.querySelectorAll('.jack-cell').forEach((cell) => {
+      const key = cell.dataset.param || (cell.dataset.help || '').replace(/^out:/, '');
+      const m = mini(); cell.appendChild(m); minis.push([key, m]);
+    });
+  }
+  SYNTH.OUTBOARD.forEach((sec) => {
+    const face = unitOf('ob-' + sec.id, `<div class="ob-brand" data-help="section:${sec.id}"><span class="brand-mark">NoFoe</span><span class="ob-name">${sec.brandSub}</span></div>`);
+    face.appendChild(buildSection(sec));
+    if (sec.io) {
+      const io = document.createElement('div');
+      io.className = 'ob-io';
+      sec.io.forEach((key, i) => {
+        const row = document.createElement('div');
+        row.className = 'io-row';
+        row.dataset.help = 'iometer';
+        row.innerHTML = `<span>${i ? 'Out' : 'In'}</span>`;
+        const m = mini(); row.appendChild(m); minis.push([key, m]);
+        io.appendChild(row);
+      });
+      face.appendChild(io);
+    }
+    if (sec.gr && consoleMeters) face.appendChild(consoleMeters.ladder(sec.gr, 'GR', 'ocgrmeter'));
   });
   document.getElementById('stage').appendChild(rack);
-  // a mini meter under every socket on the outboard (and the desk's FX In): is anything arriving
-  // at the input, and leaving from the output? So students can see they have patched correctly.
-  const minis = [];
-  document.querySelectorAll('.outboard-face .jack-cell, .panel .jack-cell[data-param="fxr.in"]').forEach((cell) => {
-    const key = cell.dataset.param || (cell.dataset.help || '').replace(/^out:/, '');
-    const m = document.createElement('div');
-    m.className = 'mini-meter';
-    m.innerHTML = '<i></i>'.repeat(5);
-    cell.appendChild(m);
-    minis.push({ key, lights: [...m.children], v: -140 });
-  });
+  // the mini meters: five tiny lights each, is anything arriving at an input / leaving an output?
   const STEPS = [-48, -36, -24, -12, -3]; // dBFS, one light each
+  const state = minis.map(([key, m]) => ({ key, lights: [...m.children], v: -140 }));
   (function miniLoop() {
     requestAnimationFrame(miniLoop);
     const live = engine.running && engine.live && engine.live.console ? engine.live : null;
-    minis.forEach((mm) => {
+    state.forEach((mm) => {
       const db = live ? ((live.insDb && live.insDb[mm.key]) ?? (live.outsDb && live.outsDb[mm.key]) ?? -140) : -140;
       mm.v = Math.max(db, mm.v - 1.5); // falls about 90 dB a second
       mm.lights.forEach((l, i) => l.classList.toggle('on', mm.v >= STEPS[i]));

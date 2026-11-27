@@ -36,7 +36,7 @@ export class ConsoleMeters {
   // a segmented LED ladder; key: ch1..ch4, aux1, aux2, fx, mainL, mainR, gr (bus comp), ocgr (outboard comp)
   ladder(key, text, help) {
     const el = document.createElement('div');
-    const gr = key === 'gr' || key === 'ocgr';
+    const gr = key === 'gr' || key === 'ocgr' || key === 'oc2gr';
     el.className = `meter meter-${help}` + (gr ? ' meter-gr' : '');
     el.dataset.help = help;
     const lights = gr ? 12 : LIGHTS.length;
@@ -85,8 +85,8 @@ export class ConsoleMeters {
     const mode = this.mode;
     if (this.pfl) this.pfl.classList.toggle('on', !!(live && live.anySolo));
     this.meters.forEach((m) => {
-      if (m.key === 'gr' || m.key === 'ocgr') { // gain reduction (bus comp, outboard comp): its own simple fall
-        const g = live ? (m.key === 'gr' ? live.grMax : live.ocgrMax) || 0 : 0;
+      if (m.key === 'gr' || m.key === 'ocgr' || m.key === 'oc2gr') { // gain reduction (bus comp, outboard comps): its own simple fall
+        const g = live ? ({ gr: live.grMax, ocgr: live.ocgrMax, oc2gr: live.oc2grMax }[m.key]) || 0 : 0;
         m.v = Math.max(g, m.v - 30 * dt);
         m.segs.forEach((s, i) => s.classList.toggle('on', m.v > 0.3 && (m.segs.length - 1 - i) < m.v / 12 * m.segs.length));
         return;

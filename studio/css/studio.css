@@ -262,14 +262,15 @@ body[data-synth="nf4"] .strip .scribble { width: 104px; align-self: center; }
 
 /* ---- NF-Mix4: the console on the left with the Multitrack Player under it; the screens on the
    right, one above the other, with the outboard rack (reverb, compressor) under them ---- */
-body[data-synth="nf4"] #stage { display: grid; grid-template-columns: auto 560px; grid-template-areas: "synth scopes" "synth rack" "player ."; column-gap: 18px; align-items: start; }
+body[data-synth="nf4"] #stage { display: grid; grid-template-columns: auto 560px; grid-template-areas: "synth scopes" "synth rack"; column-gap: 18px; align-items: start; }
+body[data-synth="nf4"] .console-col { grid-area: synth; grid-row: 1 / span 2; display: flex; flex-direction: column; }
 body[data-synth="nf4"] .synth { grid-area: synth; }
 body[data-synth="nf4"] .scope-unit { grid-area: scopes; flex-direction: column; width: auto; margin: 0; padding: 14px 16px 12px; gap: 10px; align-items: stretch; }
-body[data-synth="nf4"] .player-unit { grid-area: player; }
+body[data-synth="nf4"] .player-unit { margin-top: 12px; }
 body[data-synth="nf4"] .player-face { width: auto; flex: 1; }
 body[data-synth="nf4"] .player-display { width: 380px; }
 /* the outboard rack: separate units, each its own colour, patched to the desk with cables */
-.outboard-rack { grid-area: rack; display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
+.outboard-rack { grid-area: rack; display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
 .outboard-unit { display: flex; align-items: stretch; filter: drop-shadow(0 10px 14px rgba(0,0,0,0.55)); }
 .outboard-unit .cheek { width: 26px; background-image:
     radial-gradient(ellipse 6px 4px at 50% 50%, #0b0c0e 60%, transparent 66%),
@@ -277,8 +278,10 @@ body[data-synth="nf4"] .player-display { width: 380px; }
     linear-gradient(90deg, #4a4e54, #6b7078 45%, #50545a 75%, #3c3f44); }
 .outboard-face { flex: 1; display: flex; align-items: center; gap: 14px; padding: 10px 14px 8px; border-top: 1px solid rgba(255,255,255,0.12); border-bottom: 1px solid #000;
   background: repeating-linear-gradient(90deg, rgba(255,255,255,0.02) 0 1px, transparent 1px 3px), linear-gradient(180deg, var(--ob-hi), var(--ob) 55%, var(--ob-lo)); }
-.outboard-unit:nth-child(1) .outboard-face { --ob-hi: #3b3550; --ob: #2c2740; --ob-lo: #221e33; } /* the reverb: deep violet */
-.outboard-unit:nth-child(2) .outboard-face { --ob-hi: #3a4645; --ob: #2b3534; --ob-lo: #212a29; } /* the compressor: dark teal */
+.outboard-unit.ob-rev .outboard-face { --ob-hi: #3b3550; --ob: #2c2740; --ob-lo: #221e33; } /* the reverb: deep violet */
+.outboard-unit.ob-dl .outboard-face { --ob-hi: #4a3d2c; --ob: #382d20; --ob-lo: #2a2118; } /* the delay: dark amber */
+.outboard-unit.ob-oc .outboard-face, .outboard-unit.ob-oc2 .outboard-face { --ob-hi: #3a4645; --ob: #2b3534; --ob-lo: #212a29; } /* compressors: dark teal */
+.outboard-unit.patchbay .outboard-face { --ob-hi: #26282c; --ob: #1b1c1f; --ob-lo: #141517; padding: 8px 12px 6px; } /* the patch bay: black */
 .ob-brand { flex: none; width: 84px; display: flex; flex-direction: column; line-height: 1.1; }
 .ob-brand .brand-mark { font-size: 16px; color: #eef1f4; }
 .ob-name { font-size: 9px; font-weight: 800; letter-spacing: 0.2em; color: #b8bec6; margin-top: 3px; }
@@ -382,3 +385,25 @@ body[data-synth="nf4"] .section[data-section="aux"] .row-title { margin: 26px -6
 body[data-synth="nf4"] .section[data-section="aux"] .row-title span { padding: 0 2px; }
 /* no Hold button on the console's screens */
 body[data-synth="nf4"] .scope-controls { display: none; }
+
+/* ---- the patch bay: outputs above, inputs below, a mini meter under each socket ---- */
+.patchbay .bay { flex: 1; padding: 0; }
+.patchbay .jack-rows { display: flex; flex-direction: column; gap: 4px; }
+.patchbay .jack-strip { display: flex; gap: 2px; margin: 0; justify-content: space-between; align-items: center; }
+.patchbay .jack-rowlabel { width: 26px; font: 800 9px var(--font); letter-spacing: 0.12em; text-transform: uppercase; color: #8d949c; }
+.patchbay .jack-cell { width: 34px; padding: 2px 0 3px; gap: 2px; }
+.patchbay .outboard-face { min-width: 0; overflow: hidden; }
+.patchbay .jack-label { font-size: 8px; letter-spacing: 0.02em; white-space: nowrap; }
+.patchbay .socket { transform: scale(0.82); }
+.patchbay .ob-brand { width: 62px; }
+/* each unit's little In and Out meters */
+.ob-io { display: flex; flex-direction: column; gap: 6px; flex: none; }
+.io-row { display: flex; align-items: center; gap: 5px; font: 800 9px var(--font); letter-spacing: 0.1em; text-transform: uppercase; color: #b8bec6; }
+.io-row span { width: 24px; text-align: right; }
+.outboard-face .section { grid-template-columns: 1fr; }
+/* the console's screens: the signal flow large, the EQ small (room for the rack and patch bay) */
+body[data-synth="nf4"] .scope-unit .scope-screen-wrap:first-child .bezel { height: 330px; }
+body[data-synth="nf4"] .scope-unit .scope-screen-wrap:last-child .bezel { height: 180px; }
+/* 48 V and Ø: centred under the HPF, a little space before the EQ */
+body[data-synth="nf4"] .zigzag .stack-cell:has([data-param$=".p48"]) { justify-self: center; width: 100%; justify-content: center; margin: 6px 0 16px; }
+.ob-name { white-space: nowrap; letter-spacing: 0.12em; }

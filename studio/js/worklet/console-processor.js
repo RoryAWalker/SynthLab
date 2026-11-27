@@ -1,6 +1,6 @@
-// NF-Mix4 console: four channels with insert points, two aux buses, a stereo FX Return, a one-knob
-// bus compressor and the main mix; plus the outboard units patched into it with cables (a reverb
-// and a mono compressor). Plays a four-track song (one stem per channel) and reports the level at
+// NF-Mix4 console: four channels with insert points, two aux buses, two FX Returns, a one-knob
+// bus compressor and the main mix; plus the outboard units patched to it on the patch bay (a
+// reverb, a delay and two compressors). Plays a four-track song (one stem per channel) and reports the level at
 // every stage, so the screens and meters can show the signal flowing through.
 //
 // Each channel, in order (the same order as the strip, top to bottom):
@@ -96,11 +96,29 @@ class Compressor {
   }
 }
 
+// The outboard delay: one tap, 100% wet, with feedback (the repeats). Moving Time glides the delay
+// to its new length (as a tape echo does) instead of jumping, so it never clicks. Each repeat is a
+// little darker than the last.
+class Delay {
+  constructor() { this.buf = new Float32Array(Math.ceil(1.5 * sampleRate)); this.w = 0; this.d = 0.3 * sampleRate; this.lp = 0; }
+  run(x, timeS, fb) {
+    const target = Math.max(0.02, Math.min(1.4, timeS)) * sampleRate;
+    this.d += (target - this.d) * 0.0005; // the glide
+    let r = this.w - this.d; if (r < 0) r += this.buf.length;
+    const i = Math.floor(r), f = r - i, j = (i + 1) % this.buf.length;
+    const y = this.buf[i] * (1 - f) + this.buf[j] * f;
+    this.lp += 0.35 * (y - this.lp); // darker repeats
+    this.buf[this.w] = Math.max(-4, Math.min(4, x + this.lp * fb));
+    if (++this.w >= this.buf.length) this.w = 0;
+    return y;
+  }
+}
+
 // which channels hold condenser microphones (silent without 48 V phantom power)
 const CONDENSER = [true, false, false, false]; // the drum overheads
 
 // the outputs (sockets that send), in the order they are worked out each sample
-const OUTS = ['ch1.send', 'ch2.send', 'ch3.send', 'ch4.send', 'oc.out', 'aux1.out', 'aux2.out', 'rev.out'];
+const OUTS = ['ch1.send', 'ch2.send', 'ch3.send', 'ch4.send', 'oc.out', 'oc2.out', 'aux1.out', 'aux2.out', 'rev.out', 'dl.out'];
 const OUT_INDEX = Object.fromEntries(OUTS.map((o, i) => [o, i]));
 // the bus compressor: fixed settings (one knob, Threshold), and auto makeup that listens (as on the NF-C1)
 const BC_RATIO = 4, BC_KNEE = 6, BC_ATTACK = 10, BC_RELEASE = 200;
@@ -123,7 +141,8 @@ class ConsoleProcessor extends AudioWorkletProcessor {
     this.rev = new Reverb();
     this.rev.setTime(2);
     this.revOut = [0, 0];
-    this.oc = new Compressor();
+    this.oc = new Compressor(); this.oc2 = new Compressor();
+    this.dl = new Delay();
     this.outL = new Float64Array(OUTS.length); // each output's latest value (left / mono, and right)
     this.outR = new Float64Array(OUTS.length);
     this.gr = 0; this.peak = 0;
@@ -147,8 +166,9 @@ class ConsoleProcessor extends AudioWorkletProcessor {
     // per channel: in (as it arrives), pre (after the preamp), eq (after HPF/EQ), ins (after the
     // insert: what the rest of the strip gets), post (after mute and fader), l / r (after pan)
     this.m = { ch: [0, 1, 2, 3].map(() => ({ in: 0, pre: 0, eq: 0, ins: 0, post: 0, l: 0, r: 0, clip: 0, sq: 0 })),
-      aux1: 0, aux2: 0, fx: 0, bus: 0, mainL: 0, mainR: 0, mon: 0, gr: 0, solo: 0, ocgr: 0, prot: 0,
-      ins: { 'oc.in': 0, 'rev.in': 0, 'fxr.in': 0 }, // what reaches the outboard's inputs (their mini meters)
+      aux1: 0, aux2: 0, fx: 0, bus: 0, mainL: 0, mainR: 0, mon: 0, gr: 0, solo: 0, ocgr: 0, oc2gr: 0, prot: 0,
+      // what reaches each input on the patch bay (their mini meters)
+      ins: { 'oc.in': 0, 'oc2.in': 0, 'rev.in': 0, 'dl.in': 0, 'fxr.in': 0, 'fxr2.in': 0, 'ch1.ret': 0, 'ch2.ret': 0, 'ch3.ret': 0, 'ch4.ret': 0 },
       outs: new Float64Array(OUTS.length),
       sq: { aux1: 0, aux2: 0, fx: 0, mainL: 0, mainR: 0, solo: 0 }, n: 0 };
   }
@@ -196,13 +216,15 @@ class ConsoleProcessor extends AudioWorkletProcessor {
         c, live, mute: p[k + 'mute'] === 'on', solo: p[k + 'solo'] === 'on', main: p[k + 'main'] !== 'off', eq: p[k + 'eq'] !== 'off',
         gain: dbToLin(preampDb(p[k + 'gain'] ?? 0.5, mic)) * (p[k + 'pol'] === 'on' ? -1 : 1),
         fader: dbToLin(faderDb(p[k + 'fader'] ?? 0.75)), a1: sendGain(p[k + 'aux1'] ?? 0), a2: sendGain(p[k + 'aux2'] ?? 0),
-        pl: Math.cos(th), pr: Math.sin(th), ret: this.src(k + 'ret'), sendI: i,
+        pl: Math.cos(th), pr: Math.sin(th), ret: this.src(k + 'ret'), retKey: k + 'ret',
       };
     });
     const anySolo = chs.some((c) => c.solo);
-    const a1m = sendGain(p['aux1.master'] ?? 0.89), a2m = sendGain(p['aux2.master'] ?? 0.89), fxLevel = sendGain(p['fxr.level'] ?? 0.89);
+    const a1m = sendGain(p['aux1.master'] ?? 0.89), a2m = sendGain(p['aux2.master'] ?? 0.89), fxLevel = sendGain(p['fxr.level'] ?? 0), fx2Level = sendGain(p['fxr2.level'] ?? 0);
     // patching
-    const ocIn = this.src('oc.in'), revIn = this.src('rev.in'), fxIn = this.src('fxr.in');
+    const ocIn = this.src('oc.in'), oc2In = this.src('oc2.in'), revIn = this.src('rev.in'), dlIn = this.src('dl.in'), fxIn = this.src('fxr.in'), fx2In = this.src('fxr2.in');
+    const oc2T = p['oc2.thresh'] ?? -20, oc2Ratio = p['oc2.ratio'] ?? 4, oc2Gain = dbToLin(p['oc2.gain'] ?? 0);
+    const dlTime = (p['dl.time'] ?? 350) / 1000, dlFb = Math.min(0.95, p['dl.fb'] ?? 0.35);
     // the outboard compressor
     const ocT = p['oc.thresh'] ?? -20, ocRatio = p['oc.ratio'] ?? 4, ocGain = dbToLin(p['oc.gain'] ?? 0);
     const ocAtk = Math.exp(-1 / (0.010 * sampleRate)), ocRel = Math.exp(-1 / (0.150 * sampleRate));
@@ -252,11 +274,15 @@ class ConsoleProcessor extends AudioWorkletProcessor {
       { const x = ocIn < 0 ? 0 : mono(ocIn); if (Math.abs(x) > m.ins['oc.in']) m.ins['oc.in'] = Math.abs(x);
         const y = this.oc.run(x, ocT, ocRatio, ocGain, ocAtk, ocRel, peakFall); // (unpatched: it lets go)
         oL[4] = oR[4] = y; if (this.oc.gr > m.ocgr) m.ocgr = this.oc.gr; }
+      { const x = oc2In < 0 ? 0 : mono(oc2In); if (Math.abs(x) > m.ins['oc2.in']) m.ins['oc2.in'] = Math.abs(x);
+        const y = this.oc2.run(x, oc2T, oc2Ratio, oc2Gain, ocAtk, ocRel, peakFall);
+        oL[5] = oR[5] = y; if (this.oc2.gr > m.oc2gr) m.oc2gr = this.oc2.gr; }
       // 3. the rest of each channel, from its insert return
       let mainL = 0, mainR = 0, aux1 = 0, aux2 = 0, solo = 0;
       for (let k = 0; k < 4; k++) {
         const s = chs[k], mc = m.ch[k];
         let y = s.ret < 0 ? pre[k] : mono(s.ret); // nothing in Return: straight through (normalled)
+        if (s.ret >= 0 && Math.abs(y) > m.ins[s.retKey]) m.ins[s.retKey] = Math.abs(y);
         y = Math.max(-4, Math.min(4, y)); // (the desk's own rails: a feedback loop cannot run away)
         if (Math.abs(y) > mc.ins) mc.ins = Math.abs(y);
         mc.sq += y * y;
@@ -273,14 +299,20 @@ class ConsoleProcessor extends AudioWorkletProcessor {
       }
       // 4. the aux buses and their output sockets
       const a1 = Math.max(-4, Math.min(4, aux1 * a1m)), a2 = Math.max(-4, Math.min(4, aux2 * a2m));
-      oL[5] = oR[5] = a1; oL[6] = oR[6] = a2;
+      oL[6] = oR[6] = a1; oL[7] = oR[7] = a2;
       // 5. the reverb (mono in, stereo out)
       { const x = revIn < 0 ? 0 : mono(revIn); if (Math.abs(x) > m.ins['rev.in']) m.ins['rev.in'] = Math.abs(x); this.rev.run(x, this.revOut); }
-      oL[7] = this.revOut[0]; oR[7] = this.revOut[1];
-      // 6. the FX Return (stereo; a mono output feeds both sides)
+      oL[8] = this.revOut[0]; oR[8] = this.revOut[1];
+      // 6. the delay
+      { const x = dlIn < 0 ? 0 : mono(dlIn); if (Math.abs(x) > m.ins['dl.in']) m.ins['dl.in'] = Math.abs(x);
+        oL[9] = oR[9] = this.dl.run(x, dlTime, dlFb); }
+      // 7. the two FX Returns (each a plain input and a level)
       let fl = 0, fr = 0;
-      if (fxIn >= 0) { fl = oL[fxIn] * fxLevel; fr = oR[fxIn] * fxLevel; mainL += fl; mainR += fr;
+      if (fxIn >= 0) { fl += oL[fxIn] * fxLevel; fr += oR[fxIn] * fxLevel;
         const v = Math.max(Math.abs(oL[fxIn]), Math.abs(oR[fxIn])); if (v > m.ins['fxr.in']) m.ins['fxr.in'] = v; }
+      if (fx2In >= 0) { fl += oL[fx2In] * fx2Level; fr += oR[fx2In] * fx2Level;
+        const v = Math.max(Math.abs(oL[fx2In]), Math.abs(oR[fx2In])); if (v > m.ins['fxr2.in']) m.ins['fxr2.in'] = v; }
+      mainL += fl; mainR += fr;
       for (let o = 0; o < OUTS.length; o++) { const v = Math.max(Math.abs(oL[o]), Math.abs(oR[o])); if (v > mo[o]) mo[o] = v; }
 
       m.n++;
@@ -344,10 +376,10 @@ class ConsoleProcessor extends AudioWorkletProcessor {
       if (R !== L) R[i] = sb;
     }
     // the fuse: if anything has gone wrong in the maths, silence and start again
-    if (!Number.isFinite(L[n - 1]) || !Number.isFinite(this.gr) || !Number.isFinite(this.msOut) || !Number.isFinite(this.oc.gr)) {
+    if (!Number.isFinite(L[n - 1]) || !Number.isFinite(this.gr) || !Number.isFinite(this.msOut) || !Number.isFinite(this.oc.gr) || !Number.isFinite(this.oc2.gr) || !Number.isFinite(this.dl.lp)) {
       L.fill(0); if (R !== L) R.fill(0);
       this.gr = 0; this.peak = 0; this.msIn = this.msComp = this.msOut = 0; this.autoDb = null; this.guard = this.lim = 1;
-      this.oc = new Compressor(); this.rev = new Reverb(); this.rev.setTime(p['rev.time'] ?? 1.8);
+      this.oc = new Compressor(); this.oc2 = new Compressor(); this.dl = new Delay(); this.rev = new Reverb(); this.rev.setTime(p['rev.time'] ?? 1.8);
       this.outL.fill(0); this.outR.fill(0);
       this.ch.forEach((c) => { c.key = ''; c.hp = new Biquad(); c.lo = new Biquad(); c.mid = new Biquad(); c.hi = new Biquad(); });
     }
@@ -360,7 +392,7 @@ class ConsoleProcessor extends AudioWorkletProcessor {
       this.port.postMessage({ type: 'state', console: true, playing, anySolo, gr: this.gr, pos: song ? this.pos / song[0].length : 0,
         ch: m.ch.map((c) => ({ in: d(c.in), pre: d(c.pre), eq: d(c.eq), ins: d(c.ins), post: d(c.post), l: d(c.l), r: d(c.r), clip: c.clip, rms: rms(c.sq) })),
         aux1: d(m.aux1), aux2: d(m.aux2), fx: d(m.fx), bus: d(m.bus), mainL: d(m.mainL), mainR: d(m.mainR), mon: d(m.mon), grMax: m.gr,
-        solo: d(m.solo), ocgr: this.oc.gr, ocgrMax: m.ocgr, makeup: this.autoDb, protect: m.prot, outs, outsDb: Object.fromEntries(OUTS.map((o, i) => [o, d(mo[i])])), insDb: Object.fromEntries(Object.entries(m.ins).map(([k, v]) => [k, d(v)])),
+        solo: d(m.solo), ocgr: this.oc.gr, ocgrMax: m.ocgr, oc2grMax: m.oc2gr, makeup: this.autoDb, protect: m.prot, outs, outsDb: Object.fromEntries(OUTS.map((o, i) => [o, d(mo[i])])), insDb: Object.fromEntries(Object.entries(m.ins).map(([k, v]) => [k, d(v)])),
         rms: { aux1: rms(m.sq.aux1), aux2: rms(m.sq.aux2), fx: rms(m.sq.fx), mainL: rms(m.sq.mainL), mainR: rms(m.sq.mainR), solo: rms(m.sq.solo) } });
       this.resetMeters();
     }

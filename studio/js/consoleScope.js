@@ -48,12 +48,12 @@ const fmtLevel = (db) => (db < -90 ? '—' : fmtDbu(db));
 // which block of the diagram each channel control belongs to
 const BLOCK_OF = { in: 'in', p48: 'in', gain: 'pre', pol: 'pre', hpf: 'hpf', hf: 'eq', mg: 'eq', mf: 'eq', lf: 'eq', eq: 'eq', ret: 'ins',
   aux1: 'aux1', aux2: 'aux2', pan: 'pan', main: 'bus', mute: 'mute', solo: 'solo', fader: 'fader' };
-const MASTER_BLOCK = { 'aux1.master': 'aux1m', 'aux2.master': 'aux2m', 'fxr.level': 'fxret', 'fxr.in': 'fxret', 'main.fader': 'mainf',
+const MASTER_BLOCK = { 'aux1.master': 'aux1m', 'aux2.master': 'aux2m', 'fxr.level': 'fxret', 'fxr.in': 'fxret', 'fxr2.level': 'fxret', 'fxr2.in': 'fxret', 'main.fader': 'mainf',
   'mon.src': 'mon', 'tape.play': 'in' };
 // the name of an output, for 'patched to ...' (e.g. 'Reverb'), and which inputs an output feeds
-const SHORT = { 'ch1.send': 'Ch 1', 'ch2.send': 'Ch 2', 'ch3.send': 'Ch 3', 'ch4.send': 'Ch 4', 'aux1.out': 'Aux 1', 'aux2.out': 'Aux 2', 'rev.out': 'Reverb', 'oc.out': 'Comp' };
-const outName = (o) => SHORT[o] || (OUTPUTS[o] ? OUTPUTS[o].module : '');
-const IN_NAMES = { 'rev.in': 'Reverb', 'oc.in': 'Comp', 'fxr.in': 'FX Ret', 'ch1.ret': 'Ch 1', 'ch2.ret': 'Ch 2', 'ch3.ret': 'Ch 3', 'ch4.ret': 'Ch 4' };
+const SHORT = { 'ch1.send': 'Ch 1', 'ch2.send': 'Ch 2', 'ch3.send': 'Ch 3', 'ch4.send': 'Ch 4', 'aux1.out': 'Aux 1', 'aux2.out': 'Aux 2', 'rev.out': 'Reverb', 'dl.out': 'Delay', 'oc.out': 'Comp 1', 'oc2.out': 'Comp 2' };
+const outName = (o) => SHORT[o] || (OUTPUTS[o] ? OUTPUTS[o].name : '');
+const IN_NAMES = { 'rev.in': 'Reverb', 'dl.in': 'Delay', 'oc.in': 'Comp 1', 'oc2.in': 'Comp 2', 'fxr.in': 'FX 1', 'fxr2.in': 'FX 2', 'ch1.ret': 'Ch 1', 'ch2.ret': 'Ch 2', 'ch3.ret': 'Ch 3', 'ch4.ret': 'Ch 4' };
 const feeds = (p, out) => Object.keys(IN_NAMES).filter((i) => p[i] === out).map((i) => IN_NAMES[i]);
 
 export class ConsoleScope {
@@ -82,7 +82,7 @@ export class ConsoleScope {
     const m = /^ch(\d)\.(\w+)$/.exec(id);
     if (m) { this.sel = Number(m[1]) - 1; this.hot = BLOCK_OF[m[2]] || null; }
     else if (id.startsWith('bc.')) this.hot = 'comp';
-    else if (id.startsWith('oc.') || id.startsWith('rev.')) this.hot = 'ins';
+    else if (id.startsWith('oc') || id.startsWith('rev.') || id.startsWith('dl.')) this.hot = 'ins';
     else this.hot = MASTER_BLOCK[id] || null;
     this.hotAt = performance.now();
   }
@@ -209,8 +209,10 @@ export class ConsoleScope {
     if (live) label(ctx, fmtLevel(live.aux2), xA2, auxY + auxH + 12, levelColour(live.aux2), 'center', 10, 700);
     // the FX Return, joining the main bus
     const fxX = xA2 + aw / 2 + 14, fxW = Math.min(aw, busX + busW - fxX);
-    const fxOn = !!p['fxr.in'] && Number.isFinite(sendDb(p['fxr.level']));
-    box(fxX, auxY, fxW, auxH, 'FX RETURN', p['fxr.in'] ? '← ' + outName(p['fxr.in']) : 'nothing in', fxOn, this.glow('fxret') > 0);
+    const fx1 = !!p['fxr.in'] && Number.isFinite(sendDb(p['fxr.level'])), fx2 = !!p['fxr2.in'] && Number.isFinite(sendDb(p['fxr2.level']));
+    const fxOn = fx1 || fx2;
+    const fxFrom = [p['fxr.in'], p['fxr2.in']].filter(Boolean).map(outName).join(' · ');
+    box(fxX, auxY, fxW, auxH, 'FX RETURNS', fxFrom ? '← ' + fxFrom : 'nothing in', fxOn, this.glow('fxret') > 0);
     arrow(fxX + fxW / 2, auxY - 1, fxX + fxW / 2, top + bh + 1, fxOn && live && live.fx > -70);
 
     // the master chain along the bottom
@@ -242,7 +244,7 @@ export class ConsoleScope {
     ctx.fillStyle = '#050c07';
     ctx.fillRect(0, 0, w, h);
     const n = this.sel + 1, k = `ch${n}.`;
-    const grH = 56;
+    const grH = h < 240 ? 40 : 56; // (a small screen: a slimmer gain-reduction strip)
     const l = 34, r = w - 10, t = 26, b = h - grH - 26;
     const F0 = 20, F1 = 20000, DB = 18;
     const xOf = (f) => l + Math.log(f / F0) / Math.log(F1 / F0) * (r - l);
