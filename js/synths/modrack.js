@@ -50,10 +50,10 @@ export const TYPES = {
   sh: { name: 'S&H', desc: 'Sample & Hold: random steps, or samples whatever is in its In.', w: 186, p: 'sh', j: 'sh', help: 'sh',
     params: ['rate', 'lag'], ins: ['in', 'clock'], outs: ['out'] },
   // the NF-ModRack's own modules (not from the NF-Modular): their controls are defined below
-  ping: { name: 'Ping', desc: 'Strike it and it rings: a bank of tuned resonators, from drum skin to bell, with feedback.', w: 604, p: 'ping', j: 'ping', help: 'ping',
-    params: ['range', 'tune', 'decay', 'partials', 'stretch', 'tone', 'fb'], ins: ['pitch', 'strike', 'in', 'fb', 'stretch'], outs: ['out'] },
-  string: { name: 'String', desc: 'Pluck it: a string modelled as a wave going round a tuned loop, with feedback.', w: 436, p: 'string', j: 'string', help: 'string',
-    params: ['range', 'tune', 'decay', 'tone', 'fb'], ins: ['pitch', 'strike', 'in', 'fb'], outs: ['out'] },
+  ping: { name: 'Ping', desc: 'Strike it and it rings: a bank of tuned resonators, from drum skin to bell, with feedback.', w: 688, p: 'ping', j: 'ping', help: 'ping',
+    params: ['range', 'tune', 'decay', 'partials', 'stretch', 'tone', 'drive', 'fb'], ins: ['pitch', 'strike', 'in', 'fb', 'stretch'], outs: ['out'] },
+  string: { name: 'String', desc: 'Pluck it: a string modelled as a wave going round a tuned loop, with feedback.', w: 520, p: 'string', j: 'string', help: 'string',
+    params: ['range', 'tune', 'decay', 'tone', 'drive', 'fb'], ins: ['pitch', 'strike', 'in', 'fb'], outs: ['out'] },
 };
 
 // ---- Ping and String: the resonators ---------------------------------------------------------
@@ -73,8 +73,12 @@ const common = {
   tune: { ...NFP['osc1.tune'] },
   decay: { type: 'cont', label: 'Decay', min: 0.02, max: 10, def: 1.2, curve: 'log', unit: 'sec', fmt: secs,
     marks: [[0.02, '.02'], [0.1, '.1'], [0.5, '.5'], [2, '2'], [10, '10']] },
-  fb: { type: 'cont', label: 'Feedback', min: 0, max: 1, def: 0, curve: 'lin', unit: '%', fmt: (v) => pct(v) + (v >= 0.9 ? ' (sings on)' : ''),
-    marks: [[0, '0'], [0.5, '50'], [0.9, 'sing'], [1, '100']] },
+  // past 100%: too far, on purpose (the red part of the scale)
+  fb: { type: 'cont', label: 'Feedback', min: 0, max: 1.5, def: 0, curve: 'lin', unit: '%', zone: [1, 1.5],
+    fmt: (v) => pct(v) + (v > 1.005 ? ' (too far)' : v >= 0.9 ? ' (sings on)' : ''),
+    marks: [[0, '0'], [0.5, '50'], [0.9, 'sing'], [1.2, '120'], [1.5, '150']] },
+  drive: { type: 'cont', label: 'Drive', min: 0, max: 1, def: 0, curve: 'lin', unit: '%', fmt: (v) => (v < 0.005 ? 'clean' : pct(v)),
+    marks: [[0, 'clean'], [0.5, '50'], [1, '100']] },
 };
 const commonIns = {
   pitch: { ...NFP['jack.vco1.pitch'] },
@@ -119,8 +123,8 @@ const PANELS = {
   lfo: { rows: [['rate', 'shape', 'rcv']], jacks: ['gate', 'rate', 'out:out'] },
   mfo: { rows: [['rate', 'shape', 'fm', ['fmmode', 'pol']]], jacks: ['gate', 'fm', 'out:out'] },
   sh: { rows: [['rate', 'lag']], jacks: ['in', 'clock', 'out:out'] },
-  ping: { rows: [['range', 'tune', 'decay', 'partials', 'stretch', 'tone', 'fb']], jacks: ['pitch', 'strike', 'in', 'fb', 'stretch', 'out:out'] },
-  string: { rows: [['range', 'tune', 'decay', 'tone', 'fb']], jacks: ['pitch', 'strike', 'in', 'fb', 'out:out'] },
+  ping: { rows: [['range', 'tune', 'decay', 'partials', 'stretch', 'tone', 'drive', 'fb']], jacks: ['pitch', 'strike', 'in', 'fb', 'stretch', 'out:out'] },
+  string: { rows: [['range', 'tune', 'decay', 'tone', 'drive', 'fb']], jacks: ['pitch', 'strike', 'in', 'fb', 'out:out'] },
 };
 
 // 'vco12' -> ['vco', 12]; the fixed modules have no number

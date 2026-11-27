@@ -112,6 +112,12 @@ export class Knob {
           for (let i = 0; i <= 10; i++) tick(i / 10, false);
         }
         spec.marks.forEach(([v, text]) => { const n = toNorm(this.id, v); tick(n, true); label(n, text); });
+        // a red arc along part of the scale (e.g. Feedback past 100%: too far, on purpose)
+        if (spec.zone) {
+          const [a1, a2] = spec.zone.map((v) => this.angleFor(toNorm(this.id, v)));
+          const [x1, y1] = polar(R_TICK_OUT + 2, a1), [x2, y2] = polar(R_TICK_OUT + 2, a2);
+          svg('path', { d: `M${x1},${y1} A${R_TICK_OUT + 2},${R_TICK_OUT + 2} 0 0 1 ${x2},${y2}`, class: 'zone' }, s);
+        }
       } else {
         // 0-10 scale; spec.evens prints only 0, 2, 4, 6, 8, 10 (odd positions keep a small tick)
         for (let i = 0; i <= 10; i++) {

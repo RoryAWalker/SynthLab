@@ -1431,3 +1431,4 @@ body[data-skin="modular"] .section[data-type="ping"] { --mod: #5b62c9; }   /* Pi
 body[data-skin="modular"] .section[data-type="ping"].even { --mod: #7a80dc; }
 body[data-skin="modular"] .section[data-type="string"] { --mod: #9a6a3a; } /* String: wood brown */
 body[data-skin="modular"] .section[data-type="string"].even { --mod: #b5844f; }
+.scale .zone { fill: none; stroke: #e8463b; stroke-width: 3; stroke-linecap: round; opacity: 0.9; }

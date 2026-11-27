@@ -348,6 +348,20 @@ class SH extends Module {
 // partial: partial n rings at the pitch times n^Stretch (1: harmonic; 1.5: a struck bar; 0.67: a
 // drum skin...), Tone sets how loud the upper partials are, and each upper partial dies away
 // sooner than the note, as on a struck object. (The same sums are in modrack.js, for the graph.)
+// Drive (both resonators): a saturation stage whose grit depends on how loud the ring is, so a
+// hard strike is dirty and the tail cleans up as it fades. ref: the module's usual peak level; the
+// stage is turned back down so that the quiet tail is only a little louder than clean (at most
+// about 5 dB): the loud strike is squashed and gritty, the tail comes through nearly as it was.
+function driveSetup(m, drive) {
+  const d = drive || 0;
+  m.drive = d;
+  m.G = 1 + 14 * d * d;
+  m.norm = Math.pow(m.G, -0.6);
+}
+const driven = (m, y) => (m.drive ? m.norm * Math.tanh(y * m.G) : y);
+// Feedback past 100% ("too far") gets much hotter: brought back down so it is not a sudden jump in level
+// (less so with Drive up, which already squashes it)
+const tooFarTrim = (fb, drive) => (fb > 1 ? 1 / (1 + (fb - 1) * 5 * (1 - 0.8 * drive)) : 1);
 const MAX_PARTIALS = 8;
 class Ping extends Module {
   static OUTS = ['out'];
@@ -356,12 +370,14 @@ class Ping extends Module {
     super(id);
     this.ic1 = new Float64Array(MAX_PARTIALS); this.ic2 = new Float64Array(MAX_PARTIALS);
     this.coef = Array.from({ length: MAX_PARTIALS }, () => [1, 0, 0, 0, 0, 0]); // k, a1, a2, a3, level, in-gain
-    this.strikeWas = 0; this.y = 0; this.n = 0; this.np = 1;
+    this.strikeWas = 0; this.y = 0; this.n = 0; this.np = 1; this.env = 0;
   }
   begin(p, sr) {
     this.oct = this.q(p, 'range') + this.q(p, 'tune') / 12;
     this.decay = this.q(p, 'decay'); this.tone = this.q(p, 'tone'); this.fbKnob = this.q(p, 'fb');
     this.partials = this.q(p, 'partials') || 1; this.stretchKnob = this.q(p, 'stretch');
+    this.envFall = Math.exp(-6.91 / (Math.max(0.02, this.decay * 0.25) * sr));
+    driveSetup(this, this.q(p, 'drive'));
     this.sr = sr; this.n = 0;
   }
   tick(S) {
@@ -369,6 +385,10 @@ class Ping extends Module {
     // pitch, Stretch and the partials' filters, worked out again every 8 samples
     if ((this.n++ & 7) === 0) {
       let f = C4 * Math.pow(2, this.oct + this.r('pitch'));
+      // Drive also bends the pitch up when struck hard (as a hard-struck drum skin does), falling
+      // back as the strike fades: up to about half an octave at full Drive. It follows the strikes,
+      // not a sustained (fed-back) ring, which stays in tune.
+      if (this.drive) f *= Math.pow(2, 0.6 * this.drive * Math.min(1, this.env));
       f = f < 8 ? 8 : f > sr * 0.24 ? sr * 0.24 : f;
       let st = this.stretchKnob + this.r('stretch') * 0.5; // Stretch CV: 1 volt moves it by 0.5
       st = st < 0.3 ? 0.3 : st > 2.5 ? 2.5 : st;
@@ -391,27 +411,33 @@ class Ping extends Module {
       this.np = np;
     }
     let fb = this.fbKnob + this.r('fb');
-    fb = fb < 0 ? 0 : fb > 1 ? 1 : fb;
+    fb = fb < 0 ? 0 : fb > 1.5 ? 1.5 : fb;
     const st = this.r('strike');
     let hit = 0;
-    if (st > 0.5 && this.strikeWas <= 0.5) hit = (st > 2 ? 2 : st) * 0.45;
+    if (st > 0.5 && this.strikeWas <= 0.5) { hit = (st > 2 ? 2 : st) * 0.45; this.env = Math.min(1.5, this.env + (st > 2 ? 2 : st)); }
     this.strikeWas = st;
     const x = this.r('in');
-    const fbIn = fb * 1.11 * Math.tanh(this.y); // into the note only (unity loop gain at about 90%)
+    // Feedback up to 100%: into the note only (unity loop gain at about 90%). Past 100% ("too far") it
+    // is clipped hard and goes into every partial as well, so they fight each other: snarls and screams.
+    const over = fb > 1 ? fb - 1 : 0;
+    const fbIn = over ? (1.11 + over * 4) * Math.tanh(this.y * (1 + over * 12)) : fb * 1.11 * Math.tanh(this.y);
+    const fbAll = over * 3 * Math.tanh(this.y * (1 + over * 12));
     let y = 0;
     for (let k = 0; k < this.np; k++) {
       const c = this.coef[k], kk = c[0];
       if (hit) this.ic1[k] += hit * c[4];
-      const u = kk * (x * c[5] * c[4] + (k === 0 ? fbIn : 0));
+      const u = kk * (x * c[5] * c[4] + (k === 0 ? fbIn : fbAll * c[4]));
       const v3 = u - this.ic2[k];
       const v1 = c[1] * this.ic1[k] + c[2] * v3;
       const v2 = this.ic2[k] + c[2] * this.ic1[k] + c[3] * v3;
       this.ic1[k] = 2 * v1 - this.ic1[k]; this.ic2[k] = 2 * v2 - this.ic2[k];
       y += v1;
     }
-    y = 1.4 * Math.tanh(y / 1.4);
-    this.y = y;
-    S[this.o] = lim(y);
+    // the strike's pitch bend fades with the ring (in about a quarter of Decay)
+    this.env *= this.envFall;
+    y = 1.4 * Math.tanh(driven(this, y) / 1.4);
+    this.y = y; // (Feedback takes the driven sound, so a sustained ring is gritty too)
+    S[this.o] = lim(y * tooFarTrim(fb, this.drive));
   }
   reset() { this.ic1.fill(0); this.ic2.fill(0); this.y = 0; }
   ok() { return Number.isFinite(this.y + this.ic1[0] + this.ic2[0]); }
@@ -438,6 +464,8 @@ class StringRes extends Module {
   begin(p, sr) {
     this.oct = this.q(p, 'range') + this.q(p, 'tune') / 12;
     this.decay = this.q(p, 'decay'); this.tone = this.q(p, 'tone'); this.fbKnob = this.q(p, 'fb');
+    driveSetup(this, this.q(p, 'drive'));
+    this.L = 1.4 / (1 + 2 * this.drive); // and the limit inside the loop comes down: the string buzzes as it rings
     this.sr = sr; this.n = 0;
   }
   tick(S) {
@@ -464,7 +492,7 @@ class StringRes extends Module {
       this.len = len;
     }
     let fb = this.fbKnob + this.r('fb');
-    fb = fb < 0 ? 0 : fb > 1 ? 1 : fb;
+    fb = fb < 0 ? 0 : fb > 1.5 ? 1.5 : fb;
     const st = this.r('strike');
     if (st > 0.5 && this.strikeWas <= 0.5) { this.burst = Math.max(2, Math.round(this.len)); this.burstAmp = st > 2 ? 2 : st; }
     this.strikeWas = st;
@@ -482,14 +510,18 @@ class StringRes extends Module {
     this.lp += (d - this.lp) * this.lpA;
     const hp = this.lp - this.dcX + this.dcR * this.dcY;
     this.dcX = this.lp; this.dcY = hp;
-    // Feedback up to 90%: rings longer (up to 10 times); past 90% the loop gains a little each time round
-    const loop = fb < 0.9 ? Math.pow(this.g, 1 - fb / 0.9 * 0.9) : 1 + (fb - 0.9) * 0.5;
+    // Feedback up to 90%: rings longer (up to 10 times); past 90% the loop gains a little each time
+    // round and sings on; past 100% ("too far") it gains a lot and is driven hard into its limit
+    const loop = fb < 0.9 ? Math.pow(this.g, 1 - fb / 0.9 * 0.9) : fb <= 1 ? 1 + (fb - 0.9) * 0.5 : 1.05 + (fb - 1) * 1.5;
     let v = ex + hp * loop;
-    v = 1.4 * Math.tanh(v / 1.4); // a soft limit inside the loop
+    // the limit inside the loop: soft at Drive 0; lower and harder with Drive, so the string
+    // saturates as it rings (thicker, buzzier, the harder it is plucked)
+    const L = this.L;
+    v = L * Math.tanh(v / L);
     this.buf[this.w] = v;
     this.w = (this.w + 1) % MAX_DELAY;
     this.y = v;
-    S[this.o] = lim(v);
+    S[this.o] = lim(driven(this, v) * tooFarTrim(fb, this.drive) * (1 + 2 * this.drive) ** 0.5);
   }
   reset() { this.buf.fill(0); this.lp = this.y = this.burstLp = this.dcX = this.dcY = this.apX = this.apY = 0; }
   ok() { return Number.isFinite(this.y + this.lp + this.apY + this.dcY); }
