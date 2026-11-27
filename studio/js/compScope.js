@@ -18,9 +18,9 @@ const AMBER = '#ffb547';
 const RED = '#ff5a4a';
 const INK = 'rgba(220, 255, 230, 0.85)';
 const DIM = 'rgba(220, 255, 230, 0.5)';
-// the makeup in use: the pot, or with Auto on the rule the engine uses (comp-processor.js)
-const autoMakeup = (T, ratio) => Math.max(0, (-T / 2) * (1 - 1 / ratio));
-const makeupOf = (p) => (p['comp.auto'] === 'on' ? autoMakeup(p['comp.thresh'], p['comp.ratio']) : p['comp.makeup']);
+// the makeup in use: the pot, or with Auto on what the engine has worked out (comp-processor.js)
+let liveAuto = null;
+const makeupOf = (p) => (p['comp.auto'] === 'on' ? (liveAuto ?? 0) : p['comp.makeup']);
 
 const SECONDS = 4; // shown on the levels screen
 const LO = -60, HI = 12; // dB range on both screens
@@ -61,7 +61,7 @@ const FOCUS_TEXT = {
   'comp.attack': (p) => `Attack: how quickly the gain reduction comes in when the sound goes over the threshold (${p['comp.attack'] < 10 ? p['comp.attack'].toFixed(1) : Math.round(p['comp.attack'])} ms).`,
   'comp.release': (p) => `Release: how quickly the gain reduction lets go once the sound drops back (${Math.round(p['comp.release'])} ms).`,
   'comp.makeup': (p) => (p['comp.auto'] === 'on' ? `Auto makeup is on, so the Makeup pot is not used: the unit is turning everything back up by ${fmtDb(makeupOf(p))} by itself.` : `Makeup turns everything back up by ${fmtDb(p['comp.makeup'])}, to win back the loudness the compression took away.`),
-  'comp.auto': (p) => (p['comp.auto'] === 'on' ? `Auto makeup: ${fmtDb(makeupOf(p))}, worked out from the Threshold and Ratio. Move them and watch it change.` : 'Auto makeup is off: the Makeup pot sets the makeup.'),
+  'comp.auto': (p) => (p['comp.auto'] === 'on' ? `Auto makeup: ${fmtDb(makeupOf(p))}. It listens to how much quieter the compression made the sound and turns it back up by that much. Move the Threshold and watch the Makeup pot follow.` : 'Auto makeup is off: the Makeup pot sets the makeup.'),
   'comp.bypass': (p) => (p['comp.bypass'] === 'on' ? 'Bypassed: you hear the sound without compression (the meters still show what it would do).' : 'Compressing: you hear the compressed sound. Press Bypass to compare.'),
 };
 
@@ -247,13 +247,14 @@ export class CompScope {
       const txt = this.focusId === 'comp.attack' ? 'Attack: how fast the red comes in when the level jumps' : 'Release: how fast the red falls away when the level drops';
       label(ctx, txt, left + pw / 2, grBot - 6, '#ffd0c8', 'center', 10, 700);
     }
-    if (!this.live.playing && this.n === 0) label(ctx, 'Press Play on the Source', left + pw / 2, (top + mid) / 2, DIM, 'center', 13, 700);
+    if (!this.live.playing && this.n === 0) label(ctx, 'Press Play on the Loop Player', left + pw / 2, (top + mid) / 2, DIM, 'center', 13, 700);
   }
 
   // ---- right: the transfer curve ----
   drawCurve(ctx, w, h, p) {
     ctx.fillStyle = '#050c07';
     ctx.fillRect(0, 0, w, h);
+    if (this.live.makeup != null) liveAuto = this.live.makeup;
     const T = p['comp.thresh'], R = p['comp.ratio'], W = p['comp.knee'], M = makeupOf(p);
     const pad = { l: 34, t: 18, b: 22 };
     const size = Math.max(60, Math.min(h - pad.t - pad.b, w * 0.55));
@@ -356,11 +357,11 @@ export class CompScope {
 
     // readouts and the sentence for the control in focus
     const tx = x1 + 22, tw = w - tx - 10;
-    let y = 30;
+    let y = 32;
     const row = (k, v, hi) => {
-      label(ctx, k, tx, y, hi ? '#fff' : DIM, 'left', 9.5, 700);
-      label(ctx, v, tx + tw, y, hi ? '#fff' : AMBER, 'right', 12, 700);
-      y += 19;
+      label(ctx, k, tx, y, hi ? '#fff' : DIM, 'left', 12, 700);
+      label(ctx, v, tx + tw, y, hi ? '#fff' : AMBER, 'right', 15, 700);
+      y += 23;
     };
     row('THRESHOLD', fmtDb(T), tg > 0);
     row('RATIO', fmtRatio(R), rg > 0);
@@ -368,14 +369,14 @@ export class CompScope {
     row(p['comp.auto'] === 'on' ? 'MAKEUP (AUTO)' : 'MAKEUP', fmtDb(M), mg > 0);
     row('REDUCING BY', p['comp.bypass'] === 'on' ? 'bypassed' : (live.gr > 0.05 ? fmtDb(-live.gr) : '0 dB'), false);
     y += 4;
-    label(ctx, '● where the curve wants the sound', tx, y, AMBER, 'left', 9, 600); y += 13;
-    label(ctx, '○ where it is (after attack/release)', tx, y, '#fff', 'left', 9, 600); y += 16;
+    label(ctx, '● where the curve wants the sound', tx, y, AMBER, 'left', 11.5, 600); y += 16;
+    label(ctx, '○ where it is (after attack/release)', tx, y, '#fff', 'left', 11.5, 600); y += 21;
     const fid = anyFocus ? this.focusId : null;
-    if (fid && FOCUS_TEXT[fid]) this.wrap(ctx, FOCUS_TEXT[fid](p), tx, y, tw, 13, '#ffe6bd');
+    if (fid && FOCUS_TEXT[fid]) this.wrap(ctx, FOCUS_TEXT[fid](p), tx, y, tw, 16, '#ffe6bd');
   }
 
   wrap(ctx, text, x, y, maxW, lh, color) {
-    ctx.font = '600 10px "Helvetica Neue", Arial, sans-serif';
+    ctx.font = '600 12.5px "Helvetica Neue", Arial, sans-serif';
     ctx.fillStyle = color;
     ctx.textAlign = 'left';
     let line = '';

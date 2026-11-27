@@ -23,7 +23,7 @@ export const HELP_NFC1 = {
     'Which sound to play through the compressor. Drums, Bass and Keys are recorded loops with plenty of difference between loud and soft notes, and the Full band is the three of them together. The Test tone steps between a quiet level (−30 dB) and a loud one (−6 dB) every second.',
     'Your file plays a sound you have loaded with Load your own… (it stays on your computer). The display shows which sound is playing and how far through the loop it is.'] },
   loadown: { title: 'Load your own', body: [
-    'Play your own recording through the compressor: a WAV, MP3, AIFF or similar from your computer. It is read in the browser and is never uploaded anywhere. Long files are trimmed to the first minute.',
+    'Play your own recording through the compressor, from your computer. WAV, MP3, FLAC and AAC (.m4a) work in every browser; AIFF and Apple Lossless open in Safari only. It is read in the browser and is never uploaded anywhere. Long files are trimmed to the first minute.',
     'Mixed and mastered music is usually compressed already, so there may be little left to do. Raw recordings (a single vocal, a drum kit, an acoustic guitar) show the effect best.'] },
 
   // ---- compressor
@@ -51,8 +51,8 @@ export const HELP_NFC1 = {
     tip: 'Load the Pumping patch and turn the Release from 600 ms down to 50 ms: the breathing in and out gets faster and then disappears.' },
 
   'comp.auto': { title: 'Auto makeup', body: [
-    'Lit: the compressor sets the makeup gain for you, from the Threshold and Ratio, and the Makeup pot is not used. The transfer-curve screen shows how much it is adding.',
-    'Its rule of thumb: put back the turn-down that a sound halfway between the threshold and 0 dB would get. Lower the threshold or raise the ratio and it adds more. It is only an estimate: the real loudness depends on the sound.'],
+    'Lit: the compressor sets the makeup gain for you, and the Makeup pot turns by itself to show how much it is adding (you cannot turn it while Auto is on).',
+    'It listens: over about the last second it compares how loud the sound is going in with how loud it is after compression, and turns it up by the difference. So the sound comes out about as loud as it went in. Change the Threshold a lot and you can hear and see it catch up over a second or so.'],
     tip: 'Turn Auto on, then press Bypass on and off. The two should sound about equally loud, so you hear what the compression does to the sound rather than just a change in volume.' },
   'comp.bypass': { title: 'Bypass', body: [
     'Off (the usual setting): you hear the compressed sound. Press it and the light comes on: you hear the sound as it goes in, without the compressor, so you can compare.',

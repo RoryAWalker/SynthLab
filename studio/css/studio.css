@@ -99,7 +99,10 @@ body[data-synth="nfc1"] .panel-footer { margin-top: 4px; padding-top: 6px; }
 body[data-synth="nfc1"] .section[data-section="comp"] .stack-cell { display: flex; flex-direction: column; align-items: center; }
 body[data-synth="nfc1"] .section[data-section="comp"] .stack-cell .led-cell.wide .led-btn { width: 92px; height: 28px; margin-top: -2px; }
 body[data-synth="nfc1"] .section[data-section="comp"] .stack-cell .led-cell.wide .led-btn.on .led-lamp { background: #ffc23a; box-shadow: 0 0 8px rgba(255, 194, 58, 0.9); }
-body[data-synth="nfc1"] .stack-cell:has([data-param="comp.auto"] .led-btn.on) .knob-cell { opacity: 0.35; filter: grayscale(1); pointer-events: none; }
+body[data-synth="nfc1"] .stack-cell:has([data-param="comp.auto"] .led-btn.on) .knob-cell { opacity: 0.6; pointer-events: none; }
+/* the screens need no Hold or Maximise here: they take the room */
+body[data-synth="nfc1"] .scope-controls { display: none; }
+body[data-synth="nfc1"] .scope-unit { gap: 18px; }
 /* meters: as tall as the pots beside them, Bypass on top */
 body[data-synth="nfc1"] .section[data-section="meters"] .section-head { margin: 4px 0 2px; }
 body[data-synth="nfc1"] .section[data-section="meters"] .led-cell.wide .led-btn { width: 140px; height: 30px; }

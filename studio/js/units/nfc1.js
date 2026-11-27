@@ -22,14 +22,16 @@ export const PARAMS = {
                     marks: [[1, '1'], [2, '2'], [4, '4'], [10, '10'], [20, '20']] },
   'comp.knee':    { type: 'cont', label: 'Knee', min: 0, max: 24, def: 0, curve: 'lin', unit: 'dB',
                     fmt: (v) => (v < 0.5 ? 'hard' : v.toFixed(0) + ' dB soft'), marks: [[0, 'hard'], [12, '12'], [24, '24']] },
-  'comp.attack':  { type: 'cont', label: 'Attack', min: 0.1, max: 200, def: 10, curve: 'log', unit: 'ms', fmt: ms,
-                    marks: [[0.1, '.1'], [1, '1'], [10, '10'], [100, '100']] },
-  'comp.release': { type: 'cont', label: 'Release', min: 20, max: 3000, def: 150, curve: 'log', unit: 'ms', fmt: ms,
-                    marks: [[20, '20'], [100, '100'], [500, '500'], [3000, '3k']] },
+  // a taper that gives the usual 10-100 ms most of the travel (a log taper crowds it into a third)
+  'comp.attack':  { type: 'cont', label: 'Attack', min: 0.1, max: 200, def: 10, curve: 'pow', k: 3, unit: 'ms', fmt: ms,
+                    marks: [[0.1, '.1'], [1, '1'], [10, '10'], [30, '30'], [100, '100'], [200, '200']] },
+  // down to 5 ms: so fast it follows the waves of low notes and distorts them (on purpose: try it on Bass)
+  'comp.release': { type: 'cont', label: 'Release', min: 5, max: 3000, def: 150, curve: 'log', unit: 'ms', fmt: ms,
+                    marks: [[5, '5'], [20, '20'], [100, '100'], [500, '500'], [3000, '3k']] },
   'comp.makeup':  { type: 'cont', label: 'Makeup', min: 0, max: 24, def: 0, curve: 'lin', unit: 'dB', fmt: (v) => db(v),
                     marks: [[0, '0'], [6, '6'], [12, '12'], [24, '24']] },
-  // Auto makeup: the unit sets the makeup itself from Threshold and Ratio (the Makeup pot is
-  // ignored while it is on). The same rule is in the engine and the screens: autoMakeup() there.
+  // Auto makeup: the unit sets the makeup itself, by listening (see comp-processor.js); the
+  // Makeup pot turns to show the amount while it is on.
   'comp.auto':    { type: 'step', ui: 'led', button: 'Auto', label: 'Auto makeup', def: 'off', options: [{ v: 'off', label: 'Off (use the Makeup pot)' }, { v: 'on', label: 'On' }] },
   // off by default: press it to hear the sound with no compression, to compare
   'comp.bypass':  { type: 'step', ui: 'led', button: 'Bypass', label: 'Bypass', def: 'off', options: [{ v: 'off', label: 'Compressing' }, { v: 'on', label: 'Bypassed' }] },

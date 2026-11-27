@@ -19,9 +19,15 @@ const linToDb = (x) => (x > 1e-6 ? 20 * Math.log10(x) : -120);
 // what reaches the speakers: 3 dB down, so a loud source plus some Makeup has headroom (the
 // computer's own volume sets how loud you hear it; the meters read before this)
 const OUT_LEVEL = 0.7;
-// Auto makeup: win back the turn-down a sound halfway between the threshold and 0 dB would get.
-// A rule of thumb that roughly matches the loudness with Bypass. (Same rule in compScope.js.)
-const autoMakeup = (T, ratio) => Math.max(0, (-T / 2) * (1 - 1 / ratio));
+// Auto makeup listens: it keeps a running average of how loud the sound is going in and how loud
+// it is after compression (over the last few seconds), and turns the sound up by the difference,
+// so it comes out about as loud as it went in (as loud as Bypass). A long average keeps it steady
+// (a short one would ride the level up and down with the beat). So that it still answers at once
+// when Threshold or Ratio move, it jumps by a rule of thumb's estimate of the change (the turn-down
+// a sound halfway between the threshold and 0 dB would get) and then fine-tunes by listening.
+const autoGuess = (T, ratio) => Math.max(0, (-T / 2) * (1 - 1 / ratio));
+const AUTO_TC = 3; // seconds of listening
+const AUTO_MAX = 24; // dB, the same as the Makeup pot
 
 class CompProcessor extends AudioWorkletProcessor {
   constructor() {
@@ -35,6 +41,7 @@ class CompProcessor extends AudioWorkletProcessor {
     this.frames = []; // level reports since the last message
     this.blockIn = 0; this.blockOut = 0; this.blockGr = 0; this.blockDet = -120; this.blockN = 0;
     this.seq = 0;
+    this.msIn = 0; this.msComp = 0; this.autoDb = null; // auto makeup (see above)
     this.port.onmessage = (e) => {
       const m = e.data;
       if (m.type === 'patch') Object.assign(this.p, m.patch);
@@ -64,11 +71,22 @@ class CompProcessor extends AudioWorkletProcessor {
     const W = p['comp.knee'] ?? 0;
     const atk = Math.exp(-1 / (Math.max(0.05, p['comp.attack'] ?? 10) * 0.001 * sampleRate));
     const rel = Math.exp(-1 / (Math.max(1, p['comp.release'] ?? 150) * 0.001 * sampleRate));
-    const makeup = p['comp.auto'] === 'on' ? autoMakeup(T, ratio) : (p['comp.makeup'] ?? 0);
+    const auto = p['comp.auto'] === 'on';
+    const guess = autoGuess(T, ratio);
+    if (this.autoDb === null) this.autoDb = guess;
+    else if (guess !== this.lastGuess && this.msComp > 0) {
+      // Threshold or Ratio moved: shift the 'after compression' average by the estimated change
+      this.msComp *= Math.pow(10, -(guess - this.lastGuess) / 10);
+      if (this.msIn > 1e-7 && this.msComp > 1e-12) this.autoDb = Math.min(AUTO_MAX, Math.max(0, 10 * Math.log10(this.msIn / this.msComp)));
+    }
+    this.lastGuess = guess;
+    const avg = 1 - Math.exp(-1 / (AUTO_TC * sampleRate));
     const on = p['comp.bypass'] !== 'on';
     const listen = OUT_LEVEL;
     const slope = 1 / ratio - 1;
-    const peakFall = Math.exp(-1 / (0.02 * sampleRate));
+    // the detector lets go over 20 ms, or as fast as the Release if that is faster (so a very fast
+    // release can follow the waves of a low note: distortion)
+    const peakFall = Math.exp(-1 / (Math.min(0.02, Math.max(1, p['comp.release'] ?? 150) * 0.001) * sampleRate));
 
     for (let i = 0; i < n; i++) {
       // the source, looping
@@ -97,7 +115,16 @@ class CompProcessor extends AudioWorkletProcessor {
       const c = target > this.gr ? atk : rel;
       this.gr = c * this.gr + (1 - c) * target;
 
-      const g = on ? dbToLin(makeup - this.gr) : 1;
+      // auto makeup: compare the average loudness in with the average after the gain reduction
+      const gGr = dbToLin(-this.gr);
+      const pin = (a * a + b * b) * 0.5;
+      if (pin > 1e-9) { // only while there is sound (not while stopped or silent)
+        this.msIn += avg * (pin - this.msIn);
+        this.msComp += avg * (pin * gGr * gGr - this.msComp);
+        if (this.msIn > 1e-7 && this.msComp > 1e-12) this.autoDb = Math.min(AUTO_MAX, Math.max(0, 10 * Math.log10(this.msIn / this.msComp)));
+      }
+      const makeup = auto ? this.autoDb : (p['comp.makeup'] ?? 0);
+      const g = on ? dbToLin(makeup) * gGr : 1;
       const oa = a * g, ob = b * g;
       L[i] = oa * listen;
       if (R !== L) R[i] = ob * listen;
@@ -115,7 +142,7 @@ class CompProcessor extends AudioWorkletProcessor {
     }
     // the second output is unused (the synths send their oscillators there for the scope)
     if (this.frames.length >= 4 * 8) {
-      this.port.postMessage({ type: 'state', seq: ++this.seq, frames: this.frames, gr: this.gr, on, playing,
+      this.port.postMessage({ type: 'state', seq: ++this.seq, frames: this.frames, gr: this.gr, on, playing, makeup: auto ? this.autoDb : null,
         pos: src ? this.pos / src[0].length : 0, rate: sampleRate / 128 });
       this.frames = [];
     }

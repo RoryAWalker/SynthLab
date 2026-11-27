@@ -828,7 +828,7 @@ function buildLoadButton() {
       knobs['src.sound'].commit('user');
       knobs['src.play'].commit('play');
     } catch (e) {
-      patchMenu.toast('That file could not be read as audio. Try a WAV or MP3.');
+      patchMenu.toast('This browser could not read that file as audio. WAV, MP3, FLAC and AAC (.m4a) work in every browser; AIFF and Apple Lossless only in Safari.');
     }
   });
   return wrap;
@@ -886,6 +886,13 @@ if (PROC && SYNTH.kind !== 'console') {
   let last = performance.now();
   (function meterLoop() {
     requestAnimationFrame(meterLoop);
+    // Auto makeup (NF-C1): the Makeup pot turns to show what the unit is adding, and goes back to
+    // its own setting when Auto is switched off (the patch keeps the pot's own value throughout)
+    if (PARAMS['comp.auto'] && knobs['comp.makeup']) {
+      const k = knobs['comp.makeup'];
+      const want = patch['comp.auto'] === 'on' && engine.live && engine.live.makeup != null ? Math.round(engine.live.makeup * 10) / 10 : patch['comp.makeup'];
+      if (k.value !== want) k.set(want);
+    }
     const now = performance.now(), dt = (now - last) / 1000;
     last = now;
     const n = scope.n, recent = (arr, f) => { let v = f === 'max' ? -Infinity : 0; for (let a = 0; a < 6 && a < n; a++) v = Math.max(v, arr[(n - 1 - a + scope.cap) % scope.cap]); return v; };

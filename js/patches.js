@@ -192,6 +192,6 @@ export class PatchMenu {
     t.textContent = text;
     t.classList.add('show');
     clearTimeout(this.toastTimer);
-    this.toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+    this.toastTimer = setTimeout(() => t.classList.remove('show'), Math.max(2200, text.length * 55)); // long messages stay longer
   }
 }
