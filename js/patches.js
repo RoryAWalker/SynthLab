@@ -37,6 +37,7 @@ export function sanitizePatch(obj) {
     if (v === undefined || spec.type === 'layout') continue;
     if (spec.type === 'step') { if (spec.options.some((o) => o.v === v)) out[id] = v; }
     else if (spec.type === 'jack') { if (typeof v === 'string') out[id] = cablesIn(v, OUTS); } // a cable (or several) into an input
+    else if (spec.type === 'nodes') { if (spec.valid(v)) out[id] = v; } // a drawn shape (the NF-ModRack's Draw)
     else if (typeof v === 'number' && Number.isFinite(v)) out[id] = Math.min(spec.max, Math.max(spec.min, v));
   }
   return out;

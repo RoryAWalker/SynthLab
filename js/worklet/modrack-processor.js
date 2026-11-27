@@ -536,6 +536,83 @@ class StringRes extends Module {
   ok() { return Number.isFinite(this.y + this.lp + this.apY + this.dcY); }
 }
 
+// Draw: a shape you draw (nodes joined by lines that can bend; see js/drawShape.js, which has the
+// same sums), played over Time. Once: start to end when the Gate rises (holding at the sustain node
+// while the Gate stays high), a custom envelope. Loop: round and round (the end jumps back to the
+// start). Bounce: forwards then backwards. In Loop and Bounce a rising Gate restarts it. End sends
+// a trigger each time the shape finishes or comes round again.
+const bendCurve = (t, c) => { if (c < 0.001 && c > -0.001) return t; const k = c * 6; return (Math.exp(k * t) - 1) / (Math.exp(k) - 1); };
+function parseShape(str) {
+  const parts = String(str || '').split(';');
+  const sus = parseInt(parts.shift(), 10);
+  const xs = [], ys = [], cs = [];
+  parts.forEach((q) => { const [x, y, c] = q.split(',').map(Number); if ([x, y, c].every(Number.isFinite)) { xs.push(x); ys.push(y); cs.push(c); } });
+  if (xs.length < 2) return { xs: [0, 1], ys: [0, 0], cs: [0, 0], sus: -1 };
+  xs[0] = 0; xs[xs.length - 1] = 1;
+  return { xs, ys, cs, sus: sus > 0 && sus < xs.length - 1 ? sus : -1 };
+}
+class Draw extends Module {
+  static OUTS = ['out', 'end'];
+  static INS = ['gate', 'time'];
+  constructor(id) {
+    super(id);
+    this.ph = 0; this.dir = 1; this.running = false; this.gateWas = 0; this.trig = 0; this.j = 0; this.shapeStr = null; // (at the start until played)
+  }
+  begin(p, sr) {
+    const str = this.q(p, 'nodes');
+    if (str !== this.shapeStr) { this.shapeStr = str; this.shape = parseShape(str); this.j = 0; }
+    this.mode = this.q(p, 'mode');
+    this.time = this.q(p, 'time'); this.amt = this.q(p, 'amt'); this.bi = this.q(p, 'pol') === 'bi';
+    this.sr = sr; this.trigN = Math.round(TRIG_SECONDS * sr);
+  }
+  // the level at the play position (moving a cursor along the nodes, rather than searching each time)
+  level(x) {
+    const { xs, ys, cs } = this.shape, last = xs.length - 2;
+    let j = this.j > last ? last : this.j;
+    while (j > 0 && x < xs[j]) j--;
+    while (j < last && x >= xs[j + 1]) j++;
+    this.j = j;
+    const w = xs[j + 1] - xs[j];
+    if (w <= 0) return ys[j + 1];
+    let t = (x - xs[j]) / w; t = t < 0 ? 0 : t > 1 ? 1 : t;
+    return ys[j] + (ys[j + 1] - ys[j]) * bendCurve(t, cs[j]);
+  }
+  tick(S) {
+    const g = this.r('gate') > 0.5 ? 1 : 0, rise = g && !this.gateWas;
+    this.gateWas = g;
+    // Time input: 1 volt makes it 4 times as fast (and -1, 4 times as slow)
+    let T = this.time * Math.pow(4, -this.r('time'));
+    T = T < 0.001 ? 0.001 : T > 120 ? 120 : T;
+    const dt = 1 / (T * this.sr);
+    let end = false;
+    if (this.mode === 'once') {
+      if (rise) { this.ph = 0; this.running = true; this.j = 0; }
+      if (this.running) {
+        const sus = this.shape.sus;
+        const hold = sus >= 0 && g ? this.shape.xs[sus] : 2;
+        if (this.ph < hold) this.ph = Math.min(hold, this.ph + dt); // (holding at the sustain node while the Gate is high)
+        else if (hold === 2 || this.ph > hold) this.ph += dt;
+        if (this.ph >= 1) { this.ph = 1; this.running = false; end = true; }
+      }
+    } else if (this.mode === 'loop') {
+      if (rise) { this.ph = 0; this.j = 0; }
+      this.ph += dt;
+      if (this.ph >= 1) { this.ph -= Math.floor(this.ph); end = true; }
+    } else { // bounce
+      if (rise) { this.ph = 0; this.dir = 1; this.j = 0; }
+      this.ph += this.dir * dt;
+      if (this.ph >= 1) { this.ph = 2 - this.ph; this.dir = -1; }
+      if (this.ph <= 0) { this.ph = -this.ph; this.dir = 1; end = true; }
+      if (this.ph > 1) this.ph = 1;
+    }
+    if (end) this.trig = this.trigN;
+    const y = this.level(this.ph);
+    S[this.o] = (this.bi ? 2 * y - 1 : y) * this.amt;
+    S[this.o + 1] = this.trig > 0 ? 1 : 0;
+    if (this.trig > 0) this.trig--;
+  }
+}
+
 // the Output: its sum is read by the processor after every module has run
 class Out extends Module {
   static OUTS = [];
@@ -586,7 +663,7 @@ class Seq extends Module {
   }
 }
 
-const TYPES = { vco: VCO, noise: Noise, mix: Mixer, vcf: VCF, ring: Ring, vca: VCA, att: Att, env: Env, lfo: LFO, mfo: MFO, sh: SH, ping: Ping, string: StringRes };
+const TYPES = { vco: VCO, noise: Noise, mix: Mixer, vcf: VCF, ring: Ring, vca: VCA, att: Att, env: Env, lfo: LFO, mfo: MFO, sh: SH, ping: Ping, string: StringRes, draw: Draw };
 const typeOf = (id) => (id === 'out' ? Out : id === 'seq' ? Seq : TYPES[(/^([a-z]+)\d+$/.exec(id) || [])[1]]);
 
 class ModRackProcessor extends AudioWorkletProcessor {
@@ -720,6 +797,7 @@ class ModRackProcessor extends AudioWorkletProcessor {
         a: this.env1 ? this.env1.report() : idle, f: this.env2 ? this.env2.report() : idle,
         lfo: this.lfo ? S[this.lfo.o] : 0, lfoT: 0, beat: 0, outs,
         seqStep: seq ? seq.step : 0, seqRun: seq ? seq.run : false,
+        draws: Object.fromEntries(order.filter((m) => m instanceof Draw).map((m) => [m.id, m.ph])), // the Draw modules' play positions
         over: this.over, resets: this.resets,
       });
       this.over = 0;

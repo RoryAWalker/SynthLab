@@ -1432,3 +1432,18 @@ body[data-skin="modular"] .section[data-type="ping"].even { --mod: #7a80dc; }
 body[data-skin="modular"] .section[data-type="string"] { --mod: #9a6a3a; } /* String: wood brown */
 body[data-skin="modular"] .section[data-type="string"].even { --mod: #b5844f; }
 .scale .zone { fill: none; stroke: #e8463b; stroke-width: 3; stroke-linecap: round; opacity: 0.9; }
+/* NF-ModRack: the Draw module's drawing screen (across its whole width, above its knobs) */
+body[data-skin="modular"] .section[data-type="draw"] { --mod: #3e9a6e; } /* Draw: jade */
+body[data-skin="modular"] .section[data-type="draw"].even { --mod: #58b386; }
+.screen-row { display: flex; align-items: center; gap: 8px; }
+.node-cell { display: flex; flex-direction: column; gap: 4px; align-items: center; padding: 2px 0 2px 2px; }
+.ne-bar { display: flex; gap: 6px; align-items: center; width: 404px; }
+.ne-group { display: inline-flex; border-radius: 4px; overflow: hidden; box-shadow: 0 0 0 1px rgba(255,255,255,0.14); }
+.ne-btn { font: 700 10px/1 inherit; font-family: inherit; letter-spacing: 0.1em; text-transform: uppercase; color: #c9cbcd; background: #1a1c1f;
+  border: 0; padding: 5px 9px; cursor: pointer; }
+.ne-btn:not(.ne-group .ne-btn) { border-radius: 4px; box-shadow: 0 0 0 1px rgba(255,255,255,0.14); }
+.ne-btn.on { background: #3b3220; color: #ffd9a0; }
+.ne-sus.on { background: #1f3340; color: #8cdcff; }
+.ne-snap { margin-left: auto; }
+.ne-screen { display: block; border-radius: 5px; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.1); cursor: grab; touch-action: none; }
+.ne-screen.drawing { cursor: crosshair; }

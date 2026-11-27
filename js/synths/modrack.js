@@ -11,6 +11,7 @@
 // The modules are the NF-Modular's: their controls, sounds and help are shared with it (each
 // type names the NF-Modular module it comes from).
 
+import { DEFAULT_SHAPE, valid as validShape, parse as parseShape } from '../drawShape.js';
 import { PARAMS as NFP, OUTPUTS as NFO, LAYOUT as NF_LAYOUT, KEYBED_SECTIONS, SIDE_SECTIONS } from './nfmod.js';
 
 // The rack: three rows, each this wide (in the panel's own pixels: the NF-Modular's rows) with
@@ -54,6 +55,8 @@ export const TYPES = {
     params: ['range', 'tune', 'decay', 'partials', 'stretch', 'tone', 'drive', 'fb'], ins: ['pitch', 'strike', 'in', 'fb', 'stretch', 'drive'], outs: ['out'] },
   string: { name: 'String', desc: 'Pluck it: a string modelled as a wave going round a tuned loop, with feedback.', w: 520, p: 'string', j: 'string', help: 'string',
     params: ['range', 'tune', 'decay', 'tone', 'drive', 'fb'], ins: ['pitch', 'strike', 'in', 'fb', 'drive'], outs: ['out'] },
+  draw: { name: 'Draw', desc: 'Draw any shape: a custom envelope (Once), or loop it round or bounce it back and forth as an LFO.', w: 682, p: 'draw', j: 'draw', help: 'draw',
+    params: ['mode', 'nodes', 'time', 'amt', 'pol'], ins: ['gate', 'time'], outs: ['out', 'end'] },
 };
 
 // ---- Ping and String: the resonators ---------------------------------------------------------
@@ -97,6 +100,22 @@ TYPES.ping.specs = {
   ins: { ...commonIns, stretch: { ...NFP['jack.vco1.fm'], label: 'Stretch' } },
   outs: { out: { label: 'Out', audio: true } },
 };
+// Draw: the shape (nodes), how long it takes (Time: 1 ms to 30 s, so it is an envelope or an LFO),
+// Amount, and Uni (0..1) or Bi (-1..1)
+const fmtTime = (v) => (v < 1 ? (v < 0.01 ? (v * 1000).toFixed(1) : Math.round(v * 1000)) + ' ms' : v.toFixed(v < 10 ? 2 : 1) + ' s');
+TYPES.draw.specs = {
+  params: {
+    mode: { type: 'step', ui: 'word', label: 'Draw mode', def: 'once', options: [{ v: 'once', label: 'Once' }, { v: 'loop', label: 'Loop' }, { v: 'bounce', label: 'Bounce' }] },
+    nodes: { type: 'nodes', ui: 'nodes', label: 'Shape', def: DEFAULT_SHAPE, valid: validShape,
+      fmt: (v) => { const s = parseShape(v); return s ? `${s.nodes.length} nodes${s.sus >= 0 ? ', sustain at node ' + (s.sus + 1) : ''}` : 'shape'; } },
+    time: { type: 'cont', label: 'Time', min: 0.001, max: 30, def: 1, curve: 'log', unit: 'sec', fmt: fmtTime,
+      marks: [[0.001, '1m'], [0.01, '10m'], [0.1, '.1'], [1, '1'], [10, '10'], [30, '30']] },
+    amt: { type: 'cont', label: 'Amount', min: 0, max: 1, def: 1, curve: 'lin', unit: '%', fmt: pct, marks: [[0, '0'], [0.5, '50'], [1, '100']] },
+    pol: { type: 'step', ui: 'toggle', titled: true, label: 'Output', def: 'uni', options: [{ v: 'uni', label: 'Uni' }, { v: 'bi', label: 'Bi' }] },
+  },
+  ins: { gate: { ...NFP['jack.env1.gate'] }, time: { ...NFP['jack.vco1.fm'], label: 'Time' } },
+  outs: { out: { label: 'Out' }, end: { label: 'End' } },
+};
 TYPES.string.specs = {
   params: { ...common,
     tone: { type: 'cont', label: 'Tone', min: 0, max: 1, def: 0.5, curve: 'lin', unit: '%', fmt: pct, marks: [[0, 'dark'], [0.5, '50'], [1, 'bright']] },
@@ -105,7 +124,7 @@ TYPES.string.specs = {
   outs: { out: { label: 'Out', audio: true } },
 };
 // The order of the drawer: sources, shaping, modulation
-export const DRAWER = [['Sources', ['vco', 'noise', 'ping', 'string', 'mix']], ['Shaping', ['vcf', 'ring', 'vca', 'att']], ['Modulation', ['env', 'lfo', 'mfo', 'sh']]];
+export const DRAWER = [['Sources', ['vco', 'noise', 'ping', 'string', 'mix']], ['Shaping', ['vcf', 'ring', 'vca', 'att']], ['Modulation', ['env', 'draw', 'lfo', 'mfo', 'sh']]];
 // always in the rack: the Output (in a row, and can be moved), the Keyboard (on the keyboard) and
 // the Sequencer (its own column)
 const OUT_W = 100;
@@ -126,6 +145,8 @@ const PANELS = {
   sh: { rows: [['rate', 'lag']], jacks: ['in', 'clock', 'out:out'] },
   ping: { rows: [['range', 'tune', 'decay', 'partials', 'stretch', 'tone', 'drive', 'fb']], jacks: ['pitch', 'strike', 'in', 'fb', 'stretch', 'drive', 'out:out'] },
   string: { rows: [['range', 'tune', 'decay', 'tone', 'drive', 'fb']], jacks: ['pitch', 'strike', 'in', 'fb', 'drive', 'out:out'] },
+  // the drawing screen on the left, its knobs beside it
+  draw: { titleSwitch: 'mode', screen: 'nodes', rows: [['time', 'amt', 'pol']], jacks: ['gate', 'time', 'out:out', 'out:end'] },
 };
 
 // 'vco12' -> ['vco', 12]; the fixed modules have no number
@@ -195,6 +216,7 @@ function moduleDef(inst) {
   if (P.parts) section.parts = P.parts.map((part) => ({ rows: part.rows.map((r) => r.map(full)), jacks: part.jacks.map(sock) }));
   else { section.rows = P.rows.map((r) => r.map(full)); section.jacks = P.jacks.map(sock); }
   if (P.titleSwitch) section.titleSwitch = `${inst}.${P.titleSwitch}`;
+  if (P.screen) section.screen = `${inst}.${P.screen}`;
   return { params, outputs, section };
 }
 

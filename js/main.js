@@ -22,8 +22,12 @@ import { WordSwitch } from './wordswitch.js';
 import { MaxModules } from './maxModules.js';
 import { Smiley } from './fireworks.js';
 import { RackEdit } from './rackEdit.js';
+import { NodeEditor } from './nodeEditor.js';
 
 const engine = new Engine({ module: SYNTH.module, processor: SYNTH.processor });
+// the Draw module's screen shows where its shape is playing, and whether it is in Once mode
+NodeEditor.live = () => (engine.running ? engine.live : null);
+NodeEditor.mode = (inst) => patch[`${inst}.mode`];
 document.body.dataset.skin = SYNTH.skin;
 // ?preview=1: just the synth on a transparent page, for capturing the start-menu pictures
 const PREVIEW = new URLSearchParams(location.search).has('preview');
@@ -104,6 +108,13 @@ function buildSection(sec) {
     sec.head.forEach((id) => hd.appendChild(makeControl(id, sec)));
     grid.before(hd);
   }
+  // a screen beside the module's knobs (the NF-ModRack's Draw: its drawing screen)
+  if (sec.screen) {
+    const row = document.createElement('div');
+    row.className = 'screen-row';
+    grid.before(row);
+    row.append(makeControl(sec.screen, sec), grid);
+  }
   if (sec.meters === true) { grid.replaceWith(buildMeters()); return el; } // the NF-C1's level meters
   // the console: a fader with its meters beside it, meters on their own, a scribble strip
   // the console's needle meters, with the PFL light
@@ -163,6 +174,7 @@ function makeControl(id, sec) {
     : spec.ui === 'led' ? new LedButton(id, patch[id], onKnob)
     : spec.ui === 'fader' ? new Fader(id, patch[id], onKnob)
     : spec.ui === 'word' ? new WordSwitch(id, patch[id], onKnob)
+    : spec.ui === 'nodes' ? new NodeEditor(id, patch[id], onKnob) // the NF-ModRack's Draw: its drawing screen
     : spec.ui === 'choice' ? new Choice(id, patch[id], onKnob)
     : spec.type === 'wheel' ? new Wheel(id, patch[id], onKnob)
     : new Knob(id, patch[id], onKnob);
