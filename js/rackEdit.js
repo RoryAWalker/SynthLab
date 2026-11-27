@@ -74,7 +74,9 @@ export class RackEdit {
     if (!this.pic) {
       this.pic = el('div', 'md-pic', document.body, '<img alt=""><span></span>');
       this.pic.querySelector('img').addEventListener('error', () => { this.pic.hidden = true; });
-      this.pic.querySelector('img').addEventListener('load', () => this.placePic()); // (centred again once it has its size)
+      // shown at one scale for all (half the picture's pixels: 0.6 of the panel's size), so the modules
+      // keep their true sizes against each other; centred again once it has its size
+      this.pic.querySelector('img').addEventListener('load', (e) => { e.target.style.width = e.target.naturalWidth / 2 + 'px'; this.placePic(); });
     }
     const t = TYPES[type], img = this.pic.querySelector('img');
     img.src = `img/modules/${type}.webp`;

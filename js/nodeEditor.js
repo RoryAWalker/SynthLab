@@ -229,7 +229,8 @@ export class NodeEditor {
       this.started = true;
       const live = NodeEditor.live();
       const ph = live && live.draws ? live.draws[this.inst] : undefined;
-      if (ph !== this.ph) { this.ph = ph; this.draw(); }
+      const pk = this.spec.transfer && live && live.shapers ? live.shapers[this.inst] : undefined;
+      if (ph !== this.ph || pk !== this.pk) { this.ph = ph; this.pk = pk; this.draw(); }
       requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
@@ -258,7 +259,26 @@ export class NodeEditor {
 
     const { nodes, sus } = this.shape;
     const mode = NodeEditor.mode(this.inst);
-    if (this.cycle) { // the waveform's 0 line, and +1 / -1
+    if (this.spec.transfer) {
+      // a Shaper's curve: the straight diagonal is "no change"; the band is how far the input
+      // reaches into the curve (beyond the screen: past the edge, where Clip or Fold take over)
+      ctx.save();
+      ctx.strokeStyle = 'rgba(120, 220, 160, 0.3)'; ctx.setLineDash([3, 4]);
+      ctx.beginPath(); ctx.moveTo(PAD, this.H - PAD); ctx.lineTo(this.W - PAD, PAD); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(this.W / 2 + 0.5, PAD); ctx.lineTo(this.W / 2 + 0.5, this.H - PAD); ctx.stroke();
+      ctx.restore();
+      const l = NodeEditor.live(), pk = l && l.shapers ? l.shapers[this.inst] : 0;
+      if (pk > 0.002) {
+        const half = (this.W - 2 * PAD) / 2, reach = Math.min(1, pk) * half;
+        ctx.fillStyle = pk > 1 ? 'rgba(232, 70, 59, 0.12)' : 'rgba(140, 220, 255, 0.1)';
+        ctx.fillRect(this.W / 2 - reach, PAD, reach * 2, this.H - 2 * PAD);
+        if (pk > 1) { ctx.fillStyle = 'rgba(255, 140, 120, 0.9)'; ctx.font = '700 9.5px "Helvetica Neue", Arial, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(`input reaches ${pk.toFixed(1)}× past the edge`, this.W / 2, PAD + 11); }
+      }
+      ctx.fillStyle = 'rgba(120, 220, 160, 0.55)';
+      ctx.font = '700 9px "Helvetica Neue", Arial, sans-serif';
+      ctx.textAlign = 'right'; ctx.fillText('in →', this.W - PAD - 2, this.H / 2 + 11);
+      ctx.textAlign = 'left'; ctx.fillText('out ↑', this.W / 2 + 4, PAD + 9);
+    } else if (this.cycle) { // the waveform's 0 line, and +1 / -1
       ctx.fillStyle = 'rgba(120, 220, 160, 0.5)';
       ctx.font = '700 9px "Helvetica Neue", Arial, sans-serif';
       ctx.textAlign = 'left';

@@ -47,8 +47,10 @@ try {
     await run(`(() => { const s = document.getElementById('preset'); s.value = 'u:pic'; s.dispatchEvent(new Event('change')); })()`);
     await sleep(700);
     const box = await run(`(() => { const r = document.querySelector('.section[data-section="${type}1"]').getBoundingClientRect(); return { x: r.left, y: r.top, width: r.width, height: r.height }; })()`);
-    // drawn at about 560 pixels wide, sharp enough for the drawer's pop-up
-    const scale = Math.min(2, 560 / box.width);
+    // every module photographed at the same scale (1.2 picture pixels per panel pixel), so they all
+    // show at their true sizes side by side, equally sharp (the drawer shows them at half that, on a
+    // sharp screen)
+    const scale = 1.2;
     const shot = await send('Page.captureScreenshot', { format: 'webp', quality: 82, clip: { ...box, scale } });
     writeFileSync(join(out, `${type}.webp`), Buffer.from(shot.result.data, 'base64'));
     console.log(`img/modules/${type}.webp`);

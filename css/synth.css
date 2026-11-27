@@ -1488,7 +1488,15 @@ body.open-rack .rack-rows:not(.max-rows) > .rack-row { width: var(--row-w, 1573p
 .rg-btn:disabled { opacity: 0.3; cursor: default; }
 .rg-n { font-size: 12px; font-weight: 800; color: #a9abae; }
 /* the module drawer: a picture of the module the pointer rests on, beside the drawer */
-.md-pic { position: fixed; z-index: 61; width: 420px; padding: 8px; border-radius: 8px; pointer-events: none;
+.md-pic { position: fixed; z-index: 61; width: max-content; padding: 8px; border-radius: 8px; pointer-events: none;
   background: rgba(24,25,28,0.97); border: 1px solid #3a3c40; box-shadow: 0 10px 30px rgba(0,0,0,0.6); }
-.md-pic img { display: block; width: 100%; height: auto; border-radius: 4px; }
+.md-pic img { display: block; height: auto; border-radius: 4px; }
 .md-pic span { display: block; margin-top: 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #a9abae; }
+/* NF-ModRack: the Shaper, Quantizer and Probe */
+body[data-skin="modular"] .section[data-type="shaper"] { --mod: #b8453a; } /* Shaper: hot red */
+body[data-skin="modular"] .section[data-type="shaper"].even { --mod: #cc5f53; }
+body[data-skin="modular"] .section[data-type="quant"] { --mod: #4a8f63; } /* Quantizer: green */
+body[data-skin="modular"] .section[data-type="quant"].even { --mod: #63a87b; }
+body[data-skin="modular"] .section[data-type="probe"] { --mod: #3a3f46; } /* Probe: instrument grey */
+.probe-cell { display: flex; padding: 2px 0 2px 2px; }
+.scale-screen { cursor: pointer; }

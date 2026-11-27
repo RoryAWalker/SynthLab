@@ -26,6 +26,8 @@ import { NodeEditor } from './nodeEditor.js';
 import { XYPad } from './xyPad.js';
 import { BounceView } from './bounceView.js';
 import { TableScreen } from './tableScreen.js';
+import { ProbeScreen } from './probeScreen.js';
+import { ScaleScreen } from './scaleScreen.js';
 
 const engine = new Engine({ module: SYNTH.module, processor: SYNTH.processor });
 // the Draw module's screen shows where its shape is playing, and whether it is in Once mode
@@ -39,6 +41,9 @@ TableScreen.post = (m) => engine.post(m);
 TableScreen.getPatch = () => patch;
 TableScreen.live = NodeEditor.live;
 TableScreen.toast = (t) => patchMenu && patchMenu.toast(t);
+// (the Probe's oscilloscope and the Quantizer's keys)
+ProbeScreen.live = ScaleScreen.live = NodeEditor.live;
+ProbeScreen.getPatch = ScaleScreen.getPatch = () => patch;
 document.body.dataset.skin = SYNTH.skin;
 // ?preview=1: just the synth on a transparent page, for capturing the start-menu pictures
 const PREVIEW = new URLSearchParams(location.search).has('preview');
@@ -203,6 +208,8 @@ function makeControl(id, sec) {
     : spec.ui === 'xy' ? new XYPad(id, patch[id], onKnob) // and its XY: the pad
     : spec.ui === 'bounce' ? new BounceView(id) // and its Bounce: the ball's screen
     : spec.ui === 'table' ? new TableScreen(id, patch[id], onKnob) // and its Wavetable: the table's screen
+    : spec.ui === 'probe' ? new ProbeScreen(id) // its Probe: the oscilloscope
+    : spec.ui === 'scale' ? new ScaleScreen(id, patch[id], onKnob) // its Quantizer: the scale's keys
     : spec.ui === 'choice' ? new Choice(id, patch[id], onKnob)
     : spec.type === 'wheel' ? new Wheel(id, patch[id], onKnob)
     : new Knob(id, patch[id], onKnob);

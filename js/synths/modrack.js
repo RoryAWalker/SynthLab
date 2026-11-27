@@ -63,6 +63,12 @@ export const TYPES = {
     params: ['nodes', 'range', 'tune', 'fm'], ins: ['pitch', 'fm', 'sync'], outs: ['out'] },
   poly: { name: 'Poly', desc: 'The keyboard\'s notes on separate outputs (Pitch and Gate 1-4), for chords: paraphonic, or polyphonic built by hand.', w: 241, p: 'poly', j: 'poly', help: 'poly',
     params: ['voices'], ins: [], outs: ['p1', 'p2', 'p3', 'p4', 'g1', 'g2', 'g3', 'g4'] },
+  shaper: { name: 'Shaper', desc: 'Distortion you draw: the curve that turns each input level into an output level, clipped or folded.', w: 578, p: 'shaper', j: 'shaper', help: 'shaper',
+    params: ['curve', 'drive', 'edge', 'mix'], ins: ['in', 'drive'], outs: ['out'] },
+  quant: { name: 'Quantizer', desc: 'Snaps a pitch to the notes of a scale, so random or hand-played pitches play in tune.', w: 496, p: 'quant', j: 'quant', help: 'quant',
+    params: ['mask', 'root'], ins: ['in'], outs: ['out', 'trig'] },
+  probe: { name: 'Probe', desc: 'A small oscilloscope: patch any signal in to see it (two traces), and on through Thru.', w: 496, p: 'probe', j: 'probe', help: 'probe',
+    params: ['view', 'time', 'scale'], ins: ['a', 'b'], outs: ['thru'] },
   table: { name: 'Wavetable', desc: 'An oscillator that sweeps through a table of waves: built-in ones, or any audio file you load.', w: 662, p: 'table', j: 'table', help: 'table',
     params: ['table', 'pos', 'range', 'tune', 'fm'], ins: ['pitch', 'pos', 'fm', 'sync'], outs: ['out'] },
   formant: { name: 'Formant', desc: 'Makes any sound talk: three filters tuned like a voice, sweeping A, E, I, O, U.', w: 352, p: 'formant', j: 'formant', help: 'formant',
@@ -167,6 +173,49 @@ TYPES.xy.specs = {
   ins: { gate: { ...NFP['jack.env1.gate'] } },
   outs: { x: { label: 'X' }, y: { label: 'Y' }, gate: { label: 'Gate' } },
 };
+// Shaper: the transfer curve (drawn: across is the input level, -1..1; up the output), Drive (how hard
+// the input is pushed into it), Edge (past the ends: Clip holds the last level, Fold mirrors back), Mix
+export const DEFAULT_CURVE = '-1;0,0,0.4;0.5,0.5,-0.4;1,1,0';
+TYPES.shaper.specs = {
+  params: {
+    curve: { type: 'nodes', ui: 'nodes', cycle: true, transfer: true, screen: [300, 178], label: 'Curve', def: DEFAULT_CURVE, valid: validShape,
+      fmt: (v) => { const s = parseShape(v); return s ? `${s.nodes.length} nodes` : 'curve'; } },
+    drive: { type: 'cont', label: 'Drive', min: 1, max: 20, def: 1, curve: 'log', unit: '×', fmt: (v) => v.toFixed(v < 10 ? 1 : 0) + '×',
+      marks: [[1, '1'], [2, '2'], [5, '5'], [10, '10'], [20, '20']] },
+    edge: { type: 'step', ui: 'toggle', titled: true, label: 'Edge', def: 'clip', options: [{ v: 'clip', label: 'Clip' }, { v: 'fold', label: 'Fold' }] },
+    mix: { type: 'cont', label: 'Mix', min: 0, max: 1, def: 1, curve: 'lin', unit: '%', fmt: (v) => (v < 0.005 ? 'dry' : pct(v)), marks: [[0, 'dry'], [0.5, '50'], [1, 'wet']] },
+  },
+  ins: { in: { ...NFP['jack.mix.in1'], label: 'In' }, drive: { ...NFP['jack.vco1.fm'], label: 'Drive' } },
+  outs: { out: { label: 'Out', audio: true } },
+};
+// Quantizer: the scale (which of the 12 notes, from the root: a string of 1s and 0s) and its root note
+export const SCALES = [
+  ['Chromatic', '111111111111'], ['Major', '101011010101'], ['Minor', '101101011010'], ['Major pentatonic', '101010010100'],
+  ['Minor pentatonic', '100101010010'], ['Blues', '100101110010'], ['Dorian', '101101010110'], ['Harmonic minor', '101101011001'],
+  ['Whole tone', '101010101010'], ['Octaves', '100000000000'], ['Fifths', '100000010000'],
+];
+export const NOTE_NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
+TYPES.quant.specs = {
+  params: {
+    mask: { type: 'nodes', ui: 'scale', label: 'Scale', def: '101011010101', valid: (v) => typeof v === 'string' && /^[01]{12}$/.test(v) && v.includes('1'),
+      fmt: (v) => (SCALES.find(([, m]) => m === v) || ['Your own scale'])[0] },
+    root: { type: 'step', label: 'Root', def: 0, span: 300, options: NOTE_NAMES.map((n, i) => ({ v: i, label: n })) },
+  },
+  ins: { in: { ...NFP['jack.vco1.pitch'], label: 'In' } },
+  outs: { out: { label: 'Out' }, trig: { label: 'Trig' } },
+};
+// Probe: Time (what the screen spans: 1 ms to 10 s) and Scale (the screen's top and bottom: +-0.5 to +-10)
+TYPES.probe.specs = {
+  params: {
+    view: { type: 'view', ui: 'probe', label: 'Screen', def: '', fmt: () => '' },
+    time: { type: 'cont', label: 'Time', min: 0.001, max: 10, def: 0.02, curve: 'log', unit: 'sec',
+      fmt: (v) => (v < 1 ? (v < 0.01 ? (v * 1000).toFixed(1) : Math.round(v * 1000)) + ' ms' : v.toFixed(v < 10 ? 1 : 0) + ' s'),
+      marks: [[0.001, '1m'], [0.01, '10m'], [0.1, '.1'], [1, '1'], [10, '10']] },
+    scale: { type: 'step', label: 'Scale', def: 1, span: 200, options: [0.5, 1, 2, 5, 10].map((v) => ({ v, label: '±' + v })) },
+  },
+  ins: { a: { ...NFP['jack.vco1.fm'], label: 'A' }, b: { ...NFP['jack.vco1.fm'], label: 'B' } },
+  outs: { thru: { label: 'Thru' } },
+};
 // Poly: how many channels it uses (so that notes only go where something is patched)
 TYPES.poly.specs = {
   params: {
@@ -236,7 +285,7 @@ TYPES.string.specs = {
   outs: { out: { label: 'Out', audio: true } },
 };
 // The order of the drawer: sources, shaping, modulation
-export const DRAWER = [['Sources', ['poly', 'vco', 'wave', 'table', 'noise', 'ping', 'string', 'mix']], ['Shaping', ['vcf', 'formant', 'ring', 'vca', 'att']], ['Modulation', ['env', 'draw', 'bounce', 'xy', 'lfo', 'mfo', 'sh']]];
+export const DRAWER = [['Sources', ['poly', 'vco', 'wave', 'table', 'noise', 'ping', 'string', 'mix']], ['Shaping', ['vcf', 'formant', 'shaper', 'ring', 'vca', 'att']], ['Modulation', ['env', 'draw', 'bounce', 'xy', 'lfo', 'mfo', 'sh', 'quant']], ['Tools', ['probe']]];
 // always in the rack: the Output (in a row, and can be moved), the Keyboard (on the keyboard) and
 // the Sequencer (its own column)
 const OUT_W = 100;
@@ -260,6 +309,9 @@ const PANELS = {
   // the pad on the left, its knobs and sockets beside it
   xy: { titleSwitch: 'mode', screen: 'path', jacksBeside: true, rows: [['rate', 'smooth', 'pol']], jacks: ['gate', 'out:x', 'out:y', 'out:gate'] },
   formant: { rows: [['vowel', 'shift', 'res', 'mix']], jacks: ['in', 'vowel', 'shift', 'out:out'] },
+  shaper: { screen: 'curve', jacksBeside: true, rows: [['drive', 'mix', 'edge']], jacks: ['in', 'drive', 'out:out'] },
+  quant: { screen: 'mask', jacksBeside: true, rows: [['root']], jacks: ['in', 'out:out', 'out:trig'] },
+  probe: { screen: 'view', jacksBeside: true, rows: [['time', 'scale']], jacks: ['a', 'b', 'out:thru'] },
   // its outputs in two rows: the four Pitches over the four Gates
   poly: { titleSwitch: 'voices', rows: [], jacks: [['out:p1', 'out:p2', 'out:p3', 'out:p4'], ['out:g1', 'out:g2', 'out:g3', 'out:g4']] },
   table: { screen: 'table', jacksBeside: true, rows: [['pos', 'range', 'tune', 'fm']], jacks: ['pitch', 'pos', 'fm', 'sync', 'out:out'] },

@@ -901,6 +901,134 @@ class Poly extends Module {
   }
 }
 
+// Shaper: distortion you draw. The curve (nodes, as Draw's: across = input -1..1, up = output -1..1)
+// is made into a table; Drive pushes the input harder into it; past either end, Clip holds the end's
+// level and Fold mirrors the input back (wavefolding through the curve). It runs at 4 times the
+// sample rate, smoothing between samples, so the harmonics it adds fold back less (less aliasing).
+const SHAPE_N = 1024, OS = 4;
+class Shaper extends Module {
+  static OUTS = ['out'];
+  static INS = ['in', 'drive'];
+  constructor(id) { super(id); this.table = new Float32Array(SHAPE_N + 1); this.curveStr = null; this.xWas = 0; this.lp = 0; this.peak = 0; }
+  begin(p) {
+    const str = this.q(p, 'curve');
+    if (str !== this.curveStr) {
+      this.curveStr = str;
+      const sh = parseShape(str);
+      let j = 0;
+      for (let k = 0; k <= SHAPE_N; k++) {
+        const x = k / SHAPE_N;
+        while (j < sh.xs.length - 2 && x >= sh.xs[j + 1]) j++;
+        const w = sh.xs[j + 1] - sh.xs[j];
+        let t = w > 0 ? (x - sh.xs[j]) / w : 1; t = t < 0 ? 0 : t > 1 ? 1 : t;
+        this.table[k] = 2 * (sh.ys[j] + (sh.ys[j + 1] - sh.ys[j]) * bendCurve(t, sh.cs[j])) - 1;
+      }
+    }
+    this.driveK = this.q(p, 'drive'); this.fold = this.q(p, 'edge') === 'fold'; this.mix = this.q(p, 'mix');
+  }
+  shape(x) {
+    if (this.fold) { // mirror back into -1..1 as many times as it takes
+      const t = (x + 1) * 0.5; const f = t - 2 * Math.floor(t / 2); x = (f > 1 ? 2 - f : f) * 2 - 1;
+    } else x = x < -1 ? -1 : x > 1 ? 1 : x;
+    const pos = (x + 1) * 0.5 * SHAPE_N, i = pos | 0, fr = pos - i;
+    return i >= SHAPE_N ? this.table[SHAPE_N] : this.table[i] + (this.table[i + 1] - this.table[i]) * fr;
+  }
+  tick(S) {
+    let drive = this.driveK * Math.pow(2, this.r('drive') * 4); // (Drive input: 1 V = 16 times the drive)
+    drive = drive > 200 ? 200 : drive;
+    const x = this.r('in') * drive;
+    let acc = 0;
+    for (let k = 1; k <= OS; k++) acc += this.shape(this.xWas + (x - this.xWas) * (k / OS));
+    this.xWas = x;
+    let y = acc / OS;
+    this.lp += (y - this.lp) * 0.6; // (a little more smoothing of the very top)
+    y = this.lp;
+    const a = x < 0 ? -x : x;
+    if (a > this.peak) this.peak = a; // (how far into the curve the input goes, for its screen)
+    S[this.o] = lim(this.r('in') + (y - this.r('in')) * this.mix);
+  }
+}
+
+// Quantizer: a pitch (1 V per octave) snapped to the nearest note of the scale (mask: which of the
+// 12 notes above the root are in it). It changes note only once the input is clearly nearer another
+// (a little hysteresis, so a wobbly input does not flicker between two). Trig fires on each change.
+class Quantizer extends Module {
+  static OUTS = ['out', 'trig'];
+  static INS = ['in'];
+  constructor(id) { super(id); this.note = 0; this.trig = 0; this.maskStr = null; this.inScale = Array(12).fill(true); }
+  begin(p, sr) {
+    const m = String(this.q(p, 'mask') || '');
+    if (m !== this.maskStr) { this.maskStr = m; this.inScale = Array.from({ length: 12 }, (_, i) => m[i] === '1'); if (!this.inScale.some(Boolean)) this.inScale[0] = true; }
+    this.root = this.q(p, 'root') || 0;
+    this.trigN = Math.round(TRIG_SECONDS * sr);
+  }
+  allowed(n) { return this.inScale[(((n - this.root) % 12) + 12) % 12]; }
+  nearest(semi) {
+    const c = Math.round(semi);
+    for (let d = 0; d <= 6; d++) {
+      const lo = c - d, hi = c + d;
+      const a = this.allowed(lo) ? lo : null, b = this.allowed(hi) ? hi : null;
+      if (a !== null && b !== null) return Math.abs(semi - a) <= Math.abs(semi - b) ? a : b;
+      if (a !== null) return a;
+      if (b !== null) return b;
+    }
+    return c;
+  }
+  tick(S) {
+    const semi = this.r('in') * 12;
+    const n = this.nearest(semi);
+    if (n !== this.note && (!this.allowed(this.note) || Math.abs(semi - this.note) > Math.abs(semi - n) + 0.15)) { this.note = n; this.trig = this.trigN; }
+    S[this.o] = this.note / 12;
+    S[this.o + 1] = this.trig > 0 ? 1 : 0;
+    if (this.trig > 0) this.trig--;
+  }
+}
+
+// Probe: an oscilloscope. Thru passes A on. For its screen it collects A and B over the Time setting:
+// short times (up to 0.1 s) as a steady picture, each starting where A rises through 0 (as a scope
+// triggers); longer ones as a trace scrolling past. Either way as 200 columns of (lowest, highest).
+const PROBE_COLS = 200;
+class Probe extends Module {
+  static OUTS = ['thru'];
+  static INS = ['a', 'b'];
+  constructor(id) { super(id); this.cols = []; this.cur = null; this.frame = null; this.n = 0; this.armed = true; this.aWas = 0; this.wait = 0; }
+  begin(p, sr) {
+    const T = this.q(p, 'time');
+    this.roll = T >= 0.1;
+    this.per = Math.max(1, Math.round((T * sr) / PROBE_COLS));
+    this.sr = sr;
+  }
+  tick(S) {
+    const a = this.r('a'), b = this.has('b') ? this.r('b') : NaN;
+    S[this.o] = a;
+    if (this.roll) {
+      if (!this.cur) this.cur = [a, a, b, b];
+      const c = this.cur;
+      if (a < c[0]) c[0] = a; if (a > c[1]) c[1] = a; if (b < c[2]) c[2] = b; if (b > c[3]) c[3] = b;
+      if (++this.n >= this.per) { this.cols.push(c); this.cur = null; this.n = 0; if (this.cols.length > PROBE_COLS * 2) this.cols.splice(0, PROBE_COLS); }
+    } else {
+      // wait for A to rise through 0 (or give up after a while and draw anyway), then fill a picture
+      if (!this.filling) {
+        this.wait++;
+        if ((a > 0 && this.aWas <= 0) || this.wait > this.per * PROBE_COLS * 2) { this.filling = []; this.cur = null; this.n = 0; this.wait = 0; }
+      }
+      if (this.filling) {
+        if (!this.cur) this.cur = [a, a, b, b];
+        const c = this.cur;
+        if (a < c[0]) c[0] = a; if (a > c[1]) c[1] = a; if (b < c[2]) c[2] = b; if (b > c[3]) c[3] = b;
+        if (++this.n >= this.per) { this.filling.push(c); this.cur = null; this.n = 0; }
+        if (this.filling.length >= PROBE_COLS) { this.frame = this.filling; this.filling = null; }
+      }
+    }
+    this.aWas = a;
+  }
+  // what the screen needs (sent with the engine's report): new scrolling columns, or the latest picture
+  report() {
+    if (this.roll) { const c = this.cols; this.cols = []; return { roll: true, cols: c }; }
+    const f = this.frame; this.frame = null; return { roll: false, frame: f };
+  }
+}
+
 // Draw: a shape you draw (nodes joined by lines that can bend; see js/drawShape.js, which has the
 // same sums), played over Time. Once: start to end when the Gate rises (holding at the sustain node
 // while the Gate stays high), a custom envelope. Loop: round and round (the end jumps back to the
@@ -1028,7 +1156,7 @@ class Seq extends Module {
   }
 }
 
-const TYPES = { vco: VCO, noise: Noise, mix: Mixer, vcf: VCF, ring: Ring, vca: VCA, att: Att, env: Env, lfo: LFO, mfo: MFO, sh: SH, ping: Ping, string: StringRes, draw: Draw, formant: Formant, xy: XY, wave: WaveVCO, bounce: Bounce, table: Wavetable, poly: Poly };
+const TYPES = { vco: VCO, noise: Noise, mix: Mixer, vcf: VCF, ring: Ring, vca: VCA, att: Att, env: Env, lfo: LFO, mfo: MFO, sh: SH, ping: Ping, string: StringRes, draw: Draw, formant: Formant, xy: XY, wave: WaveVCO, bounce: Bounce, table: Wavetable, poly: Poly, shaper: Shaper, quant: Quantizer, probe: Probe };
 const typeOf = (id) => (id === 'out' ? Out : id === 'seq' ? Seq : TYPES[(/^([a-z]+)\d+$/.exec(id) || [])[1]]);
 
 class ModRackProcessor extends AudioWorkletProcessor {
@@ -1170,6 +1298,9 @@ class ModRackProcessor extends AudioWorkletProcessor {
         lfo: this.lfo ? S[this.lfo.o] : 0, lfoT: 0, beat: 0, outs,
         seqStep: seq ? seq.step : 0, seqRun: seq ? seq.run : false,
         draws: Object.fromEntries(order.filter((m) => m instanceof Draw).map((m) => [m.id, m.ph])), // the Draw modules' play positions
+        probes: Object.fromEntries(order.filter((m) => m instanceof Probe).map((m) => [m.id, m.report()])), // the Probes' traces
+        quants: Object.fromEntries(order.filter((m) => m instanceof Quantizer).map((m) => [m.id, m.note])), // the Quantizers' notes
+        shapers: Object.fromEntries(order.filter((m) => m instanceof Shaper).map((m) => { const pk = m.peak; m.peak = 0; return [m.id, pk]; })), // how far into the curve
         tables: Object.fromEntries(order.filter((m) => m instanceof Wavetable).map((m) => [m.id, m.pos || 0])), // the Wavetables' positions
         bounces: Object.fromEntries(order.filter((m) => m instanceof Bounce).map((m) => [m.id, m.h])), // the Bounce modules' balls
         xys: Object.fromEntries(order.filter((m) => m instanceof XY).map((m) => [m.id, [m.sx, m.sy, m.ph]])), // the XY pads' outputs (0..1) and play positions
