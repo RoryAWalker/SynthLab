@@ -163,7 +163,18 @@ function buildSection(sec) {
     return el;
   }
   if (sec.load) el.appendChild(buildLoadButton()); // the processors: load your own sound file
-  if (sec.jacks && cables) el.appendChild(cables.buildStrip(sec.jacks)); // modular synths: sockets along the module's foot
+  if (sec.jacks && cables) {
+    const strip = cables.buildStrip(sec.jacks);
+    // the sockets under the knobs, beside the screen, so the screen can use the module's whole
+    // height (the NF-ModRack's XY at one row tall)
+    if (sec.jacksBeside && sec.screen && !isTall(sec.id)) {
+      const col = document.createElement('div');
+      col.className = 'side-col';
+      grid.replaceWith(col);
+      col.append(grid, strip);
+      el.classList.add('jacks-beside');
+    } else el.appendChild(strip); // modular synths: sockets along the module's foot
+  }
   if (!sec.rows.length) { grid.remove(); return el; } // a module with only jacks
   fillGrid(grid, sec.rows, sec);
   return el;

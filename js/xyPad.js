@@ -24,7 +24,7 @@ export class XYPad {
     this.onChange = onChange;
     const p = XYPad.getPatch();
     this.tall = p[`${this.inst}.size`] === '2';
-    this.S = this.tall ? 270 : 112; // the pad's size (panel pixels): larger at two rows tall
+    this.S = this.tall ? 270 : 176; // (one row: the sockets sit beside the knobs, so the pad has the whole height) // the pad's size (panel pixels): larger at two rows tall
     this.el = document.createElement('div');
     this.el.className = 'xy-cell' + (this.tall ? ' tall' : '');
     this.el.dataset.param = id;

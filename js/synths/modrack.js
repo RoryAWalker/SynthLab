@@ -203,7 +203,7 @@ const PANELS = {
   ping: { rows: [['range', 'tune', 'decay', 'partials', 'stretch', 'tone', 'drive', 'fb']], jacks: ['pitch', 'strike', 'in', 'fb', 'stretch', 'drive', 'out:out'] },
   string: { rows: [['range', 'tune', 'decay', 'tone', 'drive', 'fb']], jacks: ['pitch', 'strike', 'in', 'fb', 'drive', 'out:out'] },
   // the pad on the left (or, two rows tall, across the top), its knobs beside (or below) it
-  xy: { titleSwitch: 'mode', screen: 'path', rows: [['rate', 'smooth', 'pol']], jacks: ['gate', 'out:x', 'out:y', 'out:gate'] },
+  xy: { titleSwitch: 'mode', screen: 'path', jacksBeside: true, rows: [['rate', 'smooth', 'pol']], jacks: ['gate', 'out:x', 'out:y', 'out:gate'] },
   formant: { rows: [['vowel', 'shift', 'res', 'mix']], jacks: ['in', 'vowel', 'shift', 'out:out'] },
   // the drawing screen on the left, its knobs beside it
   draw: { titleSwitch: 'mode', screen: 'nodes', rows: [['time', 'amt', 'pol']], jacks: ['gate', 'time', 'out:out', 'out:end'] },
@@ -287,6 +287,7 @@ function moduleDef(inst) {
   else { section.rows = P.rows.map((r) => r.map(full)); section.jacks = P.jacks.map(sock); }
   if (P.titleSwitch) section.titleSwitch = `${inst}.${P.titleSwitch}`;
   if (P.screen) section.screen = `${inst}.${P.screen}`;
+  if (P.jacksBeside) section.jacksBeside = true;
   return { params, outputs, section };
 }
 
