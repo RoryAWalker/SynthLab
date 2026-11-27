@@ -339,133 +339,160 @@ class SH extends Module {
   ok() { return Number.isFinite(this.out); }
 }
 
-// Resonator. Ping: a tuned resonator (a state-variable band-pass filter, ringing for Decay) struck
-// at Strike, plus two higher partials of a struck bar (2.76 and 5.40 times the pitch) brought in by
-// Tone. String: a plucked string (Karplus-Strong): a delay line one period long, fed back into
-// itself through a low-pass (Tone) that loses a little each time round, so that it dies away in
-// Decay. Strike plucks it with a short burst of noise. In excites either mode continuously.
-// Feedback adds the output back in: up to about 90% the sound just rings longer; past that it
-// no longer dies away and sings on, softly limited so it stays at a safe level.
-const BAR = [1, 2.756, 5.404]; // partials of a struck bar (free at both ends)
+// ---- the two resonators: Ping and String ----------------------------------------------------
+// Both ring when struck (a rise at Strike) at the pitch set by Pitch, Range and Tune, for Decay
+// (the time to fall 60 dB). In excites them continuously. Feedback sends their own output back in:
+// up to about 90% they ring longer; past that they no longer die away but sing on, softly limited.
+
+// Ping: modal synthesis. A bank of tuned resonators (state-variable band-pass filters), one per
+// partial: partial n rings at the pitch times n^Stretch (1: harmonic; 1.5: a struck bar; 0.67: a
+// drum skin...), Tone sets how loud the upper partials are, and each upper partial dies away
+// sooner than the note, as on a struck object. (The same sums are in modrack.js, for the graph.)
+const MAX_PARTIALS = 8;
+class Ping extends Module {
+  static OUTS = ['out'];
+  static INS = ['pitch', 'strike', 'in', 'fb', 'stretch'];
+  constructor(id) {
+    super(id);
+    this.ic1 = new Float64Array(MAX_PARTIALS); this.ic2 = new Float64Array(MAX_PARTIALS);
+    this.coef = Array.from({ length: MAX_PARTIALS }, () => [1, 0, 0, 0, 0, 0]); // k, a1, a2, a3, level, in-gain
+    this.strikeWas = 0; this.y = 0; this.n = 0; this.np = 1;
+  }
+  begin(p, sr) {
+    this.oct = this.q(p, 'range') + this.q(p, 'tune') / 12;
+    this.decay = this.q(p, 'decay'); this.tone = this.q(p, 'tone'); this.fbKnob = this.q(p, 'fb');
+    this.partials = this.q(p, 'partials') || 1; this.stretchKnob = this.q(p, 'stretch');
+    this.sr = sr; this.n = 0;
+  }
+  tick(S) {
+    const sr = this.sr;
+    // pitch, Stretch and the partials' filters, worked out again every 8 samples
+    if ((this.n++ & 7) === 0) {
+      let f = C4 * Math.pow(2, this.oct + this.r('pitch'));
+      f = f < 8 ? 8 : f > sr * 0.24 ? sr * 0.24 : f;
+      let st = this.stretchKnob + this.r('stretch') * 0.5; // Stretch CV: 1 volt moves it by 0.5
+      st = st < 0.3 ? 0.3 : st > 2.5 ? 2.5 : st;
+      const tilt = 4 * (1 - this.tone);
+      let np = 0;
+      for (let k = 0; k < this.partials; k++) {
+        const ratio = Math.pow(k + 1, st), fk = f * ratio;
+        if (fk > sr * 0.45) break; // (partials above the top of hearing are left out)
+        const g = Math.tan(Math.PI * fk / sr);
+        const T = this.decay / Math.sqrt(ratio); // the higher a partial, the sooner it dies away
+        const Q = Math.max(0.5, T * Math.PI * fk / 6.91);
+        const kk = 1 / Q, a1 = 1 / (1 + g * (g + kk));
+        const c = this.coef[k];
+        c[0] = kk; c[1] = a1; c[2] = g * a1; c[3] = g * g * a1;
+        c[4] = Math.pow(k + 1, -tilt); // how loud: Tone
+        c[5] = 2.5 * Math.sqrt(Q);      // In: louder the narrower the resonance (noise in sounds alike at any Decay)
+        np++;
+      }
+      for (let k = np; k < this.np; k++) { this.ic1[k] = 0; this.ic2[k] = 0; } // partials just left out fall silent
+      this.np = np;
+    }
+    let fb = this.fbKnob + this.r('fb');
+    fb = fb < 0 ? 0 : fb > 1 ? 1 : fb;
+    const st = this.r('strike');
+    let hit = 0;
+    if (st > 0.5 && this.strikeWas <= 0.5) hit = (st > 2 ? 2 : st) * 0.45;
+    this.strikeWas = st;
+    const x = this.r('in');
+    const fbIn = fb * 1.11 * Math.tanh(this.y); // into the note only (unity loop gain at about 90%)
+    let y = 0;
+    for (let k = 0; k < this.np; k++) {
+      const c = this.coef[k], kk = c[0];
+      if (hit) this.ic1[k] += hit * c[4];
+      const u = kk * (x * c[5] * c[4] + (k === 0 ? fbIn : 0));
+      const v3 = u - this.ic2[k];
+      const v1 = c[1] * this.ic1[k] + c[2] * v3;
+      const v2 = this.ic2[k] + c[2] * this.ic1[k] + c[3] * v3;
+      this.ic1[k] = 2 * v1 - this.ic1[k]; this.ic2[k] = 2 * v2 - this.ic2[k];
+      y += v1;
+    }
+    y = 1.4 * Math.tanh(y / 1.4);
+    this.y = y;
+    S[this.o] = lim(y);
+  }
+  reset() { this.ic1.fill(0); this.ic2.fill(0); this.y = 0; }
+  ok() { return Number.isFinite(this.y + this.ic1[0] + this.ic2[0]); }
+}
+
+// String: a plucked string (waveguide synthesis, the Karplus-Strong method). A delay line exactly
+// one period long, fed back into itself: whatever repeats at that period builds up, so the loop
+// settles into the note and all its harmonics. Each time round, a gentle low-pass (Tone) takes off
+// a little treble, so the note starts bright and mellows as it dies. Strike plucks it with a short
+// burst of noise. The low-pass follows the pitch (every note equally bright); a DC blocker keeps
+// anything below the note from building up; and an all-pass makes the fraction of a sample, with
+// every filter's own delay taken off, so it is in tune.
 const MAX_DELAY = 8192;
-class Reso extends Module {
+class StringRes extends Module {
   static OUTS = ['out'];
   static INS = ['pitch', 'strike', 'in', 'fb'];
   constructor(id) {
     super(id);
-    this.ic1 = [0, 0, 0]; this.ic2 = [0, 0, 0]; // the three band-pass filters (Ping)
-    this.buf = new Float64Array(MAX_DELAY); this.w = 0; this.lp = 0; this.dcX = 0; this.dcY = 0; this.dcR = 0.999; this.apX = 0; this.apY = 0; this.burst = 0; this.burstAmp = 0; this.burstLp = 0; // String
-    this.strikeWas = 0; this.y = 0;
+    this.buf = new Float64Array(MAX_DELAY); this.w = 0; this.lp = 0;
+    this.dcX = 0; this.dcY = 0; this.dcR = 0.999; this.apX = 0; this.apY = 0;
+    this.burst = 0; this.burstAmp = 0; this.burstLp = 0;
+    this.strikeWas = 0; this.y = 0; this.n = 0;
   }
   begin(p, sr) {
-    this.string = this.q(p, 'mode') === 'string';
     this.oct = this.q(p, 'range') + this.q(p, 'tune') / 12;
     this.decay = this.q(p, 'decay'); this.tone = this.q(p, 'tone'); this.fbKnob = this.q(p, 'fb');
-    this.sr = sr;
-    this.n = 0;
+    this.sr = sr; this.n = 0;
   }
   tick(S) {
     const sr = this.sr;
-    // the pitch, updated every 8 samples (it is costly) unless something is moving it fast
-    if ((this.n++ & 7) === 0 || this.f === undefined) {
+    if ((this.n++ & 7) === 0) {
       let f = C4 * Math.pow(2, this.oct + this.r('pitch'));
       f = f < 8 ? 8 : f > sr * 0.24 ? sr * 0.24 : f;
-      this.f = f;
-      if (this.string) {
-        // Tone: the loop's low-pass, from dull to bright. Its cutoff follows the pitch (2 to 42 times
-        // it), so a note sounds equally bright anywhere on the keyboard, as on a real string.
-        this.lpA = Math.min(1, 1 - Math.exp(-TWO_PI * f * (2 + 40 * this.tone * this.tone) / sr));
-        const w = TWO_PI * f / sr, b = 1 - this.lpA;
-        // loss each time round so that it falls 60 dB in Decay (Feedback stretches that time; see
-        // below), allowing for what the low-pass already takes off the note itself
-        // a DC blocker in the loop too (a high-pass at a tenth of the pitch), so that nothing below the
-        // note can build up in it
-        const R = this.dcR = Math.exp(-TWO_PI * f * 0.1 / sr);
-        const lpGain = this.lpA / Math.hypot(1 - b * Math.cos(w), b * Math.sin(w));
-        const hpGain = Math.hypot(1 - Math.cos(w), Math.sin(w)) / Math.hypot(1 - R * Math.cos(w), R * Math.sin(w));
-        // (it may be above 1 to make up a dark Tone's loss on the note: nothing builds up below the note,
-        // and the low-pass keeps everything above it in check)
-        this.g = Math.min(2, Math.exp(-6.91 / (f * this.decay)) / (lpGain * hpGain));
-        // one period round the loop: the delay line, less the filters' own delay at this pitch (in tune)
-        const lpDelay = Math.atan2(b * Math.sin(w), 1 - b * Math.cos(w)) / w;
-        const hpDelay = -(Math.atan2(Math.sin(w), 1 - Math.cos(w)) - Math.atan2(R * Math.sin(w), 1 - R * Math.cos(w))) / w;
-        const len = Math.max(2.2, Math.min(MAX_DELAY - 2, sr / f - lpDelay - hpDelay));
-        // whole samples, plus a fraction (0.1-1.1) made by an all-pass filter, which (unlike reading
-        // between two samples) takes nothing off the high notes
-        this.whole = Math.floor(len - 0.1);
-        const fr = len - this.whole;
-        this.apC = (1 - fr) / (1 + fr);
-        this.len = len;
-      } else {
-        this.coef = BAR.map((m, k) => {
-          const fk = Math.min(f * m, sr * 0.45);
-          const g = Math.tan(Math.PI * fk / sr);
-          // each partial rings for Decay (the higher ones for less), so Q follows from the time
-          const T = this.decay / (1 + k * 1.5);
-          const Q = Math.max(0.5, T * Math.PI * fk / 6.91);
-          const kk = 1 / Q;
-          if (k === 0) this.inGain = 2.5 * Math.sqrt(Q);
-          const a1 = 1 / (1 + g * (g + kk));
-          return [kk, a1, g * a1, g * g * a1];
-        });
-      }
+      // Tone: the loop's low-pass, its cutoff 2 to 42 times the pitch
+      this.lpA = Math.min(1, 1 - Math.exp(-TWO_PI * f * (2 + 40 * this.tone * this.tone) / sr));
+      const w = TWO_PI * f / sr, b = 1 - this.lpA;
+      const R = this.dcR = Math.exp(-TWO_PI * f * 0.1 / sr); // DC blocker: a high-pass at a tenth of the pitch
+      // loss each time round so that it falls 60 dB in Decay, allowing for what the filters take off
+      // the note itself (it may be above 1: nothing builds up below the note, the low-pass holds the rest)
+      const lpGain = this.lpA / Math.hypot(1 - b * Math.cos(w), b * Math.sin(w));
+      const hpGain = Math.hypot(1 - Math.cos(w), Math.sin(w)) / Math.hypot(1 - R * Math.cos(w), R * Math.sin(w));
+      this.g = Math.min(2, Math.exp(-6.91 / (f * this.decay)) / (lpGain * hpGain));
+      // one period round the loop, less the filters' own delay at this pitch
+      const lpDelay = Math.atan2(b * Math.sin(w), 1 - b * Math.cos(w)) / w;
+      const hpDelay = -(Math.atan2(Math.sin(w), 1 - Math.cos(w)) - Math.atan2(R * Math.sin(w), 1 - R * Math.cos(w))) / w;
+      const len = Math.max(2.2, Math.min(MAX_DELAY - 2, sr / f - lpDelay - hpDelay));
+      this.whole = Math.floor(len - 0.1); // whole samples, plus a fraction (0.1-1.1) from the all-pass
+      const fr = len - this.whole;
+      this.apC = (1 - fr) / (1 + fr);
+      this.len = len;
     }
     let fb = this.fbKnob + this.r('fb');
     fb = fb < 0 ? 0 : fb > 1 ? 1 : fb;
-    // a rise at Strike: ping or pluck, as hard as the signal there (a gate or trigger: 1)
     const st = this.r('strike');
-    let hit = 0;
-    if (st > 0.5 && this.strikeWas <= 0.5) hit = st > 2 ? 2 : st;
+    if (st > 0.5 && this.strikeWas <= 0.5) { this.burst = Math.max(2, Math.round(this.len)); this.burstAmp = st > 2 ? 2 : st; }
     this.strikeWas = st;
-    const x = this.r('in');
-    let y;
-    if (this.string) {
-      if (hit) { this.burst = Math.max(2, Math.round(this.len)); this.burstAmp = hit; }
-      let ex = x * 0.5;
-      if (this.burst > 0) { // the pluck: one period of noise, as bright as Tone
-        this.burstLp += ((Math.random() * 2 - 1) - this.burstLp) * (0.15 + 0.85 * this.tone);
-        ex += this.burstLp * this.burstAmp * 4;
-        this.burst--;
-      }
-      // one period back: whole samples from the delay line, then the fraction through the all-pass
-      let r = this.w - this.whole;
-      if (r < 0) r += MAX_DELAY;
-      const raw = this.buf[r];
-      const d = this.apC * (raw - this.apY) + this.apX;
-      this.apX = raw; this.apY = d;
-      this.lp += (d - this.lp) * this.lpA;
-      const hp = this.lp - this.dcX + this.dcR * this.dcY; // the DC blocker
-      this.dcX = this.lp; this.dcY = hp;
-      // Feedback up to 90%: rings longer (up to 10 times as long); past 90%, the loop gains a little each
-      // time round and sings on (the soft limit holds it)
-      const loop = fb < 0.9 ? Math.pow(this.g, 1 - fb / 0.9 * 0.9) : 1 + (fb - 0.9) * 0.5;
-      let v = ex + hp * loop;
-      v = 1.4 * Math.tanh(v / 1.4); // a soft limit inside the loop
-      this.buf[this.w] = v;
-      this.w = (this.w + 1) % MAX_DELAY;
-      y = v;
-    } else {
-      // input to the main resonator: In, plus Feedback (unity loop gain at 1/1.1 = about 90%)
-      const fbIn = fb * 1.11 * Math.tanh(this.y);
-      y = 0;
-      for (let k = 0; k < 3; k++) {
-        const [kk, a1, a2, a3] = this.coef[k];
-        if (hit) this.ic1[k] += hit * (k === 0 ? 1 : k === 1 ? this.tone * 0.7 : this.tone * this.tone * 0.5) * 0.45;
-        // In: louder the narrower the resonance, so noise into it sounds about as loud at any Decay
-        const u = k === 0 ? kk * (x * this.inGain + fbIn) : 0;
-        const v3 = u - this.ic2[k];
-        const v1 = a1 * this.ic1[k] + a2 * v3;
-        const v2 = this.ic2[k] + a2 * this.ic1[k] + a3 * v3;
-        this.ic1[k] = 2 * v1 - this.ic1[k]; this.ic2[k] = 2 * v2 - this.ic2[k];
-        y += v1;
-      }
-      y = 1.4 * Math.tanh(y / 1.4);
+    let ex = this.r('in') * 0.5;
+    if (this.burst > 0) { // the pluck: one period of noise, as bright as Tone
+      this.burstLp += ((Math.random() * 2 - 1) - this.burstLp) * (0.15 + 0.85 * this.tone);
+      ex += this.burstLp * this.burstAmp * 4;
+      this.burst--;
     }
-    this.y = y;
-    S[this.o] = lim(y);
+    let r = this.w - this.whole;
+    if (r < 0) r += MAX_DELAY;
+    const raw = this.buf[r];
+    const d = this.apC * (raw - this.apY) + this.apX;
+    this.apX = raw; this.apY = d;
+    this.lp += (d - this.lp) * this.lpA;
+    const hp = this.lp - this.dcX + this.dcR * this.dcY;
+    this.dcX = this.lp; this.dcY = hp;
+    // Feedback up to 90%: rings longer (up to 10 times); past 90% the loop gains a little each time round
+    const loop = fb < 0.9 ? Math.pow(this.g, 1 - fb / 0.9 * 0.9) : 1 + (fb - 0.9) * 0.5;
+    let v = ex + hp * loop;
+    v = 1.4 * Math.tanh(v / 1.4); // a soft limit inside the loop
+    this.buf[this.w] = v;
+    this.w = (this.w + 1) % MAX_DELAY;
+    this.y = v;
+    S[this.o] = lim(v);
   }
-  reset() { this.ic1.fill(0); this.ic2.fill(0); this.buf.fill(0); this.lp = this.y = this.burstLp = this.dcX = this.dcY = this.apX = this.apY = 0; }
-  ok() { return Number.isFinite(this.y + this.ic1[0] + this.ic2[0] + this.lp + this.apY + this.dcY); }
+  reset() { this.buf.fill(0); this.lp = this.y = this.burstLp = this.dcX = this.dcY = this.apX = this.apY = 0; }
+  ok() { return Number.isFinite(this.y + this.lp + this.apY + this.dcY); }
 }
 
 // the Output: its sum is read by the processor after every module has run
@@ -518,7 +545,7 @@ class Seq extends Module {
   }
 }
 
-const TYPES = { vco: VCO, noise: Noise, mix: Mixer, vcf: VCF, ring: Ring, vca: VCA, att: Att, env: Env, lfo: LFO, mfo: MFO, sh: SH, reso: Reso };
+const TYPES = { vco: VCO, noise: Noise, mix: Mixer, vcf: VCF, ring: Ring, vca: VCA, att: Att, env: Env, lfo: LFO, mfo: MFO, sh: SH, ping: Ping, string: StringRes };
 const typeOf = (id) => (id === 'out' ? Out : id === 'seq' ? Seq : TYPES[(/^([a-z]+)\d+$/.exec(id) || [])[1]]);
 
 class ModRackProcessor extends AudioWorkletProcessor {

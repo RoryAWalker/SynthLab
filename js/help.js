@@ -723,23 +723,34 @@ export const HELP_NFMOD = {
 };
 
 // Entries for the NF-ModRack's own modules (its others share the NF-Modular's help). Looked up on that rack.
+const strikeHelp = (m, verb) => ({ title: `${m}: Strike input`, body: [`Each time the signal here rises (a trigger or gate), it is ${verb}. A higher signal ${verb === 'plucked' ? 'plucks it harder' : 'strikes it harder'}.`], tip: 'An LFO\'s square wave here plays it over and over by itself.' });
+const shared = (m) => ({
+  [`${m.toLowerCase()}.range`]: { title: 'Range', body: ['Shifts the note up or down in whole octaves.'] },
+  [`${m.toLowerCase()}.tune`]: { title: 'Tune', body: ['Tunes the note up or down by up to 7 semitones.'] },
+  [`${m.toLowerCase()}.decay`]: { title: 'Decay', body: ['How long it rings after each strike: the time for the sound to fall by 60 dB, from a short knock (20 ms) to a long ring (10 s). The same time at every pitch.'] },
+  [`${m.toLowerCase()}.fb`]: { title: 'Feedback', body: ['How much of its own sound goes back into it. Up to about 90% it simply rings longer (up to ten times the Decay). Past 90% the sound no longer dies away: it sings on by itself, held at a safe level, until you turn Feedback down.'] },
+  [`jack.${m.toLowerCase()}.pitch`]: { title: `${m}: Pitch input`, body: ['Sets the note at 1 volt per octave, so the Keyboard\'s Pitch plays it in tune. With nothing here it rings at middle C (moved by Range and Tune).'] },
+  [`jack.${m.toLowerCase()}.fb`]: { title: `${m}: FB input`, body: ['A control signal here adds to the Feedback knob: an envelope can make a note swell into a singing sustain, then fall away.'] },
+  [`out:${m.toLowerCase()}.out`]: { title: `${m}: Out`, body: ['The ringing sound. Patch it to the Output, a VCF or a VCA like any oscillator.'] },
+});
 export const HELP_MODRACK = {
-  'section:reso': { title: 'Resonator', body: [
-    'A sound source with no oscillator inside: something that rings when you strike it. Patch a trigger or gate into Strike (the Keyboard\'s Trig, or the Sequencer\'s) and each one rings it at the pitch set by Pitch, Range and Tune; Decay sets how long it rings.',
-    'Ping is a tuned resonator, like a struck bar or a filter at full resonance "pinged" by a click: a pure, round tone that dies away. String is a plucked string: a burst of noise goes round a short loop that is exactly one period long, losing a little each time, so it settles into a tuned, string-like note (the Karplus-Strong method).',
-    'Feedback sends its own sound back into it. Turn it up and it rings longer; past about 90% it stops dying away and sings on by itself, as a real resonator does when fed back through an amplifier.'],
-    tip: 'Patch the Keyboard\'s Trig into Strike, Pitch into Pitch and the Out to the Output, then play. Click the word Ping in the title to hear the same notes as a plucked String.' },
-  'reso.mode': { title: 'Ping or String', body: ['Click the word in the title to switch. Ping: a tuned resonator that rings when struck (a bar, a bell, a struck glass). String: a plucked string (a delay line one period long, fed back into itself).'] },
-  'reso.mode=ping': { title: 'Ping', body: ['A tuned resonator: a band-pass filter so sharp that it rings on its own when struck. Tone adds the higher, slightly out-of-tune partials of a struck bar, as on a marimba or a glockenspiel.'] },
-  'reso.mode=string': { title: 'String', body: ['A plucked string: each pluck is a short burst of noise sent round a loop one period long. Every trip round, a gentle low-pass takes off a little treble, so the note starts bright and mellows as it dies, just as a real string does.'] },
-  'reso.range': { title: 'Range', body: ['Shifts the note up or down in whole octaves.'] },
-  'reso.tune': { title: 'Tune', body: ['Tunes the note up or down by up to 7 semitones.'] },
-  'reso.decay': { title: 'Decay', body: ['How long it rings after each strike: the time for the sound to fall by 60 dB, from a short knock (20 ms) to a long ring (10 s). The same time at every pitch.'], tip: 'Short Decay with Ping: woodblocks and drums. Long Decay: bells.' },
-  'reso.tone': { title: 'Tone', body: ['Ping: how much of the struck bar\'s higher partials you hear. At 0 a pure tone; turned up, more like a marimba or metal bar.', 'String: how bright the string is, from a soft, muted pluck to a bright, wiry one. It follows the pitch, so every note sounds about as bright.'] },
-  'reso.fb': { title: 'Feedback', body: ['How much of its own sound goes back into it. Up to about 90% it simply rings longer (up to ten times the Decay). Past 90% the sound no longer dies away: it sings on by itself, held at a safe level, until you turn Feedback down.'], tip: 'Set Feedback to 95%, strike once, then turn Tone slowly: a sustained, singing resonance you can shape.' },
-  'jack.reso.pitch': { title: 'Resonator: Pitch input', body: ['Sets the note at 1 volt per octave, so the Keyboard\'s Pitch plays it in tune. With nothing here it rings at middle C (moved by Range and Tune).'] },
-  'jack.reso.strike': { title: 'Resonator: Strike input', body: ['Each time the signal here rises (a trigger or gate), it is struck: Ping is "pinged", String is plucked. A higher signal strikes it harder.'], tip: 'An LFO\'s square wave here strikes it over and over by itself.' },
-  'jack.reso.in': { title: 'Resonator: In', body: ['Any sound here excites it continuously, instead of (or as well as) striking it. Noise here makes it sound bowed or blown; a VCO here makes it ring along with the VCO where their pitches meet.'], tip: 'Noise White into In, Decay long: a breathy, bowed tone at the pitch you play.' },
-  'jack.reso.fb': { title: 'Resonator: FB input', body: ['A control signal here adds to the Feedback knob: an envelope can make a note swell into a singing sustain, then fall away.'] },
-  'out:reso.out': { title: 'Resonator: Out', body: ['The ringing sound. Patch it to the Output, a VCF or a VCA like any oscillator.'] },
+  ...shared('Ping'), ...shared('String'),
+  'section:ping': { title: 'Ping (modal resonator)', body: [
+    'A sound source with no oscillator inside: something that rings when struck. Each rise at Strike "pings" it, like tapping a bar, a bell or a drum.',
+    'Inside is a bank of tuned resonators, one for each partial (overtone): very sharp band-pass filters that ring on their own when struck. This is modal synthesis: the sound is built from the object\'s modes, its ways of vibrating.',
+    'What makes a drum sound like a drum and a bell like a bell is how its partials are spaced. Stretch sets that spacing; Partials, how many there are; Tone, how loud the upper ones are. Upper partials die away sooner than the note, as on real struck objects.'],
+    tip: 'Patch the Keyboard\'s Trig into Strike, Pitch into Pitch and Out to the Output. Play, and slowly turn Stretch from 0.67 (drum) to 2 (rod).' },
+  'ping.partials': { title: 'Partials', body: ['How many partials ring: 1 is a single pure tone; each step adds the next one up. More partials, more complex and metallic.'] },
+  'ping.stretch': { title: 'Stretch', body: ['How the partials are spaced: partial n rings at the pitch times n to the power of Stretch.', 'At 1 they are harmonic (×2, ×3, ×4…), as in a string or a voice: in tune with each other. At 1.5 they spread out like a struck bar\'s (×2.83, ×5.2…), a marimba or glockenspiel. At 0.67 they crowd together like a drum skin\'s (×1.59, ×2.08…). At 2 they spread like a stiff metal rod\'s (×4, ×9…). Everything in between: bells, gongs and clangs.'], tip: 'Set Feedback to 95% so it sings, then turn Stretch: you hear the same note change material.' },
+  'ping.tone': { title: 'Tone', body: ['How loud the upper partials are. At 0 almost only the note itself; at 100% every partial is nearly as loud as the note.'] },
+  'jack.ping.strike': strikeHelp('Ping', 'struck'),
+  'jack.ping.in': { title: 'Ping: In', body: ['Any sound here excites it continuously, instead of (or as well as) striking it. Noise here makes it sound bowed or blown; a VCO here makes it ring wherever the VCO\'s harmonics meet its partials.'], tip: 'Noise White into In, Decay long: a breathy, bowed bell.' },
+  'jack.ping.stretch': { title: 'Ping: Stretch input', body: ['A control signal here moves Stretch: 1 volt moves it by 0.5. An envelope bends the material as each note rings; an LFO makes it shimmer between materials.'], tip: 'ENV Out here with a short Decay: each note starts as a clang and settles into a pure tone.' },
+  'section:string': { title: 'String (plucked string)', body: [
+    'A string, modelled as a wave travelling along it. Inside is a loop of memory exactly one period long: each rise at Strike drops a short burst of noise into it, and the burst goes round and round.',
+    'Anything that repeats every period builds up and everything else cancels out, so the loop settles into the note and all its harmonics, without being told about any of them. Each time round a gentle low-pass takes off a little treble, so the note starts bright and mellows as it dies, as a real plucked string does. This is waveguide synthesis (its simplest form is known as Karplus-Strong).'],
+    tip: 'Patch the Keyboard\'s Trig into Strike, Pitch into Pitch and Out to the Output, then play: a harp or guitar-like pluck.' },
+  'string.tone': { title: 'Tone', body: ['How bright the string is, from a soft, muted pluck to a bright, wiry one. It follows the pitch, so every note sounds about as bright.'] },
+  'jack.string.strike': strikeHelp('String', 'plucked'),
+  'jack.string.in': { title: 'String: In', body: ['Any sound here goes into the string continuously. Noise here makes it sound bowed; another sound here makes the string ring along with it, like a sympathetic string.'] },
 };

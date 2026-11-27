@@ -11,6 +11,7 @@
 //   detune     -> zoomed spectrum of the two close peaks; scope.js shows the slow beating
 
 import { PARAMS, formatValue } from './params.js';
+import { pingPartial, MATERIALS } from './synths/modrack.js';
 
 const AMBER = '#ffb547';
 const AMBER_DIM = 'rgba(255, 181, 71, 0.55)';
@@ -56,6 +57,7 @@ const WAVE_RECIPE = {
 export function overlayGroup(key, p = {}) {
   const id = key.split('=')[0];
   if (/^osc[123]\.wave$/.test(id)) return 'harm';
+  if (/^ping\d+\.(partials|stretch|tone)$/.test(id) || /^jack\.ping\d+\.stretch$/.test(id)) return 'ping'; // the NF-ModRack's Ping
   if (/^osc[123]\.range$/.test(id) || id === 'ctrl.tune') return 'range';
   if (['ctrl.glide', 'ctrl.mode', 'kb.glide', 'kb.mode', 'perf.glideon'].includes(id)) return 'glide';
   if (id === 'mix.osc1' || id === 'mix.osc2') return 'mix';
@@ -214,6 +216,7 @@ export class Overlay {
     else if (this.group === 'filter') this.drawFilter(ctx, w, h, box);
     else if (this.group === 'lfo') this.drawLfo(ctx, w, h, box);
     else if (this.group === 'harm') this.drawHarmonics(ctx, w, h, spectrum);
+    else if (this.group === 'ping') this.drawPing(ctx, w, h);
     else if (this.group === 'range') this.drawRange(ctx, w, h, box);
     else if (this.group === 'glide') this.drawGlide(ctx, w, h, box);
     else if (this.group === 'detune') this.drawDetune(ctx, w, h);
@@ -619,6 +622,53 @@ export class Overlay {
     if (p[`mix.osc${osc}`] < 0.01) note += ` · Osc ${osc} is turned down in the Mixer`;
     label(ctx, note, w - PAD.r, 16, AMBER_DIM, 'right', 10, 600);
     label(ctx, '○ = harmonic not present', w - PAD.r, 30, AMBER_DIM, 'right', 9.5, 600);
+  }
+
+  // ---- the NF-ModRack's Ping: where its partials ring, and how loud ----------------------------
+  // Each partial is a line at its frequency (pitch × n^Stretch), as tall as Tone makes it, labelled
+  // with its ratio; faint ticks mark the harmonic series (×2, ×3…) for comparison, so you can see
+  // how far Stretch has pulled the partials away from it.
+  drawPing(ctx, w, h) {
+    const p = this.getPatch();
+    const inst = /ping\d+/.exec(this.param)[0];
+    if (p[`${inst}.stretch`] === undefined) return;
+    const stretch = p[`${inst}.stretch`], tone = p[`${inst}.tone`], count = p[`${inst}.partials`];
+    // the note: the keyboard's last note if the keyboard plays it, else middle C; moved by Range and Tune
+    const played = String(p[`jack.${inst}.pitch`] || '').split(',').includes('kb.pitch');
+    const note = (played ? this.lastNote : 60) + p[`${inst}.range`] * 12 + p[`${inst}.tune`];
+    const f0 = noteHz(note);
+    const fMin = 20, fMax = 20000;
+    const xOf = (f) => (Math.log(f / fMin) / Math.log(fMax / fMin)) * w;
+    const top = 48, bottom = h - 26;
+    const yOf = (db) => top + (-Math.max(-60, Math.min(0, db)) / 60) * (bottom - top);
+    ctx.save();
+    // the harmonic series, faintly: where the partials would be at Stretch 1
+    ctx.strokeStyle = AMBER_FAINT; ctx.lineWidth = 1; ctx.setLineDash([2, 4]);
+    for (let n = 2; n <= count && n * f0 < fMax; n++) { const x = xOf(n * f0); ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bottom); ctx.stroke(); }
+    ctx.setLineDash([]);
+    let lastLabel = -99;
+    for (let n = 1; n <= count; n++) {
+      const { ratio, level } = pingPartial(n, stretch, tone);
+      const f = f0 * ratio;
+      if (f > fMax || f > 21000) { label(ctx, `${count - n + 1} partial${count - n ? 's' : ''} above hearing, left out`, w - PAD.r, bottom - 6, AMBER_DIM, 'right', 9.5, 600); break; }
+      const x = xOf(f), y = yOf(20 * Math.log10(level));
+      ctx.strokeStyle = n === 1 ? HI : AMBER; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(x, bottom); ctx.lineTo(x, y); ctx.stroke();
+      ctx.fillStyle = n === 1 ? HI : AMBER;
+      ctx.beginPath(); ctx.arc(x, y, 3.5, 0, Math.PI * 2); ctx.fill();
+      if (x - lastLabel > 30) { // (labels only where there is room)
+        label(ctx, n === 1 ? 'note' : '×' + ratio.toFixed(2), x, y - 8, n === 1 ? HI : AMBER, 'center', 10, 700);
+        label(ctx, String(n), x, h - 12, n === 1 ? HI : AMBER_DIM, 'center', 9.5, 700);
+        lastLabel = x;
+      }
+    }
+    ctx.restore();
+    const name = (MATERIALS.find(([v]) => Math.abs(v - stretch) < 0.04) || [])[1];
+    const num = inst.slice(4);
+    label(ctx, `PING ${num} · ${count} PARTIAL${count > 1 ? 'S' : ''} · STRETCH ${stretch.toFixed(2)}${name ? ' · ' + name.toUpperCase() : ''}`, PAD.l, 16, AMBER, 'left', 10.5, 800);
+    label(ctx, `partial n rings at the note × n^${stretch.toFixed(2)}${Math.abs(stretch - 1) < 0.02 ? ': the harmonic series, all in tune' : stretch < 1 ? ': squeezed closer than harmonics' : ': spread wider than harmonics'}`, PAD.l, 30, HI, 'left', 10.5, 600);
+    label(ctx, `note ${fmtHz(f0)} (${noteName(note)}) · Tone sets their height`, w - PAD.r, 16, AMBER_DIM, 'right', 10, 600);
+    label(ctx, '┆ = harmonics (×2, ×3…), for comparison', w - PAD.r, 30, AMBER_DIM, 'right', 9.5, 600);
   }
 
   // ---- oscillator range -----------------------------------------------------------------------
