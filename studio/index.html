@@ -8,6 +8,10 @@
   <title>StudioLab</title>
   <link rel="stylesheet" href="../css/synth.css">
   <link rel="stylesheet" href="css/studio.css">
+  <!-- ../index.html also has link-preview tags (description, og:*, twitter:card, share picture).
+       StudioLab is not public yet, so they are left out: add StudioLab's own when it is released. -->
+  <!-- no unit chosen yet: the start menu shows from the first moment, not after the app has loaded -->
+  <script>if (!/[?&]synth=/.test(location.search)) document.documentElement.classList.add('choosing');</script>
 </head>
 <body data-skin="classic">
   <header class="appbar">
