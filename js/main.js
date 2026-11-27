@@ -876,11 +876,29 @@ function buildMeters() {
     box.appendChild(m);
     meters.push({ id, el: m, segs: [...m.querySelectorAll('i')].reverse(), clip: m.querySelector('.meter-clip'), shown: id === 'gr' ? 0 : -120, clipAt: 0 });
   });
+  // ear protection light (NF-C1): lit while the engine is turning the output down to protect ears
+  const prot = document.createElement('div');
+  prot.className = 'protect';
+  prot.dataset.help = 'protect';
+  prot.innerHTML = '<span class="protect-lamp"></span>Protect';
+  let toldAt = -1e9;
+  (function protLoop() {
+    requestAnimationFrame(protLoop);
+    const on = engine.running && engine.live && engine.live.protect > 1;
+    prot.classList.toggle('on', !!on);
+    if (on && engine.live.protect > 3 && performance.now() - toldAt > 20000) {
+      toldAt = performance.now();
+      patchMenu.toast('Very loud: the output is being turned down to protect your ears. Try less Makeup.');
+    }
+  })();
   const scale = document.createElement('div');
   scale.className = 'meter-scale';
   scale.innerHTML = '<span>0</span><span>−12</span><span>−24</span><span>−36</span><span>−48</span>';
   box.insertBefore(scale, box.children[1]);
-  return box;
+  const wrap = document.createElement('div');
+  wrap.className = 'meters-wrap';
+  wrap.append(box, prot);
+  return wrap;
 }
 if (PROC && SYNTH.kind !== 'console') {
   let last = performance.now();

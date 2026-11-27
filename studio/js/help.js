@@ -17,10 +17,10 @@ export const HELP_NFC1 = {
   // ---- source
   'section:src': { title: 'Loop player', body: [
     'A separate unit that plays the sound going into the compressor, over and over. A compressor does nothing on its own: it reacts to whatever you put through it, so the choice of sound matters a lot.',
-    'Drums have big, short peaks: good for hearing Attack and Release. Bass and Keys have loud and soft notes: good for hearing how a compressor evens out levels. The Full band is all three playing together, the way a compressor across a whole mix hears them. The Test tone simply steps between quiet and loud, the clearest way to see what each control does.'] },
+    'Drums have big, short peaks: good for hearing Attack and Release. Bass, Keys and Vocals have loud and soft notes: good for hearing how a compressor evens out levels (a vocal is the classic case). The Full band is drums, bass and keys playing together, the way a compressor across a whole mix hears them. The Test tone simply steps between quiet and loud, the clearest way to see what each control does.'] },
   'src.play': { title: 'Play / Stop', body: ['Starts and stops the sound, looping. The space bar does the same.'] },
   'src.sound': { title: 'Sound', body: [
-    'Which sound to play through the compressor. Drums, Bass and Keys are recorded loops with plenty of difference between loud and soft notes, and the Full band is the three of them together. The Test tone steps between a quiet level (−30 dB) and a loud one (−6 dB) every second.',
+    'Which sound to play through the compressor. Drums, Bass, Keys and Vocals are recorded loops with plenty of difference between loud and soft notes, and the Full band is drums, bass and keys together. The Test tone steps between a quiet level (−30 dB) and a loud one (−6 dB) every second.',
     'Your file plays a sound you have loaded with Load your own… (it stays on your computer). The display shows which sound is playing and how far through the loop it is.'] },
   loadown: { title: 'Load your own', body: [
     'Play your own recording through the compressor, from your computer. WAV, MP3, FLAC and AAC (.m4a) work in every browser; AIFF and Apple Lossless open in Safari only. It is read in the browser and is never uploaded anywhere. Long files are trimmed to the first minute.',
@@ -63,6 +63,9 @@ export const HELP_NFC1 = {
     'Because the loud peaks have been brought down, the sound can now be turned up further before it reaches the top: that is why compressed sounds seem louder and denser.'] },
 
   // ---- meters
+  protect: { title: 'Protect', body: [
+    'Ear protection. If the sound coming out gets dangerously loud (a lot of Makeup on a squashed sound, say), the C1 turns it down before it reaches your speakers or headphones, and this light comes on. Nothing ever goes past −1 dB either.',
+    'It works after the meters, so the meters and screens still show what you did: if it lights, the Out meter is your clue to turn the Makeup down.'] },
   'section:meters': { title: 'Meters', body: ['In shows the level going in, Out the level coming out, and GR in between shows the gain reduction: how many dB the compressor is turning the sound down right now.'] },
   'meter-in': { title: 'In meter', body: ['The peak level going into the compressor. The lamp at the top lights if it reaches 0 dB.'] },
   'meter-gr': { title: 'GR meter (gain reduction)', body: ['How far the compressor is turning the sound down, lighting from the top downwards: each light is about 1.2 dB, so a full meter is 24 dB of reduction.', 'This is the most useful meter on any compressor. A few dB on the loudest moments is gentle control; 10 dB or more all the time is heavy compression.'] },

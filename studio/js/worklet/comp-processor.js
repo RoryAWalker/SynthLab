@@ -19,6 +19,16 @@ const linToDb = (x) => (x > 1e-6 ? 20 * Math.log10(x) : -120);
 // what reaches the speakers: 3 dB down, so a loud source plus some Makeup has headroom (the
 // computer's own volume sets how loud you hear it; the meters read before this)
 const OUT_LEVEL = 0.7;
+// Ear protection, last of all and after the meters (they show what the student did; this is only
+// what reaches the speakers). Two guards and a fuse:
+//  - loudness: if the average level stays above -12 dBFS (a loud commercial master; 6 dB over
+//    the loudest recording here as it normally plays) it is turned down to that, quickly, and let
+//    back up slowly. Clipping alone would not do this: a squashed sound clipped at full scale is
+//    still painfully loud.
+//  - peaks: nothing goes past -1 dBFS.
+//  - a fuse: if the maths ever breaks (NaN or infinity), silence and a reset, never a blast.
+const GUARD_MS = Math.pow(10, -12 / 10); // -12 dBFS average, as mean square
+const CEIL = Math.pow(10, -1 / 20); // -1 dBFS
 // Auto makeup listens: it keeps a running average of how loud the sound is going in and how loud
 // it is after compression (over the last few seconds), and turns the sound up by the difference,
 // so it comes out about as loud as it went in (as loud as Bypass). A long average keeps it steady
@@ -42,6 +52,7 @@ class CompProcessor extends AudioWorkletProcessor {
     this.blockIn = 0; this.blockOut = 0; this.blockGr = 0; this.blockDet = -120; this.blockN = 0;
     this.seq = 0;
     this.msIn = 0; this.msComp = 0; this.autoDb = null; // auto makeup (see above)
+    this.msOut = 0; this.guard = 1; this.lim = 1; this.blockProt = 0; // ear protection (see above)
     this.port.onmessage = (e) => {
       const m = e.data;
       if (m.type === 'patch') Object.assign(this.p, m.patch);
@@ -84,6 +95,7 @@ class CompProcessor extends AudioWorkletProcessor {
     const on = p['comp.bypass'] !== 'on';
     const listen = OUT_LEVEL;
     const slope = 1 / ratio - 1;
+    const outAvg = 1 - Math.exp(-1 / (0.3 * sampleRate)), guardDown = 1 - Math.exp(-1 / (0.03 * sampleRate)), guardUp = 1 - Math.exp(-1 / (1.5 * sampleRate)), limUp = 1 - Math.exp(-1 / (0.05 * sampleRate));
     // the detector lets go over 20 ms, or as fast as the Release if that is faster (so a very fast
     // release can follow the waves of a low note: distortion)
     const peakFall = Math.exp(-1 / (Math.min(0.02, Math.max(1, p['comp.release'] ?? 150) * 0.001) * sampleRate));
@@ -126,8 +138,20 @@ class CompProcessor extends AudioWorkletProcessor {
       const makeup = auto ? this.autoDb : (p['comp.makeup'] ?? 0);
       const g = on ? dbToLin(makeup) * gGr : 1;
       const oa = a * g, ob = b * g;
-      L[i] = oa * listen;
-      if (R !== L) R[i] = ob * listen;
+      // ear protection: loudness guard, then the peak ceiling
+      let sa = oa * listen, sb = ob * listen;
+      this.msOut += outAvg * ((sa * sa + sb * sb) * 0.5 - this.msOut);
+      const want = this.msOut > GUARD_MS ? Math.sqrt(GUARD_MS / this.msOut) : 1;
+      this.guard += (want < this.guard ? guardDown : guardUp) * (want - this.guard);
+      sa *= this.guard; sb *= this.guard;
+      this.lim += limUp * (1 - this.lim);
+      const pk = Math.max(Math.abs(sa), Math.abs(sb)) * this.lim;
+      if (pk > CEIL) this.lim *= CEIL / pk;
+      sa *= this.lim; sb *= this.lim;
+      const prot = this.guard * this.lim;
+      if (prot < 0.989 && -linToDb(prot) > this.blockProt) this.blockProt = -linToDb(prot);
+      L[i] = sa;
+      if (R !== L) R[i] = sb;
 
       // level reports, one every 128 samples
       const ia = Math.max(Math.abs(a), Math.abs(b)), oo = Math.max(Math.abs(oa), Math.abs(ob));
@@ -140,11 +164,17 @@ class CompProcessor extends AudioWorkletProcessor {
         this.blockIn = this.blockOut = this.blockGr = 0; this.blockDet = -120; this.blockN = 0;
       }
     }
+    // the fuse: if anything has gone wrong in the maths, silence and start again
+    if (!Number.isFinite(this.gr) || !Number.isFinite(this.peak) || !Number.isFinite(this.msOut) || !Number.isFinite(L[n - 1]) || !Number.isFinite(R[n - 1])) {
+      L.fill(0); if (R !== L) R.fill(0);
+      this.gr = 0; this.peak = 0; this.msIn = this.msComp = this.msOut = 0; this.autoDb = null; this.guard = this.lim = 1;
+    }
     // the second output is unused (the synths send their oscillators there for the scope)
     if (this.frames.length >= 4 * 8) {
-      this.port.postMessage({ type: 'state', seq: ++this.seq, frames: this.frames, gr: this.gr, on, playing, makeup: auto ? this.autoDb : null,
+      this.port.postMessage({ type: 'state', seq: ++this.seq, frames: this.frames, gr: this.gr, on, playing, makeup: auto ? this.autoDb : null, protect: this.blockProt,
         pos: src ? this.pos / src[0].length : 0, rate: sampleRate / 128 });
       this.frames = [];
+      this.blockProt = 0;
     }
     return true;
   }

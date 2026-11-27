@@ -52,6 +52,7 @@ export const PRESETS = {
   'Even bass': { 'src.sound': 'bass', 'comp.thresh': -22, 'comp.ratio': 5, 'comp.knee': 6, 'comp.attack': 8, 'comp.release': 200, 'comp.makeup': 6 },
   'Limiter': { 'src.sound': 'drums', 'comp.thresh': -12, 'comp.ratio': 20, 'comp.attack': 0.1, 'comp.release': 80 },
   'Slow attack test': { 'src.sound': 'tone', 'comp.thresh': -24, 'comp.ratio': 8, 'comp.attack': 120, 'comp.release': 400 },
+  'Smooth vocal': { 'src.sound': 'vocals', 'comp.thresh': -30, 'comp.ratio': 3, 'comp.knee': 6, 'comp.attack': 5, 'comp.release': 120, 'comp.auto': 'on' },
   'Glue the band': { 'src.sound': 'band', 'comp.thresh': -13, 'comp.ratio': 2, 'comp.knee': 6, 'comp.attack': 30, 'comp.release': 200, 'comp.makeup': 1 },
   'Pumping': { 'src.sound': 'drums', 'comp.thresh': -34, 'comp.ratio': 8, 'comp.attack': 2, 'comp.release': 600, 'comp.makeup': 16 },
 };

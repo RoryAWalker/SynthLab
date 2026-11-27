@@ -13,6 +13,7 @@ export const SOURCES = [
   { id: 'drums', label: 'Drums', url: 'audio/c1-drums.wav' },
   { id: 'bass', label: 'Bass', url: 'audio/c1-bass.wav' },
   { id: 'keys', label: 'Keys', url: 'audio/c1-keys.wav' },
+  { id: 'vocals', label: 'Vocals', url: 'audio/c1-vocals.wav' },
   { id: 'band', label: 'Full band', url: 'audio/c1-band.wav' },
   { id: 'tone', label: 'Test tone', make: makeTone },
   { id: 'user', label: 'Your file' },
