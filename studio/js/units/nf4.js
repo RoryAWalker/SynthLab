@@ -2,15 +2,16 @@
 // from top to bottom in the order the sound flows through it: input (mic or line) and preamp
 // gain, polarity, high-pass filter, EQ, the insert point (Send and Return sockets), Aux 1
 // (pre-fader), Aux 2 (post-fader), pan and routing, mute and solo, and the fader.
-// Beside the channels: a stereo FX Return (one level pot), the aux masters with their output
-// sockets, a one-knob bus compressor, then the main meters above the main fader.
+// Beside the channels: one narrow strip with the aux masters (and their output sockets) and the
+// FX Return; then the main meters, the one-knob bus compressor and the main fader.
+// For now every channel and the outboard are mono (the main mix is stereo, by the pan pots).
 // Nothing is wired in behind the panel: the outboard Reverb and Compressor (separate units) are
 // patched in with cables, from the sockets on the desk's surface. The song comes from a separate
 // Multitrack Player, one track per channel.
 // Engine: js/worklet/console-processor.js. Scales: js/consoleMath.js. Screens: js/consoleScope.js.
 
 import { faderDb, sendDb, preampDb, fmtDb } from '../consoleMath.js';
-import { SONG_STEMS } from '../sources.js';
+import { SONG_STEMS, MIC_LOSS_DB } from '../sources.js';
 
 const onOff = (label, button, def = 'off') => ({ type: 'step', ui: 'led', button, label, def, options: [{ v: 'off', label: 'Off' }, { v: 'on', label: 'On' }] });
 const eqGain = (label) => ({ type: 'cont', label, min: -15, max: 15, def: 0, curve: 'lin', unit: 'dB', small: true, fmt: fmtDb,
@@ -26,7 +27,7 @@ export const OUTPUTS = {
   'ch1.send': { module: 'Channel 1', label: 'Send' }, 'ch2.send': { module: 'Channel 2', label: 'Send' },
   'ch3.send': { module: 'Channel 3', label: 'Send' }, 'ch4.send': { module: 'Channel 4', label: 'Send' },
   'aux1.out': { module: 'Aux 1', label: 'Aux 1' }, 'aux2.out': { module: 'Aux 2', label: 'Aux 2' },
-  'rev.out': { module: 'Reverb', label: 'Out', stereo: true }, 'oc.out': { module: 'Compressor', label: 'Out' },
+  'rev.out': { module: 'Reverb', label: 'Out' }, 'oc.out': { module: 'Compressor', label: 'Out' },
 };
 Object.values(OUTPUTS).forEach((o) => { o.audio = true; });
 const fullName = (out) => (OUTPUTS[out] ? `${OUTPUTS[out].module} ${OUTPUTS[out].label === OUTPUTS[out].module ? 'out' : OUTPUTS[out].label}` : 'nothing');
@@ -71,9 +72,9 @@ export const PARAMS = {
   ...channel(1), ...channel(2), ...channel(3), ...channel(4),
   // the Multitrack Player (a separate unit)
   'tape.play': { type: 'step', ui: 'led', button: 'Play', label: 'Play / Stop', def: 'stop', options: [{ v: 'stop', label: 'Stopped' }, { v: 'play', label: 'Playing' }] },
-  // FX Return: a plain stereo input with one level pot (for the reverb, or anything patched in)
-  'fxr.in': jack('In'),
-  'fxr.level': send('Level', 0.89),
+  // FX Return: a plain input with one level pot (for the reverb, or anything patched in)
+  'fxr.in': jack('FX In'),
+  'fxr.level': send('FX Return', 0.89),
   // aux masters (their outputs are sockets)
   'aux1.master': send('Aux 1', 0.89),
   'aux2.master': send('Aux 2', 0.89),
@@ -87,13 +88,13 @@ export const PARAMS = {
   'mon.src': { type: 'step', label: 'Monitor', def: 'main', small: true, options: [{ v: 'main', label: 'Main' }, { v: 'aux1', label: 'Aux 1' }, { v: 'aux2', label: 'Aux 2' }] },
 
   // ---- outboard (separate units, patched in with cables) ----
-  // Reverb: mono in, stereo out, 100% wet (the dry sound stays on the desk)
+  // Reverb: 100% wet (the dry sound stays on the desk)
   'rev.in': jack('In'),
   'rev.time': { type: 'cont', label: 'Time', min: 0.4, max: 5, def: 1.8, curve: 'log', unit: 's', small: true, fmt: (v) => v.toFixed(1) + ' s',
     marks: [[0.4, '.4'], [1, '1'], [2, '2'], [5, '5']] },
   'rev.tone': { type: 'cont', label: 'Tone', min: 0, max: 1, def: 0.5, curve: 'lin', small: true, fmt: (v) => (v < 0.34 ? 'dark' : v > 0.66 ? 'bright' : 'natural'),
     marks: [[0, 'dark'], [1, 'bright']] },
-  // Compressor: mono, for a channel's insert point (fixed 10 ms attack, 150 ms release)
+  // Compressor: for a channel's insert point (fixed 10 ms attack, 150 ms release)
   'oc.in': jack('In'),
   'oc.thresh': { type: 'cont', label: 'Threshold', min: -40, max: 0, def: -20, curve: 'lin', unit: 'dB', small: true, fmt: fmtDb, marks: [[-40, '−40'], [-20, '−20'], [0, '0']] },
   'oc.ratio': { type: 'cont', label: 'Ratio', min: 1, max: 20, def: 4, curve: 'log', unit: ':1', small: true,
@@ -108,8 +109,10 @@ const strip = (n) => {
     // one control per row, in signal order from top to bottom; the knobs zig-zag left and right
     // so the strip stays narrow (as on real desks); only small buttons sit side by side
     zigzag: true,
-    rows: [[k + 'in'], [[k + 'p48', k + 'pol']], [k + 'gain'], [k + 'hpf'],
-      [k + 'hf'], [k + 'mf'], [k + 'mg'], [k + 'lf'], [[k + 'eq']], [['out:' + k + 'send', k + 'ret']],
+    // (the insert point's sockets sit at the top, like a desk's patch row; the insert itself is
+    // after the EQ, see the engine)
+    rows: [[['out:' + k + 'send', k + 'ret']], [k + 'in'], [[k + 'p48', k + 'pol']], [k + 'gain'], [k + 'hpf'],
+      [k + 'hf'], [k + 'mf'], [k + 'mg'], [k + 'lf'], [[k + 'eq']],
       [k + 'aux1'], [k + 'aux2'], [k + 'pan'], [[k + 'main']], [[k + 'mute', k + 'solo']]],
     fader: k + 'fader', meters: [[`ch${n}`, '', 'chmeter']], scribble: `${stem.label}`, scribbleNote: stem.note,
   }];
@@ -117,24 +120,23 @@ const strip = (n) => {
 
 export const LAYOUT = [
   strip(1), strip(2), strip(3), strip(4),
-  // the FX Return: a narrow stereo strip with just a level pot
-  [{ id: 'fx', title: 'FX Ret', strip: true, rows: [[['fxr.in']], ['fxr.level']], meters: [['fx', '', 'fxmeter']], scribble: 'FX Return', scribbleNote: 'stereo' }],
-  [
-    { id: 'aux', title: 'Aux Masters', rows: [['aux1.master', 'aux2.master'], [['out:aux1.out'], ['out:aux2.out']]],
-      meters: [['aux1', 'Aux 1', 'auxmeter'], ['aux2', 'Aux 2', 'auxmeter']] },
-    { id: 'bc', title: 'Bus Comp', rows: [['bc.thresh']], meters: [['gr', 'GR', 'grmeter']], scribble: 'Auto makeup', scribbleNote: '4:1 · gain matched' },
-  ],
-  // right: the main meters on top, the main fader at the bottom
+  // one narrow strip: the aux masters with their outputs, then the FX Return (no meters)
+  [{ id: 'aux', title: 'Aux · FX', rows: [['aux1.master'], [['out:aux1.out']], ['aux2.master'], [['out:aux2.out']], [['fxr.in']], ['fxr.level']] }],
+  // right: the main meters, the bus compressor under them, then the main fader at the bottom
   [{ id: 'mtr', title: 'Main Meters', head: ['meter.mode'], rows: [], needles: [['mainL', 'L'], ['mainR', 'R']] },
+   { id: 'bc', title: 'Bus Comp', rows: [['bc.thresh']], meters: [['gr', 'GR', 'grmeter']] },
    { id: 'main', title: 'Main', rows: [['mon.src']], fader: 'main.fader', meters: [['mainL', 'L', 'mainmeter'], ['mainR', 'R', 'mainmeter']] }],
 ];
 
 // The separate units: the outboard rack (beside the screens) and the Multitrack Player (under the desk)
 export const OUTBOARD = [
   { id: 'rev', title: 'Reverb', brandSub: 'REVERB', rows: [['rev.time', 'rev.tone']], jacks: ['rev.in', 'out:rev.out'] },
-  { id: 'oc', title: 'Compressor', brandSub: 'MONO COMPRESSOR', rows: [['oc.thresh', 'oc.ratio', 'oc.gain']], jacks: ['oc.in', 'out:oc.out'], gr: 'ocgr' },
+  { id: 'oc', title: 'Compressor', brandSub: 'COMPRESSOR', rows: [['oc.thresh', 'oc.ratio', 'oc.gain']], jacks: ['oc.in', 'out:oc.out'], gr: 'ocgr' },
 ];
-export const PLAYER = { id: 'tape', title: 'Multitrack Player', play: 'tape.play', text: 'Demo song · 96 BPM · tracks 1–4 → channels 1–4' };
+export const PLAYER = { id: 'tape', title: 'Multitrack Player', play: 'tape.play', text: 'Demo song · 105 BPM · tracks 1–4 → channels 1–4',
+  // a tiny meter per track: each track's own level (the drums before they lost 50 dB as a mic signal)
+  tracks: SONG_STEMS.map((st) => st.label),
+  trackDb: (live) => (live && live.ch ? live.ch.map((c, i) => c.in + (SONG_STEMS[i].input === 'mic' ? MIC_LOSS_DB : 0)) : null) };
 
 // (presets with cables: an input socket's value is the output plugged into it)
 const REVERB_PATCHED = { 'rev.in': 'aux2.out', 'fxr.in': 'rev.out' };

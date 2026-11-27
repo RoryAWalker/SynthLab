@@ -834,7 +834,8 @@ function sendSource() {
   if (SYNTH.kind === 'console') {
     if (sentSources.has('song')) return;
     sentSources.add('song');
-    Promise.resolve(ensureAudio()).then(() => engine.post({ type: 'source', chans: loadSong(engine.ctx) }));
+    Promise.resolve(ensureAudio()).then(async () => engine.post({ type: 'source', chans: await loadSong(engine.ctx) }))
+      .catch(() => { sentSources.delete('song'); patchMenu.toast('The song could not be loaded. Check your connection and press Play again.'); });
     return;
   }
   const id = patch['src.sound'];
@@ -898,6 +899,22 @@ function buildPlayer() {
   display.before(makeControl(P.play, {}));
   // a choice of sounds and Load your own (the NF-C1), or one song (the NF-Mix4's multitrack: P.text)
   if (P.sound) display.after(makeControl(P.sound, {}), buildLoadButton());
+  // a tiny meter per track (the NF-Mix4's multitrack: P.tracks, levels from P.trackDb)
+  const trackBars = [];
+  if (P.tracks) {
+    const box = document.createElement('div');
+    box.className = 'pl-tracks';
+    box.dataset.help = 'trackmeters';
+    P.tracks.forEach((name, i) => {
+      const t = document.createElement('div');
+      t.className = 'pl-track';
+      t.title = `Track ${i + 1}: ${name}`;
+      t.innerHTML = `<div class="pl-bar"><i></i></div><span>${i + 1}</span>`;
+      box.appendChild(t);
+      trackBars.push({ el: t.querySelector('i'), v: 0 });
+    });
+    display.after(box);
+  }
   document.querySelector('#stage > .synth').after(unit);
   // the display follows what the engine is playing
   const state = display.querySelector('.pd-state'), now = display.querySelector('.pd-now'), bar = display.querySelector('.pd-bar i');
@@ -910,6 +927,14 @@ function buildPlayer() {
     const text = `${playing ? '▶' : '■'}|${name}`;
     if (text !== shown) { shown = text; state.textContent = playing ? '▶' : '■'; now.textContent = name; now.title = name; display.classList.toggle('playing', !!playing); }
     bar.style.transform = `scaleX(${playing || live.pos ? Math.min(1, live.pos || 0) : 0})`;
+    if (trackBars.length) { // rise at once, fall back smoothly
+      const dbs = playing && P.trackDb ? P.trackDb(live) : null;
+      trackBars.forEach((b, i) => {
+        const v = dbs ? Math.max(0, Math.min(1, (dbs[i] + 48) / 48)) : 0;
+        b.v = Math.max(v, b.v * 0.9);
+        b.el.style.transform = `scaleY(${b.v.toFixed(3)})`;
+      });
+    }
   })();
 }
 
@@ -928,6 +953,27 @@ function buildOutboard() {
     rack.appendChild(unit);
   });
   document.getElementById('stage').appendChild(rack);
+  // a mini meter under every socket on the outboard (and the desk's FX In): is anything arriving
+  // at the input, and leaving from the output? So students can see they have patched correctly.
+  const minis = [];
+  document.querySelectorAll('.outboard-face .jack-cell, .panel .jack-cell[data-param="fxr.in"]').forEach((cell) => {
+    const key = cell.dataset.param || (cell.dataset.help || '').replace(/^out:/, '');
+    const m = document.createElement('div');
+    m.className = 'mini-meter';
+    m.innerHTML = '<i></i>'.repeat(5);
+    cell.appendChild(m);
+    minis.push({ key, lights: [...m.children], v: -140 });
+  });
+  const STEPS = [-48, -36, -24, -12, -3]; // dBFS, one light each
+  (function miniLoop() {
+    requestAnimationFrame(miniLoop);
+    const live = engine.running && engine.live && engine.live.console ? engine.live : null;
+    minis.forEach((mm) => {
+      const db = live ? ((live.insDb && live.insDb[mm.key]) ?? (live.outsDb && live.outsDb[mm.key]) ?? -140) : -140;
+      mm.v = Math.max(db, mm.v - 1.5); // falls about 90 dB a second
+      mm.lights.forEach((l, i) => l.classList.toggle('on', mm.v >= STEPS[i]));
+    });
+  })();
 }
 
 // Level meters: In, Gain Reduction, Out. Segmented ladders, like a hardware unit.

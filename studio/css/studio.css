@@ -295,6 +295,22 @@ body[data-synth="nf4"] .player-display { width: 380px; }
 body[data-synth="nf4"] .panel .jack-cell { width: 46px; }
 body[data-synth="nf4"] .panel .jack-label { font-size: 8.5px; letter-spacing: 0.06em; }
 body[data-synth="nf4"] .zigzag .stack-cell:has(.jack-cell) { gap: 4px; margin: 2px 0 4px; }
+/* the player's track meters: four tiny bars */
+.pl-tracks { display: flex; gap: 5px; align-items: flex-end; height: 40px; padding: 4px 8px; border-radius: 4px; background: #0b0c0d; box-shadow: inset 0 1px 3px rgba(0,0,0,0.9); }
+.pl-track { display: flex; flex-direction: column; align-items: center; gap: 2px; height: 100%; }
+.pl-bar { flex: 1; width: 6px; background: #1c2a20; border-radius: 1px; overflow: hidden; display: flex; align-items: flex-end; }
+.pl-bar i { display: block; width: 100%; height: 100%; background: linear-gradient(#ffc23a, #49e07a 35%); transform-origin: 50% 100%; transform: scaleY(0); }
+.pl-track span { font: 700 8px var(--font); color: #7c8590; }
+/* mini meters under the outboard's sockets: five tiny lights, is signal arriving / leaving? */
+.mini-meter { display: flex; gap: 2px; margin-top: 2px; }
+.mini-meter i { width: 5px; height: 4px; border-radius: 1px; background: #17301f; }
+.mini-meter i:last-child { background: #34290f; }
+.mini-meter i.on { background: #49e07a; box-shadow: 0 0 3px rgba(73,224,122,0.7); }
+.mini-meter i:last-child.on { background: #ffc23a; box-shadow: 0 0 3px rgba(255,194,58,0.7); }
+/* the Aux · FX strip: one narrow column, no meters */
+body[data-synth="nf4"] .section[data-section="aux"] .section-grid { row-gap: 2px; }
+/* the bus compressor under the main meters: its GR meter short */
+body[data-synth="nf4"] .section[data-section="bc"] .meter-ladder { height: 70px; min-height: 0; }
 /* the FX Return: a narrow strip */
 body[data-synth="nf4"] .section[data-section="fx"] .section-grid { justify-content: center; }
 body[data-synth="nf4"] .scope-unit .scope-screen-wrap { flex: none; }

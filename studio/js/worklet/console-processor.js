@@ -8,8 +8,8 @@
 //   -> polarity -> high-pass filter -> EQ -> INSERT (out on Send; back in on Return, or straight
 //   through when nothing is plugged into Return) -> [Aux 1 send, pre-fader] -> mute -> fader
 //   -> [Aux 2 send, post-fader] -> pan -> main L/R. Solo (PFL) listens just before the fader.
-// Master: aux buses -> their masters -> the Aux 1 / Aux 2 output sockets; FX Return (stereo, from
-//   its socket) -> level -> main bus; main bus -> bus compressor (auto makeup) -> main fader -> out.
+// Master: aux buses -> their masters -> the Aux 1 / Aux 2 output sockets; FX Return (from its
+//   socket) -> level -> main bus; main bus -> bus compressor (auto makeup) -> main fader -> out.
 //   The monitor (what you hear) is Main, Aux 1 or Aux 2, or Solo.
 //
 // Patching: each input socket names the output plugged into it. Every sample, the parts are worked
@@ -97,7 +97,7 @@ class Compressor {
 }
 
 // which channels hold condenser microphones (silent without 48 V phantom power)
-const CONDENSER = [true, false, false, true];
+const CONDENSER = [true, false, false, false]; // the drum overheads
 
 // the outputs (sockets that send), in the order they are worked out each sample
 const OUTS = ['ch1.send', 'ch2.send', 'ch3.send', 'ch4.send', 'oc.out', 'aux1.out', 'aux2.out', 'rev.out'];
@@ -148,6 +148,7 @@ class ConsoleProcessor extends AudioWorkletProcessor {
     // insert: what the rest of the strip gets), post (after mute and fader), l / r (after pan)
     this.m = { ch: [0, 1, 2, 3].map(() => ({ in: 0, pre: 0, eq: 0, ins: 0, post: 0, l: 0, r: 0, clip: 0, sq: 0 })),
       aux1: 0, aux2: 0, fx: 0, bus: 0, mainL: 0, mainR: 0, mon: 0, gr: 0, solo: 0, ocgr: 0, prot: 0,
+      ins: { 'oc.in': 0, 'rev.in': 0, 'fxr.in': 0 }, // what reaches the outboard's inputs (their mini meters)
       outs: new Float64Array(OUTS.length),
       sq: { aux1: 0, aux2: 0, fx: 0, mainL: 0, mainR: 0, solo: 0 }, n: 0 };
   }
@@ -248,7 +249,8 @@ class ConsoleProcessor extends AudioWorkletProcessor {
       }
       if (song && (playing || this.playGain > 0)) { if (++this.pos >= song[0].length) this.pos = 0; }
       // 2. the outboard compressor
-      { const y = this.oc.run(ocIn < 0 ? 0 : mono(ocIn), ocT, ocRatio, ocGain, ocAtk, ocRel, peakFall); // (unpatched: it lets go)
+      { const x = ocIn < 0 ? 0 : mono(ocIn); if (Math.abs(x) > m.ins['oc.in']) m.ins['oc.in'] = Math.abs(x);
+        const y = this.oc.run(x, ocT, ocRatio, ocGain, ocAtk, ocRel, peakFall); // (unpatched: it lets go)
         oL[4] = oR[4] = y; if (this.oc.gr > m.ocgr) m.ocgr = this.oc.gr; }
       // 3. the rest of each channel, from its insert return
       let mainL = 0, mainR = 0, aux1 = 0, aux2 = 0, solo = 0;
@@ -273,11 +275,12 @@ class ConsoleProcessor extends AudioWorkletProcessor {
       const a1 = Math.max(-4, Math.min(4, aux1 * a1m)), a2 = Math.max(-4, Math.min(4, aux2 * a2m));
       oL[5] = oR[5] = a1; oL[6] = oR[6] = a2;
       // 5. the reverb (mono in, stereo out)
-      if (revIn >= 0) this.rev.run(mono(revIn), this.revOut); else this.rev.run(0, this.revOut);
+      { const x = revIn < 0 ? 0 : mono(revIn); if (Math.abs(x) > m.ins['rev.in']) m.ins['rev.in'] = Math.abs(x); this.rev.run(x, this.revOut); }
       oL[7] = this.revOut[0]; oR[7] = this.revOut[1];
       // 6. the FX Return (stereo; a mono output feeds both sides)
       let fl = 0, fr = 0;
-      if (fxIn >= 0) { fl = oL[fxIn] * fxLevel; fr = oR[fxIn] * fxLevel; mainL += fl; mainR += fr; }
+      if (fxIn >= 0) { fl = oL[fxIn] * fxLevel; fr = oR[fxIn] * fxLevel; mainL += fl; mainR += fr;
+        const v = Math.max(Math.abs(oL[fxIn]), Math.abs(oR[fxIn])); if (v > m.ins['fxr.in']) m.ins['fxr.in'] = v; }
       for (let o = 0; o < OUTS.length; o++) { const v = Math.max(Math.abs(oL[o]), Math.abs(oR[o])); if (v > mo[o]) mo[o] = v; }
 
       m.n++;
@@ -357,7 +360,7 @@ class ConsoleProcessor extends AudioWorkletProcessor {
       this.port.postMessage({ type: 'state', console: true, playing, anySolo, gr: this.gr, pos: song ? this.pos / song[0].length : 0,
         ch: m.ch.map((c) => ({ in: d(c.in), pre: d(c.pre), eq: d(c.eq), ins: d(c.ins), post: d(c.post), l: d(c.l), r: d(c.r), clip: c.clip, rms: rms(c.sq) })),
         aux1: d(m.aux1), aux2: d(m.aux2), fx: d(m.fx), bus: d(m.bus), mainL: d(m.mainL), mainR: d(m.mainR), mon: d(m.mon), grMax: m.gr,
-        solo: d(m.solo), ocgr: this.oc.gr, ocgrMax: m.ocgr, makeup: this.autoDb, protect: m.prot, outs, outsDb: Object.fromEntries(OUTS.map((o, i) => [o, d(mo[i])])),
+        solo: d(m.solo), ocgr: this.oc.gr, ocgrMax: m.ocgr, makeup: this.autoDb, protect: m.prot, outs, outsDb: Object.fromEntries(OUTS.map((o, i) => [o, d(mo[i])])), insDb: Object.fromEntries(Object.entries(m.ins).map(([k, v]) => [k, d(v)])),
         rms: { aux1: rms(m.sq.aux1), aux2: rms(m.sq.aux2), fx: rms(m.sq.fx), mainL: rms(m.sq.mainL), mainR: rms(m.sq.mainR), solo: rms(m.sq.solo) } });
       this.resetMeters();
     }
