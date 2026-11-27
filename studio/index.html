@@ -1,12 +1,13 @@
 <!doctype html>
-<!-- StudioLab: the same app as SynthLab (index.html) with the studio units (compressors, consoles)
-     instead of the synths. Keep this page in step with index.html. -->
-<html lang="en" data-lab="studio">
+<!-- StudioLab: SynthLab's app with the studio units (compressors, consoles). The page
+     follows ../index.html: keep the two in step. -->
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>StudioLab</title>
-  <link rel="stylesheet" href="css/synth.css">
+  <link rel="stylesheet" href="../css/synth.css">
+  <link rel="stylesheet" href="css/studio.css">
 </head>
 <body data-skin="classic">
   <header class="appbar">
@@ -37,7 +38,9 @@
         <button id="zoom-level" class="zoom-level" title="Fit to window">100%</button>
         <button id="zoom-in" aria-label="Zoom in">+</button>
       </div>
+      <span class="midi-light" id="midi-light" data-help="midi" hidden><i></i>MIDI</span>
       <button class="btn btn-scopes" id="btn-scopes" data-help="scopes" aria-pressed="false" hidden>Scopes</button>
+      <button class="btn btn-scopes" id="btn-modmax" data-help="modmax" aria-pressed="false" hidden>Maximise</button>
       <button class="btn btn-help" id="btn-help" data-help="help" aria-pressed="false" title="Hover help: rest on any control for a second"><span class="help-q">?</span> Help</button>
     </div>
   </header>
@@ -51,7 +54,7 @@
     </div>
     <div class="lb-task">
       <div class="lb-steps" id="lb-steps" data-help="lesson-steps"></div>
-      <div class="lb-task-head"><span class="lb-task-title" id="lb-task-title"></span><span class="lb-status" id="lb-status"></span></div>
+      <div class="lb-task-head"><span class="lb-task-title" id="lb-task-title"></span><span class="lb-status" id="lb-status"></span><button class="lb-btn lb-hear" id="lb-hear" data-help="lesson-hear"><span aria-hidden="true">▶</span> Hear target</button></div>
       <div class="lb-task-text" id="lb-task-text"></div>
       <div class="lb-question" id="lb-question" hidden></div>
       <div class="lb-feedback" id="lb-feedback"></div>
@@ -62,7 +65,6 @@
     </div>
     <div class="lb-actions">
       <button class="lb-btn primary" id="lb-start">Start</button>
-      <button class="lb-btn" id="lb-hear" data-help="lesson-hear"><span aria-hidden="true">▶</span> Hear target</button>
       <button class="lb-btn hint" id="lb-hint" data-help="lesson-hint" hidden>💡 Hint</button>
       <button class="lb-btn quiet" id="lb-reset" data-help="lesson-reset">Reset controls</button>
       <label class="lb-check" id="lb-ghost-wrap" data-help="lesson-ghost"><input type="checkbox" id="lb-ghost" checked> Show target on scopes</label>
@@ -182,6 +184,6 @@
     <div class="help-content"></div>
   </aside>
 
-  <script type="module" src="js/main.js"></script>
+  <script type="module" src="js/boot.js"></script>
 </body>
 </html>

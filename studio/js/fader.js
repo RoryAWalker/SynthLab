@@ -2,7 +2,7 @@
 // three quarters of the way up). The value is the fader's position, 0..1; consoleMath.js turns
 // it into dB. Same interface as Knob: .el, .set(value), .commit(value).
 
-import { PARAMS, formatValue } from './params.js';
+import { PARAMS, formatValue } from '../../js/params.js';
 import { faderPos } from './consoleMath.js';
 
 const MARKS = [[10, '+10'], [5, '+5'], [0, '0'], [-5, '5'], [-10, '10'], [-20, '20'], [-30, '30'], [-40, '40'], [-60, '60']];

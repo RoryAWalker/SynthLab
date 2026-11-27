@@ -1,7 +1,8 @@
-import { HELP, HELP_NF3, HELP_NFM, HELP_NFMOD, HELP_NFC1, HELP_NF4, helpKeyFor } from './help.js';
+import { HELP, HELP_NF3, HELP_NFM, HELP_NFMOD, helpKeyFor } from './help.js';
+import { EXT } from './lab.js';
 import { PARAMS, ALL_SECTIONS, formatValue, SYNTH } from './params.js';
 
-const HELP_FOR_SYNTH = { nf3: HELP_NF3, nfm: HELP_NFM, nfmod: HELP_NFMOD, nfc1: HELP_NFC1, nf4: HELP_NF4 }[SYNTH.id] || {};
+const HELP_FOR_SYNTH = { nf3: HELP_NF3, nfm: HELP_NFM, nfmod: HELP_NFMOD, ...(EXT.help || {}) }[SYNTH.id] || {};
 const lookup = (k) => HELP_FOR_SYNTH[k] || HELP[k];
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));

@@ -13,11 +13,9 @@ import { ZoomPan } from './zoom.js';
 import { LessonController } from './lessonUI.js';
 import { PatchMenu } from './patches.js';
 import { Cables } from './cables.js';
-import { CompScope } from './compScope.js';
-import { ConsoleScope } from './consoleScope.js';
-import { Fader } from './fader.js';
-import { ConsoleMeters } from './meters.js';
-import { loadSource, loadUserFile, userFileName, loadSong } from './sources.js';
+import { EXT } from './lab.js';
+// the studio units' own parts (StudioLab supplies them; SynthLab's page has none of them)
+const { CompScope, ConsoleScope, Fader, ConsoleMeters, loadSource, loadUserFile, userFileName, loadSong } = EXT.parts || {};
 import { startMidi } from './midi.js';
 import { WordSwitch } from './wordswitch.js';
 import { MaxModules } from './maxModules.js';
