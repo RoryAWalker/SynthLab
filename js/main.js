@@ -722,7 +722,8 @@ lesson = new LessonController({
       // (the NF-C1: from its Loop Player, which sits above it)
       const synthTop = document.querySelector('.player-unit, .synth').getBoundingClientRect().top + window.scrollY;
       const pinned = document.querySelector('.appbar').offsetHeight + lessonWrap.offsetHeight;
-      window.scrollTo(0, on && !visible ? Math.max(0, synthTop - pinned - 12) : 0);
+      // (the processors fit everything below the lesson panel: no scrolling)
+      window.scrollTo(0, on && !visible && !PROC ? Math.max(0, synthTop - pinned - 12) : 0);
     });
   },
   // A success: bring the screens into view so the smiley is seen, then put things back
@@ -730,6 +731,8 @@ lesson = new LessonController({
   celebrate: (seconds, restore = true) => {
     if (maxMods && maxMods.on) { smileyPop(); return; }
     const wasHidden = document.body.classList.contains('scopes-hidden');
+    // (the processors: everything is fitted on screen; opening hidden screens would resize it all)
+    if (PROC) return;
     const y = window.scrollY;
     if (wasHidden) setScopes(true, false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -776,6 +779,9 @@ document.getElementById('btn-synths').addEventListener('click', () => startMenu.
 const lessonWrap = document.getElementById('lesson-wrap');
 // (with the modules maximised they always fit the room left below it, whatever its height)
 if (maxMods) new ResizeObserver(() => { if (maxMods.on) fit(); }).observe(lessonWrap);
+// The processors (NF-C1): in lessons the screens, the player and the unit all fit below the lesson
+// panel, so nothing needs scrolling; the panel grows and shrinks (a question, a hint), so re-fit.
+if (PROC) new ResizeObserver(() => { if (document.body.classList.contains('lesson-mode')) { fit(); window.scrollTo(0, 0); } }).observe(lessonWrap);
 
 // ---- modular synths: cables over the panel, and lamps by the output jacks ----
 // The NF-Modular's Output has an Overload light: it glows while the output limiter is working

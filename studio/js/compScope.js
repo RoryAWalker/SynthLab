@@ -95,7 +95,7 @@ export class CompScope {
       const k = this.n++ % this.cap;
       this.inp[k] = f[i]; this.out[k] = f[i + 1]; this.gr[k] = f[i + 2]; this.det[k] = f[i + 3];
     }
-    if (f.length >= 4) this.live = { det: f[f.length - 1], gr: m.gr, on: m.on, playing: m.playing };
+    if (f.length >= 4) this.live = { det: f[f.length - 1], gr: m.gr, on: m.on, playing: m.playing, makeup: m.makeup };
   }
 
   // Lessons: the target's settings, drawn as a ghost (its transfer curve, its threshold) once it

@@ -64,6 +64,8 @@ body.processor .synth-body { border-radius: 0 0 6px 6px; }
 
 /* a control a lesson has not opened yet */
 .ctl-locked { opacity: 0.22; filter: grayscale(1); pointer-events: none; }
+/* (also the Makeup pot while Auto is on: locked wins over Auto's lighter dimming) */
+body[data-synth="nfc1"] .knob-cell.ctl-locked { opacity: 0.22 !important; filter: grayscale(1) !important; }
 
 /* the ear-protection light under the meters */
 .meters-wrap { display: flex; flex-direction: column; flex: 1; }
