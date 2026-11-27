@@ -22,8 +22,9 @@ const HOME_ROW = { Sources: 0, Shaping: 1, Modulation: 2 };
 export class RackEdit {
   // root: the panel's #sections; getRows(): the rack's rows of module ids; change(rows): try a new
   // rack (true if it changed); toast(text)
-  constructor({ root, button, getRows, change, toast }) {
-    Object.assign(this, { root, getRows, change, toast });
+  // getBays(): how many racks wide the rack is
+  constructor({ root, button, getRows, change, toast, getBays = () => 1 }) {
+    Object.assign(this, { root, getRows, change, toast, getBays });
     this.drag = null;
     this.buildDrawer();
     button.hidden = false;
@@ -102,11 +103,16 @@ export class RackEdit {
     this.refreshCards();
     // show where it went
     const sec = id && this.root.querySelector(`.rack-rows:not(.max-rows) .section[data-section="${id}"]`);
-    if (sec) { sec.classList.add('just-added'); setTimeout(() => sec.classList.remove('just-added'), 900); }
+    if (sec) {
+      sec.classList.add('just-added'); setTimeout(() => sec.classList.remove('just-added'), 900);
+      const win = sec.closest('.rack-scroll'); // (in a wide rack, bring it into view)
+      if (win) { const b = win.getBoundingClientRect(), r = sec.getBoundingClientRect(), k = win.offsetWidth / b.width || 1;
+        if (r.left < b.left || r.right > b.right) win.scrollBy({ left: ((r.left + r.right) / 2 - (b.left + b.right) / 2) * k, behavior: 'smooth' }); }
+    }
   }
 
   // room in row ri for a module
-  fits(rows, ri, id) { return fitsRow(rows[ri], id); }
+  fits(rows, ri, id) { return fitsRow(rows[ri], id, this.getBays()); }
 
   // ---- grips and remove buttons on the modules ---------------------------------------------
   decorate() {
@@ -162,6 +168,16 @@ export class RackEdit {
     }
     d.ghost.style.left = e.clientX + 'px';
     d.ghost.style.top = e.clientY + 'px';
+    // near either end of the rack's window (a rack several racks wide), it scrolls that way
+    const win = this.root.querySelector('.rack-scroll');
+    if (win) {
+      const b = win.getBoundingClientRect(), edge = 60;
+      const dir = e.clientY > b.top && e.clientY < b.bottom ? (e.clientX < b.left + edge ? -1 : e.clientX > b.right - edge ? 1 : 0) : 0;
+      if (dir && !this.scrolling) {
+        this.scrolling = setInterval(() => { win.scrollLeft += dir * 24; if (this.drag && this.lastMove) this.onMove(this.lastMove); }, 30);
+      } else if (!dir && this.scrolling) { clearInterval(this.scrolling); this.scrolling = null; }
+    }
+    this.lastMove = e;
     d.target = this.targetAt(e.clientX, e.clientY);
     this.showMarker(d.target);
   }
@@ -212,6 +228,7 @@ export class RackEdit {
   cancel() { if (this.drag) this.cleanup(); }
 
   cleanup() {
+    if (this.scrolling) { clearInterval(this.scrolling); this.scrolling = null; }
     const d = this.drag;
     this.drag = null;
     if (d && d.ghost) d.ghost.remove();

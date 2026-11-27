@@ -18,6 +18,9 @@ import { PARAMS as NFP, OUTPUTS as NFO, LAYOUT as NF_LAYOUT, KEYBED_SECTIONS, SI
 // The rack: three rows, each this wide (in the panel's own pixels: the NF-Modular's rows) with
 // this gap between modules.
 export const ROW_WIDTH = 1573;
+// The rack can be made wider, one rack's width (a bay) at a time ('rack.bays', 1-8): its rows scroll
+export const MAX_BAYS = 8;
+export const rowWidth = (bays = 1) => ROW_WIDTH * bays + GAP * (bays - 1);
 export const GAP = 8;
 export const ROWS = 3;
 
@@ -279,7 +282,8 @@ export const widthOf = (inst) => (inst === 'out' ? OUT_W : TYPES[typeOf(inst)[0]
 // ---- the rack layout -------------------------------------------------------------------
 // 'a,b|c|d' -> [['a','b'],['c'],['d']], keeping only real modules, each once, the Output always
 // present, and no row wider than the rack (a module that doesn't fit is dropped).
-export function parseLayout(str) {
+export function parseLayout(str, bays = 1) {
+  const W = rowWidth(bays);
   const seen = new Set();
   const rows = String(str || '').split('|').slice(0, ROWS).map((r) => r.split(',').map((s) => s.trim()).filter((id) => {
     if (seen.has(id) || !(id === 'out' || typeOf(id)[0])) return false;
@@ -292,7 +296,7 @@ export function parseLayout(str) {
     let used = 0;
     return row.filter((id) => {
       const w = widthOf(id) + (used ? GAP : 0);
-      if (id !== 'out' && used + w > ROW_WIDTH) return false;
+      if (id !== 'out' && used + w > W) return false;
       used += w;
       return true;
     });
@@ -300,7 +304,7 @@ export function parseLayout(str) {
 }
 export const layoutString = (rows) => rows.map((r) => r.join(',')).join('|');
 export const rowUsed = (row) => row.reduce((a, id, i) => a + widthOf(id) + (i ? GAP : 0), 0);
-export const fits = (row, inst) => rowUsed(row) + (row.length ? GAP : 0) + widthOf(inst) <= ROW_WIDTH;
+export const fits = (row, inst, bays = 1) => rowUsed(row) + (row.length ? GAP : 0) + widthOf(inst) <= rowWidth(bays);
 // the lowest free number for a new module of this type
 export function newId(rows, type) {
   const used = new Set(rows.flat());
@@ -340,10 +344,11 @@ function moduleDef(inst) {
 }
 
 // Everything for a layout string: PARAMS, OUTPUTS and the panel's rows of modules
-export function build(layout) {
-  const rows = parseLayout(layout === undefined ? DEFAULT_LAYOUT : layout);
+export function build(layout, bays = 1) {
+  const rows = parseLayout(layout === undefined ? DEFAULT_LAYOUT : layout, bays);
   // (the rack's own default is itself, so defaultPatch() keeps the modules it is given)
-  const PARAMS = { ...FIXED_PARAMS, 'rack.layout': { type: 'layout', label: 'Rack', def: layoutString(rows) } };
+  const PARAMS = { ...FIXED_PARAMS, 'rack.layout': { type: 'layout', label: 'Rack', def: layoutString(rows) },
+    'rack.bays': { type: 'step', label: 'Rack width', def: 1, options: Array.from({ length: MAX_BAYS }, (_, i) => ({ v: i + 1, label: `${i + 1} rack${i ? 's' : ''} wide` })) } };
   const OUTPUTS = { ...FIXED_OUTPUTS };
   const LAYOUT = rows.map((row) => row.map((inst) => {
     if (inst === 'out') return { ...OUT_SECTION, movable: true };
@@ -603,5 +608,5 @@ export const MODRACK = {
   },
   PARAMS: START.PARAMS, LAYOUT: START.LAYOUT, KEYBED_SECTIONS, SIDE_SECTIONS, PRESETS,
   initName: INIT_NAME,
-  build, parseLayout, layoutString, initCables,
+  build, parseLayout, layoutString, initCables, rowWidth, rowUsed, MAX_BAYS,
 };

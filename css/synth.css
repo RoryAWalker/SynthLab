@@ -1473,3 +1473,17 @@ body[data-skin="modular"] .section[data-type="table"] { --mod: #2c8f9e; } /* Wav
 body[data-skin="modular"] .section[data-type="table"].even { --mod: #44a8b6; }
 .tb-name { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; color: #c9cbcd; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 body[data-skin="modular"] .section[data-type="poly"] { --mod: #6b6f76; } /* Poly: neutral, like the Keyboard */
+/* NF-ModRack: a rack several racks wide, scrolling sideways in a window one rack wide */
+/* (one rack, plus the + strip) */
+.rack-scroll { width: 1627px; overflow-x: auto; overflow-y: hidden; flex: none; scrollbar-color: #4a4d52 #141517; }
+.rack-scroll::-webkit-scrollbar { height: 10px; }
+.rack-scroll::-webkit-scrollbar-track { background: #141517; border-radius: 5px; }
+.rack-scroll::-webkit-scrollbar-thumb { background: #4a4d52; border-radius: 5px; }
+.rack-content { display: flex; gap: 8px; width: max-content; padding-bottom: 6px; }
+body.open-rack .rack-rows:not(.max-rows) > .rack-row { width: var(--row-w, 1573px); }
+.rack-grow { flex: none; width: 46px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  border-radius: 4px; background: repeating-linear-gradient(180deg, #1b1c1f 0 12px, #17181a 12px 24px); box-shadow: inset 0 0 0 1px rgba(0,0,0,0.6); }
+.rg-btn { width: 34px; height: 34px; border-radius: 6px; border: 1px solid #4a4d52; background: #26282b; color: #ececec; font-size: 22px; line-height: 1; cursor: pointer; }
+.rg-btn:hover:not(:disabled) { background: #3b3220; border-color: #8a6a2c; color: #ffd9a0; }
+.rg-btn:disabled { opacity: 0.3; cursor: default; }
+.rg-n { font-size: 12px; font-weight: 800; color: #a9abae; }

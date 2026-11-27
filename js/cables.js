@@ -117,11 +117,15 @@ export class Cables {
     for (const out in this.outs) if (!this.outs[out].isConnected) delete this.outs[out];
   }
 
-  // centre of a socket, in the stage's own (unscaled) pixels
+  // centre of a socket, in the stage's own (unscaled) pixels. A socket scrolled out of sight (the
+  // NF-ModRack's wide rack) is taken to the edge of the rack's window, so its cable leads off that way.
   pos(sock) {
     const s = this.stage.getBoundingClientRect(), r = sock.getBoundingClientRect();
     const k = s.width / this.stage.offsetWidth || 1;
-    return [(r.left + r.width / 2 - s.left) / k, (r.top + r.height / 2 - s.top) / k];
+    let x = r.left + r.width / 2;
+    const win = sock.closest('.rack-scroll');
+    if (win) { const w = win.getBoundingClientRect(); x = Math.max(w.left + 4, Math.min(w.right - 4, x)); }
+    return [(x - s.left) / k, (r.top + r.height / 2 - s.top) / k];
   }
   toStage(x, y) {
     const s = this.stage.getBoundingClientRect();

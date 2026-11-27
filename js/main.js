@@ -259,10 +259,27 @@ function buildPanel() {
     const rowsBox = document.createElement('div');
     rowsBox.className = 'rack-rows';
     buildRackRows(rowsBox);
+    // the NF-ModRack can be several racks wide: its rows scroll sideways in a window one rack wide,
+    // with a strip at the end to make it wider or narrower (the sequencer, keyboard and screens stay put)
+    let rackBox = rowsBox;
+    if (SYNTH.openRack) {
+      rackBox = document.createElement('div');
+      rackBox.className = 'rack-scroll';
+      const content = document.createElement('div');
+      content.className = 'rack-content';
+      content.append(rowsBox, buildRackGrow());
+      rackBox.appendChild(content);
+      let queued = false;
+      rackBox.addEventListener('scroll', () => { // the cables follow
+        if (queued) return;
+        queued = true;
+        requestAnimationFrame(() => { queued = false; if (cables) cables.redraw(); });
+      });
+    }
     // the side column (the sequencer) stands on the left: it is a source of notes, like the
     // keyboard, and signals in the rack flow from left to right
     SIDE_SECTIONS.forEach((sec) => { const el = buildSection(sec); el.classList.add('rack-side'); root.appendChild(el); });
-    root.appendChild(rowsBox);
+    root.appendChild(rackBox);
     const perf = document.getElementById('perf-sections');
     KEYBED_SECTIONS.forEach((sec) => perf.appendChild(buildSection(sec)));
     const fx = document.getElementById('fx-sections');
@@ -294,6 +311,7 @@ function buildPanel() {
 // the rack's rows of modules (built again when the NF-ModRack's modules change)
 function buildRackRows(rowsBox) {
   rowsBox.replaceChildren();
+  if (SYNTH.openRack) rowsBox.style.setProperty('--row-w', SYNTH.rowWidth(patch['rack.bays'] || 1) + 'px');
   LAYOUT.forEach((row, ri) => {
     const r = document.createElement('div');
     r.className = 'rack-row';
@@ -308,6 +326,8 @@ function buildRackRows(rowsBox) {
 // sockets exist: PARAMS, the outputs and LAYOUT are updated in place (everything else reads
 // them from there), and the rack's rows are built again.
 let builtLayout = null;
+// the rack as built: its modules and its width
+function rackKey() { return `${patch['rack.layout']}#${patch['rack.bays'] || 1}`; }
 function setRackDefs(d) {
   for (const id in PARAMS) if (!id.startsWith('fx.') && !(id in d.PARAMS)) delete PARAMS[id];
   Object.assign(PARAMS, d.PARAMS);
@@ -324,7 +344,8 @@ function rebuildRack() {
   buildRackRows(rowsBox);
   for (const id in knobs) if (!knobs[id].el.isConnected) delete knobs[id];
   cables.prune();
-  builtLayout = patch['rack.layout'];
+  builtLayout = rackKey();
+  showBays();
   if (maxMods) { maxMods.usual = LAYOUT.map((row) => row.map((sec) => sec.id)); maxMods.order = maxMods.usual.flat(); }
   addOverLamp();
   if (rackEdit) rackEdit.decorate();
@@ -332,10 +353,48 @@ function rebuildRack() {
   cables.redraw();
   if (maxWas) setMaxModules(true);
 }
+// The strip at the end of the rack: + makes it one rack wider, − one narrower (only if what is in
+// it still fits). The width is part of the patch.
+function buildRackGrow() {
+  const el = document.createElement('div');
+  el.className = 'rack-grow';
+  el.innerHTML = `<button class="rg-btn rg-add" data-help="rackwider" aria-label="Make the rack one rack wider">+</button>
+    <span class="rg-n"></span><button class="rg-btn rg-sub" data-help="rackwider" aria-label="Make the rack one rack narrower">−</button>`;
+  el.querySelector('.rg-add').addEventListener('click', () => setBays((patch['rack.bays'] || 1) + 1));
+  el.querySelector('.rg-sub').addEventListener('click', () => setBays((patch['rack.bays'] || 1) - 1));
+  rackGrowEl = el;
+  showBays();
+  return el;
+}
+let rackGrowEl = null;
+function showBays() {
+  if (!rackGrowEl) return;
+  const n = patch['rack.bays'] || 1;
+  rackGrowEl.querySelector('.rg-n').textContent = `${n}×`;
+  rackGrowEl.querySelector('.rg-sub').disabled = n <= 1;
+  rackGrowEl.querySelector('.rg-add').disabled = n >= SYNTH.MAX_BAYS;
+}
+function setBays(n) {
+  if (n < 1 || n > SYNTH.MAX_BAYS || n === (patch['rack.bays'] || 1)) return;
+  const rows = SYNTH.parseLayout(patch['rack.layout'], patch['rack.bays'] || 1);
+  if (rows.some((r) => SYNTH.rowUsed(r) > SYNTH.rowWidth(n))) {
+    patchMenu.toast('The modules in the rack would not fit in a narrower rack. Take some out first.');
+    return;
+  }
+  const growing = n > (patch['rack.bays'] || 1);
+  patch['rack.bays'] = n;
+  rebuildRack();
+  showBays();
+  if (patchMenu) patchMenu.markEdited();
+  // show the new room
+  const sc = document.querySelector('#sections .rack-scroll');
+  if (growing && sc) sc.scrollTo({ left: sc.scrollWidth, behavior: 'smooth' });
+}
+
 // a new rack (from the module drawer): keep every setting and cable that still has somewhere to
 // go, give new modules their starting settings, and drop cables to or from modules taken out
 function changeRack(rows) {
-  const d = SYNTH.build(SYNTH.layoutString(rows));
+  const d = SYNTH.build(SYNTH.layoutString(rows), patch['rack.bays']);
   const lay = SYNTH.layoutString(d.rows);
   if (lay === patch['rack.layout']) return false;
   setRackDefs(d);
@@ -407,12 +466,12 @@ function refreshScales() {
 function setPatch(p) {
   // the NF-ModRack: a patch brings its own rack of modules
   if (SYNTH.openRack) {
-    const d = SYNTH.build(p['rack.layout']);
+    const d = SYNTH.build(p['rack.layout'], p['rack.bays'] || 1);
     const lay = SYNTH.layoutString(d.rows);
     setRackDefs(d);
     patch = { ...defaultPatch(), ...p, 'rack.layout': lay };
     for (const id in patch) if (!(id in PARAMS)) delete patch[id];
-    if (lay !== builtLayout) rebuildRack();
+    if (rackKey() !== builtLayout) rebuildRack();
   } else
   patch = { ...defaultPatch(), ...p };
   restartMeasure(); // the meters start again (see measure)
@@ -546,7 +605,7 @@ document.querySelector('.np-model').innerHTML = nameHtml(SYNTH.name); // name pl
 document.querySelector('.brand-sub').textContent = SYNTH.brandSub;
 document.title = `${LAB_NAME} · ${SYNTH.name}`;
 buildPanel();
-if (SYNTH.openRack) builtLayout = patch['rack.layout'];
+if (SYNTH.openRack) builtLayout = rackKey();
 if (SYNTH.OUTBOARD) buildOutboard();
 if (SYNTH.PLAYER) buildPlayer();
 refreshScales(); // e.g. Osc 3 Frequency starts in Hz when Osc 3 is an LFO
@@ -889,7 +948,7 @@ if (knobs['mix.feedback']) {
 if (SYNTH.openRack && !PREVIEW) {
   rackEdit = new RackEdit({
     root: document.getElementById('sections'), button: document.getElementById('btn-modules'),
-    getRows: () => SYNTH.parseLayout(patch['rack.layout']),
+    getRows: () => SYNTH.parseLayout(patch['rack.layout'], patch['rack.bays']), getBays: () => patch['rack.bays'] || 1,
     change: changeRack, toast: (t) => patchMenu.toast(t),
   });
 }

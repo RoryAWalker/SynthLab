@@ -390,6 +390,7 @@ export const HELP = {
     body: ['Opens the drawer of modules for the NF-ModRack. Drag a module into any row of the rack (a bar shows where it will go), or click it to put it in the first row with room. Take as many oscillators, filters, envelopes and so on as you like, as long as they fit: each row is as wide as a row of the NF-Modular\'s case.', 'The bar under each module shows how much of a row it takes. A dimmed module has no row with room left for it.'],
     tip: 'Start from Empty Rack (Patch menu) and build a voice yourself: a VCO, a VCF, a VCA and an ENV, then patch them.',
   },
+  rackwider: { title: 'Rack width', body: ['+ makes the rack one rack wider (up to eight), so there is room for more modules; − makes it one narrower again, if what is in it still fits. A wide rack scrolls sideways (scroll, or drag the bar under it) while the sequencer, keyboard and screens stay where they are. Cables to modules out of sight lead off the edge of the rack.'] },
   movemodule: { title: 'Move this module', body: ['Drag the grip to move the module along its row or into another row. Its settings and cables come with it.'] },
   removemodule: { title: 'Take this module out', body: ['Takes the module out of the rack, with any cables plugged into it. Its settings are lost, so save the patch first if you might want them back.'] },
   fxtab: { title: 'Effects', body: ['Opens or closes the effects: Chorus, Delay and Reverb. They come after the synth, so the scopes still show the synth\'s own sound.'] },

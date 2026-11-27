@@ -23,9 +23,11 @@ function cablesIn(v, outs = SYNTH.OUTPUTS || {}) {
   return list.slice(-(SYNTH.multiInput ? 4 : 1)).join(',');
 }
 
+// the NF-ModRack's width (in racks) in a patch, if it is a sensible one
+const bays = (obj) => (obj && Number.isInteger(obj['rack.bays']) && obj['rack.bays'] >= 1 && obj['rack.bays'] <= (SYNTH.MAX_BAYS || 1) ? obj['rack.bays'] : 1);
 export function sanitizePatch(obj) {
   // the NF-ModRack: the patch's own rack of modules decides which controls and sockets it has
-  const rack = SYNTH.openRack ? SYNTH.build(obj && typeof obj['rack.layout'] === 'string' ? obj['rack.layout'] : undefined) : null;
+  const rack = SYNTH.openRack ? SYNTH.build(obj && typeof obj['rack.layout'] === 'string' ? obj['rack.layout'] : undefined, bays(obj)) : null;
   const P = rack ? { ...PARAMS, ...rack.PARAMS } : PARAMS, OUTS = rack ? rack.OUTPUTS : SYNTH.OUTPUTS;
   const out = {};
   for (const id in P) out[id] = P[id].def;
