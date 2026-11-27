@@ -188,7 +188,7 @@ body[data-synth="nf4"] [data-param$=".hpf"] .knob-cap { background: radial-gradi
 body[data-synth="nf4"] [data-param$=".hf"] .knob-cap, body[data-synth="nf4"] [data-param$=".lf"] .knob-cap { background: radial-gradient(circle at 40% 35%, #7fd59a, #2f8f4f 60%, #1c5d32); }
 body[data-synth="nf4"] [data-param$=".mg"] .knob-cap, body[data-synth="nf4"] [data-param$=".mf"] .knob-cap { background: radial-gradient(circle at 40% 35%, #8ab8f0, #3466b0 60%, #1f3f73); }
 body[data-synth="nf4"] [data-param$=".aux1"] .knob-cap, body[data-synth="nf4"] [data-param$=".aux2"] .knob-cap,
-body[data-synth="nf4"] [data-param^="aux"] .knob-cap, body[data-synth="nf4"] [data-param="rev.ret"] .knob-cap { background: radial-gradient(circle at 40% 35%, #ffe08a, #d1a21f 60%, #8a6a10); }
+body[data-synth="nf4"] [data-param^="aux"] .knob-cap, body[data-synth="nf4"] [data-param="fxr.level"] .knob-cap { background: radial-gradient(circle at 40% 35%, #ffe08a, #d1a21f 60%, #8a6a10); }
 body[data-synth="nf4"] [data-param$=".pan"] .knob-cap { background: radial-gradient(circle at 40% 35%, #ffffff, #c9ccd0 60%, #8f9398); }
 /* the input toggle, narrower */
 body[data-synth="nf4"] .strip .toggle-cell { width: 74px; }
@@ -260,10 +260,43 @@ body[data-synth="nf4"] .fader-body { height: 230px; }
 body[data-synth="nf4"] .meter-group.beside-fader .meter-ladder { height: 230px; }
 body[data-synth="nf4"] .strip .scribble { width: 104px; align-self: center; }
 
-/* ---- NF-Mix4: the screens stand to the right of the console, one above the other ---- */
-body[data-synth="nf4"] #stage { display: flex; align-items: flex-start; }
-body[data-synth="nf4"] .synth { order: 1; }
-body[data-synth="nf4"] .scope-unit { order: 2; flex-direction: column; width: 560px; margin: 0 0 0 18px; padding: 14px 16px 12px; gap: 10px; align-items: stretch; }
+/* ---- NF-Mix4: the console on the left with the Multitrack Player under it; the screens on the
+   right, one above the other, with the outboard rack (reverb, compressor) under them ---- */
+body[data-synth="nf4"] #stage { display: grid; grid-template-columns: auto 560px; grid-template-areas: "synth scopes" "synth rack" "player ."; column-gap: 18px; align-items: start; }
+body[data-synth="nf4"] .synth { grid-area: synth; }
+body[data-synth="nf4"] .scope-unit { grid-area: scopes; flex-direction: column; width: auto; margin: 0; padding: 14px 16px 12px; gap: 10px; align-items: stretch; }
+body[data-synth="nf4"] .player-unit { grid-area: player; }
+body[data-synth="nf4"] .player-face { width: auto; flex: 1; }
+body[data-synth="nf4"] .player-display { width: 380px; }
+/* the outboard rack: separate units, each its own colour, patched to the desk with cables */
+.outboard-rack { grid-area: rack; display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
+.outboard-unit { display: flex; align-items: stretch; filter: drop-shadow(0 10px 14px rgba(0,0,0,0.55)); }
+.outboard-unit .cheek { width: 26px; background-image:
+    radial-gradient(ellipse 6px 4px at 50% 50%, #0b0c0e 60%, transparent 66%),
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0 1px, transparent 1px 3px),
+    linear-gradient(90deg, #4a4e54, #6b7078 45%, #50545a 75%, #3c3f44); }
+.outboard-face { flex: 1; display: flex; align-items: center; gap: 14px; padding: 10px 14px 8px; border-top: 1px solid rgba(255,255,255,0.12); border-bottom: 1px solid #000;
+  background: repeating-linear-gradient(90deg, rgba(255,255,255,0.02) 0 1px, transparent 1px 3px), linear-gradient(180deg, var(--ob-hi), var(--ob) 55%, var(--ob-lo)); }
+.outboard-unit:nth-child(1) .outboard-face { --ob-hi: #3b3550; --ob: #2c2740; --ob-lo: #221e33; } /* the reverb: deep violet */
+.outboard-unit:nth-child(2) .outboard-face { --ob-hi: #3a4645; --ob: #2b3534; --ob-lo: #212a29; } /* the compressor: dark teal */
+.ob-brand { flex: none; width: 84px; display: flex; flex-direction: column; line-height: 1.1; }
+.ob-brand .brand-mark { font-size: 16px; color: #eef1f4; }
+.ob-name { font-size: 9px; font-weight: 800; letter-spacing: 0.2em; color: #b8bec6; margin-top: 3px; }
+.outboard-face .section { flex: 1; display: grid; grid-template-columns: 1fr auto; align-items: center; column-gap: 10px; padding: 0; }
+.outboard-face .section-title { display: none; } /* (the unit's name is on its badge) */
+.outboard-unit { width: 100%; }
+.outboard-face { min-width: 0; }
+.outboard-face .jack-strip { margin: 0; gap: 6px; }
+.outboard-face .jack-cell { width: 48px; }
+.outboard-face .meter { width: 22px; height: 92px; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.outboard-face .meter-ladder { flex: 1; min-height: 0; height: auto; width: 14px; }
+.outboard-face .meter-clip { display: none; }
+/* sockets on the desk: a little narrower, to fit the strips */
+body[data-synth="nf4"] .panel .jack-cell { width: 46px; }
+body[data-synth="nf4"] .panel .jack-label { font-size: 8.5px; letter-spacing: 0.06em; }
+body[data-synth="nf4"] .zigzag .stack-cell:has(.jack-cell) { gap: 4px; margin: 2px 0 4px; }
+/* the FX Return: a narrow strip */
+body[data-synth="nf4"] .section[data-section="fx"] .section-grid { justify-content: center; }
 body[data-synth="nf4"] .scope-unit .scope-screen-wrap { flex: none; }
 body[data-synth="nf4"] .scope-unit .scope-screen-wrap:first-child .bezel { height: 360px; }
 body[data-synth="nf4"] .scope-unit .scope-screen-wrap:last-child .bezel { height: 320px; }

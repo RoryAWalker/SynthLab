@@ -33,14 +33,15 @@ export class ConsoleMeters {
 
   get mode() { return this.getPatch()['meter.mode'] === 'ppm' ? 'ppm' : 'vu'; }
 
-  // a segmented LED ladder; key: ch1..ch4, aux1, aux2, ret, mainL, mainR, gr
+  // a segmented LED ladder; key: ch1..ch4, aux1, aux2, fx, mainL, mainR, gr (bus comp), ocgr (outboard comp)
   ladder(key, text, help) {
     const el = document.createElement('div');
-    el.className = `meter meter-${help}` + (key === 'gr' ? ' meter-gr' : '');
+    const gr = key === 'gr' || key === 'ocgr';
+    el.className = `meter meter-${help}` + (gr ? ' meter-gr' : '');
     el.dataset.help = help;
-    const lights = key === 'gr' ? 12 : LIGHTS.length;
+    const lights = gr ? 12 : LIGHTS.length;
     el.innerHTML = `<div class="meter-clip"></div><div class="meter-ladder">${Array.from({ length: lights }, (_, i) =>
-      `<i class="${key === 'gr' ? '' : lightClass(LIGHTS[lights - 1 - i])}"></i>`).join('')}</div>${text ? `<div class="meter-label">${text}</div>` : ''}`;
+      `<i class="${gr ? '' : lightClass(LIGHTS[lights - 1 - i])}"></i>`).join('')}</div>${text ? `<div class="meter-label">${text}</div>` : ''}`;
     this.meters.push({ kind: 'ladder', key, el, segs: [...el.querySelectorAll('i')].reverse(), clip: el.querySelector('.meter-clip'), v: 0, clipAt: 0, hold: -1, holdAt: 0 });
     return el;
   }
@@ -84,8 +85,8 @@ export class ConsoleMeters {
     const mode = this.mode;
     if (this.pfl) this.pfl.classList.toggle('on', !!(live && live.anySolo));
     this.meters.forEach((m) => {
-      if (m.key === 'gr') { // gain reduction: its own simple fall
-        const g = live ? live.grMax : 0;
+      if (m.key === 'gr' || m.key === 'ocgr') { // gain reduction (bus comp, outboard comp): its own simple fall
+        const g = live ? (m.key === 'gr' ? live.grMax : live.ocgrMax) || 0 : 0;
         m.v = Math.max(g, m.v - 30 * dt);
         m.segs.forEach((s, i) => s.classList.toggle('on', m.v > 0.3 && (m.segs.length - 1 - i) < m.v / 12 * m.segs.length));
         return;

@@ -1,4 +1,5 @@
-// Patch cables for the modular synths: jack sockets on the modules and the cables between them.
+// Patch cables for the modular synths (and StudioLab's patchable units, e.g. the NF-Mix4 console and
+// its outboard): jack sockets on the modules and the cables between them.
 //
 //   Drag from an output to an input (or from an input to an output) to connect them.
 //   Drag a plugged-in cable off an input to move it elsewhere; drop it anywhere else to remove it.
@@ -82,26 +83,32 @@ export class Cables {
         el('div', 'jack-rowlabel', strip).textContent = id.slice(1);
         return;
       }
-      if (id.startsWith('out:')) {
-        const out = id.slice(4);
-        const info = SYNTH.OUTPUTS && SYNTH.OUTPUTS[out];
-        const cell = el('div', 'jack-cell out' + (info && info.audio ? ' audio' : ''), strip);
-        cell.dataset.help = id;
-        el('div', 'jack-label', cell).textContent = info ? info.label : 'Out';
-        const s = el('div', 'socket', cell);
-        s.dataset.out = out;
-        s._lamp = el('span', 'jack-lamp', cell);
-        this.outs[out] = s;
-        s.addEventListener('pointerdown', (e) => this.startFromOut(e, out));
-      } else {
-        const j = new JackIn(id, this.getPatch()[id], (jid, v) => { this.onChange(jid, v); this.redraw(); });
-        this.ins[id] = j;
-        this.controls[id] = j;
-        strip.appendChild(j.el);
-        j.socket.addEventListener('pointerdown', (e) => this.startFromIn(e, id));
-      }
+      strip.appendChild(id.startsWith('out:') ? this.makeOut(id.slice(4)) : this.makeIn(id));
     });
     return strip;
+  }
+
+  // One output socket (a cell with its label and lamp), e.g. for a console's insert Send.
+  makeOut(out) {
+    const info = SYNTH.OUTPUTS && SYNTH.OUTPUTS[out];
+    const cell = el('div', 'jack-cell out' + (info && info.audio ? ' audio' : ''));
+    cell.dataset.help = 'out:' + out;
+    el('div', 'jack-label', cell).textContent = info ? info.label : 'Out';
+    const s = el('div', 'socket', cell);
+    s.dataset.out = out;
+    s._lamp = el('span', 'jack-lamp', cell);
+    this.outs[out] = s;
+    s.addEventListener('pointerdown', (e) => this.startFromOut(e, out));
+    return cell;
+  }
+
+  // One input socket (a setting: the output plugged into it), e.g. for a console's insert Return.
+  makeIn(id) {
+    const j = new JackIn(id, this.getPatch()[id], (jid, v) => { this.onChange(jid, v); this.redraw(); });
+    this.ins[id] = j;
+    this.controls[id] = j;
+    j.socket.addEventListener('pointerdown', (e) => this.startFromIn(e, id));
+    return j.el;
   }
 
   // centre of a socket, in the stage's own (unscaled) pixels

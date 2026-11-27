@@ -1,8 +1,12 @@
 // NF-Mix4: a small four-channel mixing console, for learning signal flow. Each channel strip reads
 // from top to bottom in the order the sound flows through it: input (mic or line) and preamp
-// gain, polarity, high-pass filter, EQ, Aux 1 (pre-fader), Aux 2 (post-fader), pan and routing,
-// mute and solo, and the fader. The master section has the aux masters and a reverb (fed by
-// Aux 2), a bus compressor on the main mix, the main fader, and the monitor select.
+// gain, polarity, high-pass filter, EQ, the insert point (Send and Return sockets), Aux 1
+// (pre-fader), Aux 2 (post-fader), pan and routing, mute and solo, and the fader.
+// Beside the channels: a stereo FX Return (one level pot), the aux masters with their output
+// sockets, a one-knob bus compressor, then the main meters above the main fader.
+// Nothing is wired in behind the panel: the outboard Reverb and Compressor (separate units) are
+// patched in with cables, from the sockets on the desk's surface. The song comes from a separate
+// Multitrack Player, one track per channel.
 // Engine: js/worklet/console-processor.js. Scales: js/consoleMath.js. Screens: js/consoleScope.js.
 
 import { faderDb, sendDb, preampDb, fmtDb } from '../consoleMath.js';
@@ -15,6 +19,18 @@ const send = (label, def = 0) => ({ type: 'cont', label, min: 0, max: 1, def, cu
   marks: [[0, '∞'], [0.37, '−30'], [0.89, '0'], [1, '+6']] });
 const fader = (label, def = 0.75) => ({ type: 'cont', ui: 'fader', label, min: 0, max: 1, def, curve: 'lin', fmt: (v) => fmtDb(faderDb(v)) });
 const hz = (v) => (v >= 1000 ? (v / 1000).toFixed(v < 10000 ? 1 : 0) + ' kHz' : Math.round(v) + ' Hz');
+
+// Patch points. An input socket is a setting naming the output plugged into it ('' = nothing),
+// so cables save and reset with the rest of the settings (see ../../js/cables.js).
+export const OUTPUTS = {
+  'ch1.send': { module: 'Channel 1', label: 'Send' }, 'ch2.send': { module: 'Channel 2', label: 'Send' },
+  'ch3.send': { module: 'Channel 3', label: 'Send' }, 'ch4.send': { module: 'Channel 4', label: 'Send' },
+  'aux1.out': { module: 'Aux 1', label: 'Aux 1' }, 'aux2.out': { module: 'Aux 2', label: 'Aux 2' },
+  'rev.out': { module: 'Reverb', label: 'Out', stereo: true }, 'oc.out': { module: 'Compressor', label: 'Out' },
+};
+Object.values(OUTPUTS).forEach((o) => { o.audio = true; });
+const fullName = (out) => (OUTPUTS[out] ? `${OUTPUTS[out].module} ${OUTPUTS[out].label === OUTPUTS[out].module ? 'out' : OUTPUTS[out].label}` : 'nothing');
+const jack = (label) => ({ type: 'jack', label, def: '', audio: true, fmt: (v) => (v ? 'from ' + fullName(v) : 'not patched') });
 
 // sensible starting gains: each source lands around -12 dB on its meter (see sources.js)
 const START_GAIN = { mic: 0.68, line: 0.32 };
@@ -38,6 +54,7 @@ function channel(n) {
       marks: [[100, '100'], [1000, '1k'], [8000, '8k']] },
     [k + 'lf']: eqGain('Low'),
     [k + 'eq']: onOff('EQ in', 'EQ', 'on'),
+    [k + 'ret']: jack('Return'), // the insert point's return (its send is an output, above)
     [k + 'aux1']: send('Aux 1 (pre)'),
     [k + 'aux2']: send('Aux 2 (post)'),
     [k + 'pan']: { type: 'cont', label: 'Pan', min: -1, max: 1, def: START_PAN[n - 1], curve: 'lin', small: true,
@@ -52,27 +69,36 @@ function channel(n) {
 
 export const PARAMS = {
   ...channel(1), ...channel(2), ...channel(3), ...channel(4),
-  // transport
+  // the Multitrack Player (a separate unit)
   'tape.play': { type: 'step', ui: 'led', button: 'Play', label: 'Play / Stop', def: 'stop', options: [{ v: 'stop', label: 'Stopped' }, { v: 'play', label: 'Playing' }] },
-  // aux masters and the reverb
+  // FX Return: a plain stereo input with one level pot (for the reverb, or anything patched in)
+  'fxr.in': jack('In'),
+  'fxr.level': send('Level', 0.89),
+  // aux masters (their outputs are sockets)
   'aux1.master': send('Aux 1', 0.89),
   'aux2.master': send('Aux 2', 0.89),
-  'rev.time': { type: 'cont', label: 'Rev Time', min: 0.4, max: 5, def: 1.8, curve: 'log', unit: 's', small: true, fmt: (v) => v.toFixed(1) + ' s',
-    marks: [[0.4, '.4'], [1.5, '1.5'], [5, '5']] },
-  'rev.ret': send('Rev Return', 0.89),
-  // bus compressor
-  'bc.on': onOff('Bus compressor in', 'Comp In'),
-  'bc.thresh': { type: 'cont', label: 'Threshold', min: -40, max: 0, def: -12, curve: 'lin', unit: 'dB', small: true, fmt: fmtDb, marks: [[-40, '−40'], [-20, '−20'], [0, '0']] },
-  'bc.ratio': { type: 'cont', label: 'Ratio', min: 1, max: 10, def: 2, curve: 'log', unit: ':1', small: true, fmt: (v) => v.toFixed(1) + ':1', marks: [[1, '1'], [2, '2'], [4, '4'], [10, '10']] },
-  'bc.attack': { type: 'cont', label: 'Attack', min: 0.1, max: 30, def: 10, curve: 'log', unit: 'ms', small: true, fmt: (v) => (v < 10 ? v.toFixed(1) : Math.round(v)) + ' ms', marks: [[0.1, '.1'], [1, '1'], [10, '10'], [30, '30']] },
-  'bc.release': { type: 'cont', label: 'Release', min: 50, max: 1200, def: 300, curve: 'log', unit: 'ms', small: true, fmt: (v) => Math.round(v) + ' ms', marks: [[50, '50'], [300, '300'], [1200, '1.2k']] },
-  'bc.makeup': { type: 'cont', label: 'Makeup', min: 0, max: 15, def: 0, curve: 'lin', unit: 'dB', small: true, fmt: fmtDb, marks: [[0, '0'], [6, '6'], [15, '15']] },
+  // bus compressor: one knob; fixed 4:1, 10 ms attack, 200 ms release, soft knee; makeup is automatic
+  'bc.thresh': { type: 'cont', label: 'Threshold', min: -30, max: 0, def: 0, curve: 'lin', unit: 'dB', small: true, fmt: (v) => (v > -0.5 ? '0 dB (resting)' : fmtDb(v)),
+    marks: [[-30, '−30'], [-20, '−20'], [-10, '−10'], [0, '0']] },
   // meters: how every meter on the desk reads
   'meter.mode': { type: 'step', ui: 'toggle', label: 'Meters', def: 'vu', options: [{ v: 'vu', label: 'VU' }, { v: 'ppm', label: 'PPM' }] },
   // main and monitor
   'main.fader': fader('Main'),
   'mon.src': { type: 'step', label: 'Monitor', def: 'main', small: true, options: [{ v: 'main', label: 'Main' }, { v: 'aux1', label: 'Aux 1' }, { v: 'aux2', label: 'Aux 2' }] },
-  'mon.vol': { type: 'cont', label: 'Listen', min: 0, max: 1, def: 0.7, curve: 'lin', small: true, fmt: (v) => Math.round(v * 100) + '%' },
+
+  // ---- outboard (separate units, patched in with cables) ----
+  // Reverb: mono in, stereo out, 100% wet (the dry sound stays on the desk)
+  'rev.in': jack('In'),
+  'rev.time': { type: 'cont', label: 'Time', min: 0.4, max: 5, def: 1.8, curve: 'log', unit: 's', small: true, fmt: (v) => v.toFixed(1) + ' s',
+    marks: [[0.4, '.4'], [1, '1'], [2, '2'], [5, '5']] },
+  'rev.tone': { type: 'cont', label: 'Tone', min: 0, max: 1, def: 0.5, curve: 'lin', small: true, fmt: (v) => (v < 0.34 ? 'dark' : v > 0.66 ? 'bright' : 'natural'),
+    marks: [[0, 'dark'], [1, 'bright']] },
+  // Compressor: mono, for a channel's insert point (fixed 10 ms attack, 150 ms release)
+  'oc.in': jack('In'),
+  'oc.thresh': { type: 'cont', label: 'Threshold', min: -40, max: 0, def: -20, curve: 'lin', unit: 'dB', small: true, fmt: fmtDb, marks: [[-40, '−40'], [-20, '−20'], [0, '0']] },
+  'oc.ratio': { type: 'cont', label: 'Ratio', min: 1, max: 20, def: 4, curve: 'log', unit: ':1', small: true,
+    fmt: (v) => (v >= 19.5 ? '20:1 (heavy limiting)' : v >= 9.95 ? Math.round(v) + ':1 (limiting)' : v.toFixed(1) + ':1'), marks: [[1, '1'], [2, '2'], [4, '4'], [10, '10'], [20, '20']] },
+  'oc.gain': { type: 'cont', label: 'Gain', min: 0, max: 24, def: 0, curve: 'lin', unit: 'dB', small: true, fmt: fmtDb, marks: [[0, '0'], [12, '12'], [24, '24']] },
 };
 
 const strip = (n) => {
@@ -83,7 +109,7 @@ const strip = (n) => {
     // so the strip stays narrow (as on real desks); only small buttons sit side by side
     zigzag: true,
     rows: [[k + 'in'], [[k + 'p48', k + 'pol']], [k + 'gain'], [k + 'hpf'],
-      [k + 'hf'], [k + 'mf'], [k + 'mg'], [k + 'lf'], [[k + 'eq']],
+      [k + 'hf'], [k + 'mf'], [k + 'mg'], [k + 'lf'], [[k + 'eq']], [['out:' + k + 'send', k + 'ret']],
       [k + 'aux1'], [k + 'aux2'], [k + 'pan'], [[k + 'main']], [[k + 'mute', k + 'solo']]],
     fader: k + 'fader', meters: [[`ch${n}`, '', 'chmeter']], scribble: `${stem.label}`, scribbleNote: stem.note,
   }];
@@ -91,24 +117,36 @@ const strip = (n) => {
 
 export const LAYOUT = [
   strip(1), strip(2), strip(3), strip(4),
+  // the FX Return: a narrow stereo strip with just a level pot
+  [{ id: 'fx', title: 'FX Ret', strip: true, rows: [[['fxr.in']], ['fxr.level']], meters: [['fx', '', 'fxmeter']], scribble: 'FX Return', scribbleNote: 'stereo' }],
   [
-    { id: 'tape', title: 'Song', head: ['tape.play'], rows: [], scribble: 'Demo song · 96 BPM' },
-    { id: 'aux', title: 'Aux Masters', rows: [['aux1.master', 'aux2.master'], ['rev.time', 'rev.ret']],
-      meters: [['aux1', 'Aux 1', 'auxmeter'], ['aux2', 'Aux 2', 'auxmeter'], ['ret', 'Rev', 'auxmeter']] },
+    { id: 'aux', title: 'Aux Masters', rows: [['aux1.master', 'aux2.master'], [['out:aux1.out'], ['out:aux2.out']]],
+      meters: [['aux1', 'Aux 1', 'auxmeter'], ['aux2', 'Aux 2', 'auxmeter']] },
+    { id: 'bc', title: 'Bus Comp', rows: [['bc.thresh']], meters: [['gr', 'GR', 'grmeter']], scribble: 'Auto makeup', scribbleNote: '4:1 · gain matched' },
   ],
-  [{ id: 'bc', title: 'Bus Comp', head: ['bc.on'], rows: [['bc.thresh', 'bc.ratio'], ['bc.attack', 'bc.release'], ['bc.makeup', null]],
-    meters: [['gr', 'GR', 'grmeter']] },
-   { id: 'mtr', title: 'Main Meters', head: ['meter.mode'], rows: [], needles: [['mainL', 'L'], ['mainR', 'R']] }],
-  [{ id: 'main', title: 'Main', rows: [['mon.src', 'mon.vol']], fader: 'main.fader', meters: [['mainL', 'L', 'mainmeter'], ['mainR', 'R', 'mainmeter']] }],
+  // right: the main meters on top, the main fader at the bottom
+  [{ id: 'mtr', title: 'Main Meters', head: ['meter.mode'], rows: [], needles: [['mainL', 'L'], ['mainR', 'R']] },
+   { id: 'main', title: 'Main', rows: [['mon.src']], fader: 'main.fader', meters: [['mainL', 'L', 'mainmeter'], ['mainR', 'R', 'mainmeter']] }],
 ];
 
+// The separate units: the outboard rack (beside the screens) and the Multitrack Player (under the desk)
+export const OUTBOARD = [
+  { id: 'rev', title: 'Reverb', brandSub: 'REVERB', rows: [['rev.time', 'rev.tone']], jacks: ['rev.in', 'out:rev.out'] },
+  { id: 'oc', title: 'Compressor', brandSub: 'MONO COMPRESSOR', rows: [['oc.thresh', 'oc.ratio', 'oc.gain']], jacks: ['oc.in', 'out:oc.out'], gr: 'ocgr' },
+];
+export const PLAYER = { id: 'tape', title: 'Multitrack Player', play: 'tape.play', text: 'Demo song · 96 BPM · tracks 1–4 → channels 1–4' };
+
+// (presets with cables: an input socket's value is the output plugged into it)
+const REVERB_PATCHED = { 'rev.in': 'aux2.out', 'fxr.in': 'rev.out' };
+const COMP_ON_LEAD = { 'oc.in': 'ch4.send', 'ch4.ret': 'oc.out' };
 export const PRESETS = {
   'Init': {},
   'Rough mix': { 'ch1.fader': 0.72, 'ch2.fader': 0.7, 'ch3.fader': 0.66, 'ch4.fader': 0.76, 'ch1.hpf': 60, 'ch3.hpf': 120, 'ch4.hpf': 100,
-    'ch4.aux2': 0.7, 'ch3.aux2': 0.5, 'rev.ret': 0.8, 'bc.on': 'on', 'bc.thresh': -16, 'bc.makeup': 3 },
+    ...REVERB_PATCHED, 'ch4.aux2': 0.7, 'ch3.aux2': 0.5, 'fxr.level': 0.8, 'bc.thresh': -10 },
   'Headphone mix (Aux 1)': { 'ch1.aux1': 0.85, 'ch2.aux1': 0.8, 'ch3.aux1': 0.5, 'ch4.aux1': 0.95, 'mon.src': 'aux1' },
-  'Reverb on the lead': { 'ch4.aux2': 0.85, 'rev.time': 2.6, 'rev.ret': 0.9 },
-  'Glued with the bus comp': { 'bc.on': 'on', 'bc.thresh': -20, 'bc.ratio': 3, 'bc.attack': 10, 'bc.release': 200, 'bc.makeup': 5 },
+  'Reverb on the lead': { ...REVERB_PATCHED, 'ch4.aux2': 0.85, 'rev.time': 2.6 },
+  'Compressor on the lead': { ...COMP_ON_LEAD, 'oc.thresh': -32, 'oc.ratio': 4, 'oc.gain': 8 },
+  'Glued with the bus comp': { 'bc.thresh': -20 },
   'Badly gain-staged': { 'ch1.gain': 0.2, 'ch1.fader': 1, 'ch4.gain': 1, 'ch4.fader': 0.5 },
 };
 
@@ -122,7 +160,8 @@ export const NF4 = {
   processor: 'console-processor',
   card: {
     tagline: 'Signal flow',
-    text: 'A four-channel console: mic and line inputs, EQ, aux sends, mute and solo, a bus compressor.',
+    text: 'A four-channel console: mic and line inputs, EQ, inserts and aux sends, with outboard reverb and compression patched in.',
   },
-  PARAMS, LAYOUT, KEYBED_SECTIONS: [], PRESETS,
+  patchable: true, // patch cables between sockets on the desk and the outboard (../../js/cables.js)
+  PARAMS, LAYOUT, OUTPUTS, OUTBOARD, PLAYER, KEYBED_SECTIONS: [], PRESETS,
 };

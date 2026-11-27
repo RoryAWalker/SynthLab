@@ -1,9 +1,10 @@
 // The NF-Mix4 console's two screens, drawn in place of the synths' oscilloscope and spectrum.
 //
 // Left, SIGNAL FLOW: the selected channel's path, block by block, in the order the strip is laid
-// out, with the live level at each stage. Branches show where Aux 1 (before the fader) and Aux 2
-// (after it) are taken off, Aux 2 feeding the reverb, whose return joins the main bus, then the
-// bus compressor, the main fader and the monitor. Anything switched off or muted goes dark.
+// out, with the live level at each stage, including its insert point (and what is patched into
+// it). Branches show where Aux 1 (before the fader) and Aux 2 (after it) are taken off and where
+// their outputs are patched; the FX Return (whatever is patched into it) joins the main bus; then
+// the bus compressor, the main fader and the monitor. Anything switched off or muted goes dark.
 //
 // Right, EQ: the selected channel's high-pass filter and EQ as a frequency curve, with a strip
 // along the bottom showing the bus compressor's gain reduction over the last few seconds.
@@ -12,6 +13,7 @@
 
 import { faderDb, sendDb, preampDb, fmtDb, biquad, biquadDb, EQ_LOW, EQ_HIGH, EQ_MID_Q } from './consoleMath.js';
 import { SONG_STEMS } from './sources.js';
+import { OUTPUTS } from './units/nf4.js';
 import { fmtDbu } from './meters.js';
 
 const PHOS = '#8dffb0';
@@ -44,10 +46,15 @@ const levelColour = (db) => (db < -90 ? DIM : db >= -0.5 ? RED : db > -6 ? AMBER
 const fmtLevel = (db) => (db < -90 ? '—' : fmtDbu(db));
 
 // which block of the diagram each channel control belongs to
-const BLOCK_OF = { in: 'in', p48: 'in', gain: 'pre', pol: 'pre', hpf: 'hpf', hf: 'eq', mg: 'eq', mf: 'eq', lf: 'eq', eq: 'eq',
+const BLOCK_OF = { in: 'in', p48: 'in', gain: 'pre', pol: 'pre', hpf: 'hpf', hf: 'eq', mg: 'eq', mf: 'eq', lf: 'eq', eq: 'eq', ret: 'ins',
   aux1: 'aux1', aux2: 'aux2', pan: 'pan', main: 'bus', mute: 'mute', solo: 'solo', fader: 'fader' };
-const MASTER_BLOCK = { 'aux1.master': 'aux1m', 'aux2.master': 'aux2m', 'rev.time': 'rev', 'rev.ret': 'rev', 'main.fader': 'mainf',
-  'mon.src': 'mon', 'mon.vol': 'mon', 'tape.play': 'in' };
+const MASTER_BLOCK = { 'aux1.master': 'aux1m', 'aux2.master': 'aux2m', 'fxr.level': 'fxret', 'fxr.in': 'fxret', 'main.fader': 'mainf',
+  'mon.src': 'mon', 'tape.play': 'in' };
+// the name of an output, for 'patched to ...' (e.g. 'Reverb'), and which inputs an output feeds
+const SHORT = { 'ch1.send': 'Ch 1', 'ch2.send': 'Ch 2', 'ch3.send': 'Ch 3', 'ch4.send': 'Ch 4', 'aux1.out': 'Aux 1', 'aux2.out': 'Aux 2', 'rev.out': 'Reverb', 'oc.out': 'Comp' };
+const outName = (o) => SHORT[o] || (OUTPUTS[o] ? OUTPUTS[o].module : '');
+const IN_NAMES = { 'rev.in': 'Reverb', 'oc.in': 'Comp', 'fxr.in': 'FX Ret', 'ch1.ret': 'Ch 1', 'ch2.ret': 'Ch 2', 'ch3.ret': 'Ch 3', 'ch4.ret': 'Ch 4' };
+const feeds = (p, out) => Object.keys(IN_NAMES).filter((i) => p[i] === out).map((i) => IN_NAMES[i]);
 
 export class ConsoleScope {
   constructor(flowCanvas, eqCanvas, engine, getPatch) {
@@ -75,6 +82,7 @@ export class ConsoleScope {
     const m = /^ch(\d)\.(\w+)$/.exec(id);
     if (m) { this.sel = Number(m[1]) - 1; this.hot = BLOCK_OF[m[2]] || null; }
     else if (id.startsWith('bc.')) this.hot = 'comp';
+    else if (id.startsWith('oc.') || id.startsWith('rev.')) this.hot = 'ins';
     else this.hot = MASTER_BLOCK[id] || null;
     this.hotAt = performance.now();
   }
@@ -128,6 +136,8 @@ export class ConsoleScope {
       ['pre', 'PREAMP', fmtDb(preampDb(p[k + 'gain'], mic)) + (p[k + 'pol'] === 'on' ? ' Ø' : ''), L && L.pre, true],
       ['hpf', 'HPF', p[k + 'hpf'] > 25 ? Math.round(p[k + 'hpf']) + ' Hz' : 'off', null, p[k + 'hpf'] > 25],
       ['eq', 'EQ', p[k + 'eq'] === 'off' ? 'out' : 'in', L && L.eq, p[k + 'eq'] !== 'off'],
+      // the insert point: straight through, or out on Send and back on Return (from whatever is patched)
+      ['ins', 'INSERT', p[k + 'ret'] ? '← ' + outName(p[k + 'ret']) : feeds(p, `ch${n}.send`).length ? 'thru →' + feeds(p, `ch${n}.send`)[0] : 'thru', L && L.ins, true],
       ['mute', 'MUTE', muted ? 'MUTED' : 'open', null, !muted],
       ['fader', 'FADER', fmtDb(faderDb(p[k + 'fader'])), L && L.post, !muted],
       ['pan', 'PAN', Math.abs(p[k + 'pan']) < 0.02 ? 'centre' : Math.round(Math.abs(p[k + 'pan']) * 100) + (p[k + 'pan'] < 0 ? ' L' : ' R'), L && Math.max(L.l, L.r), !muted],
@@ -182,31 +192,31 @@ export class ConsoleScope {
       arrow(x, top + bh / 2 + 4, x, auxY - 1, on);
       label(ctx, text, x + 5, tapY + 6, hot ? AMBER : on ? INK : DIM, 'left', 9, 700);
     };
-    const xA1 = (xs[3] + bw + xs[4]) / 2, xA2 = (xs[5] + bw + xs[6]) / 2;
+    const xA1 = (xs[4] + bw + xs[5]) / 2, xA2 = (xs[6] + bw + xs[7]) / 2;
     tap(xA1, alive || !muted ? Number.isFinite(a1) && !needs48 && !muted : false, 'pre-fader', this.glow('aux1') > 0);
     tap(xA2, alive && Number.isFinite(a2), 'post-fader', this.glow('aux2') > 0);
 
-    // master row: Aux 1 -> its master; Aux 2 -> reverb -> return -> main bus; main bus -> comp -> fader -> out
+    // master row: each aux bus and where its output is patched; the FX Return (whatever is patched
+    // into it) joining the main bus; then main bus -> bus comp -> main fader -> monitor
     const mx = (frac) => 12 + frac * (w - 24);
     const aw = Math.min(96, (w - 24) / 6.4);
+    const to = (out) => { const f = feeds(p, out); return f.length ? ' → ' + f[0].toUpperCase() : ''; };
     const a1on = Number.isFinite(a1) && !needs48 && !muted;
-    box(xA1 - aw / 2, auxY, aw, auxH, 'AUX 1', 'send ' + fmtDb(a1), a1on, this.glow('aux1') > 0 || this.glow('aux1m') > 0);
+    box(xA1 - aw / 2, auxY, aw, auxH, 'AUX 1' + to('aux1.out'), 'send ' + fmtDb(a1), a1on, this.glow('aux1') > 0 || this.glow('aux1m') > 0);
     if (live) label(ctx, fmtLevel(live.aux1), xA1, auxY + auxH + 12, levelColour(live.aux1), 'center', 10, 700);
     const a2on = Number.isFinite(a2) && alive;
-    box(xA2 - aw / 2, auxY, aw, auxH, 'AUX 2', 'send ' + fmtDb(a2), a2on, this.glow('aux2') > 0 || this.glow('aux2m') > 0);
+    box(xA2 - aw / 2, auxY, aw, auxH, 'AUX 2' + to('aux2.out'), 'send ' + fmtDb(a2), a2on, this.glow('aux2') > 0 || this.glow('aux2m') > 0);
     if (live) label(ctx, fmtLevel(live.aux2), xA2, auxY + auxH + 12, levelColour(live.aux2), 'center', 10, 700);
-    // reverb, returning to the main bus
-    const revX = xA2 + aw / 2 + 14, revW = Math.min(aw, busX + busW - revX);
-    const retOn = Number.isFinite(sendDb(p['rev.ret']));
-    arrow(xA2 + aw / 2, auxY + auxH / 2, revX - 1, auxY + auxH / 2, a2on);
-    box(revX, auxY, revW, auxH, 'REVERB', p['rev.time'].toFixed(1) + ' s', retOn, this.glow('rev') > 0);
-    arrow(revX + revW / 2, auxY - 1, revX + revW / 2, top + bh + 1, retOn && live && live.ret > -70);
-    label(ctx, 'return', revX + revW / 2 + 5, tapY + 6, DIM, 'left', 9);
+    // the FX Return, joining the main bus
+    const fxX = xA2 + aw / 2 + 14, fxW = Math.min(aw, busX + busW - fxX);
+    const fxOn = !!p['fxr.in'] && Number.isFinite(sendDb(p['fxr.level']));
+    box(fxX, auxY, fxW, auxH, 'FX RETURN', p['fxr.in'] ? '← ' + outName(p['fxr.in']) : 'nothing in', fxOn, this.glow('fxret') > 0);
+    arrow(fxX + fxW / 2, auxY - 1, fxX + fxW / 2, top + bh + 1, fxOn && live && live.fx > -70);
 
     // the master chain along the bottom
     const by = auxY + auxH + 26, bh2 = Math.min(44, Math.max(34, h - by - 26));
     const chain = [
-      ['comp', 'BUS COMP', p['bc.on'] === 'on' ? (live && live.gr > 0.1 ? '−' + live.gr.toFixed(1) + ' dB' : 'in') : 'out', p['bc.on'] === 'on'],
+      ['comp', 'BUS COMP', live && live.gr > 0.1 ? '−' + live.gr.toFixed(1) + ' dB' : p['bc.thresh'] > -0.5 ? 'resting' : 'ready', true],
       ['mainf', 'MAIN FADER', fmtDb(faderDb(p['main.fader'])), true],
       ['mon', 'MONITOR', anySolo ? 'SOLO' : { main: 'Main', aux1: 'Aux 1', aux2: 'Aux 2' }[p['mon.src']], true],
     ];
@@ -224,7 +234,7 @@ export class ConsoleScope {
       label(ctx, 'you hear ' + fmtLevel(live.mon), cx0 + 2 * (cw + 14) + cw / 2, by + bh2 + 13, levelColour(live.mon), 'center', 10, 700);
     }
     if (anySolo) label(ctx, 'SOLO: you are hearing the soloed channels before their faders (PFL). The main mix is unchanged.', w / 2, h - 4, RED, 'center', 9.5, 700);
-    else if (!live || !live.playing) label(ctx, 'Press Play in the Song section', w / 2, h - 4, DIM, 'center', 10, 700);
+    else if (!live || !live.playing) label(ctx, 'Press Play on the Multitrack Player', w / 2, h - 4, DIM, 'center', 10, 700);
   }
 
   // ---- right: the EQ curve, and the bus compressor's gain reduction ----
@@ -291,8 +301,8 @@ export class ConsoleScope {
 
     // bus compressor: gain reduction over the last few seconds
     const gy = h - grH, gl = l, gr = r;
-    const on = p['bc.on'] === 'on';
-    label(ctx, `BUS COMP · ${on ? 'in' : 'out (bypassed: not applied)'}`, gl, gy - 4, on ? INK : DIM, 'left', 9.5, 700);
+    const on = true;
+    label(ctx, `BUS COMP · threshold ${fmtDb(p['bc.thresh'])} · auto makeup ${live && live.makeup > 0.05 ? '+' + live.makeup.toFixed(1) + ' dB' : '0 dB'}`, gl, gy - 4, INK, 'left', 9.5, 700);
     const g = live ? live.gr : 0;
     label(ctx, g > 0.1 ? 'reducing −' + g.toFixed(1) + ' dB' : '0 dB', gr, gy - 4, RED, 'right', 10, 700);
     ctx.strokeStyle = GRID;
