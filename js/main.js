@@ -171,6 +171,9 @@ function buildSection(sec) {
       col.className = 'side-col';
       grid.replaceWith(col);
       col.append(grid, strip);
+      // the screen's own buttons (the XY's Rec and Clear) go at the top of that column too
+      const ctl = knobs[sec.screen];
+      if (ctl && ctl.sideBar) col.prepend(ctl.sideBar);
       el.classList.add('jacks-beside');
     } else el.appendChild(strip); // modular synths: sockets along the module's foot
   }

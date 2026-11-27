@@ -22,18 +22,19 @@ export class XYPad {
     this.inst = id.split('.')[0];
     this.spec = PARAMS[id];
     this.onChange = onChange;
-    this.S = 176; // the pad's size (panel pixels): the sockets sit beside the knobs, so the pad has the module's whole height
+    this.S = 196; // the pad's size (panel pixels): its buttons, knobs and sockets sit beside it, so it has the module's whole height
     this.el = document.createElement('div');
     this.el.className = 'xy-cell';
     this.el.dataset.param = id;
     this.el.innerHTML = `
-      <div class="ne-bar xy-bar" style="min-width:${this.S}px">
+      <div class="ne-bar xy-bar">
         <button class="ne-btn xy-rec" title="Record your next movement on the pad">● Rec</button>
         <button class="ne-btn xy-clear" title="Forget the recording">Clear</button>
       </div>
       <canvas class="xy-screen" data-help="${id}"></canvas>`;
     this.cv = this.el.querySelector('canvas');
     this.cv.style.width = this.cv.style.height = this.S + 'px';
+    this.sideBar = this.el.querySelector('.xy-bar'); // (moved beside the pad, above the knobs: see main.js)
     this.recBtn = this.el.querySelector('.xy-rec');
     this.recBtn.addEventListener('click', (e) => { e.stopPropagation(); this.armed = !this.armed; this.recBtn.classList.toggle('armed', this.armed); this.draw(); });
     this.el.querySelector('.xy-clear').addEventListener('click', (e) => { e.stopPropagation(); this.commit(''); if (XYPad.getPatch()[`${this.inst}.mode`] !== 'live') this.onChange(`${this.inst}.mode`, 'live'); });
