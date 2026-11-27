@@ -670,6 +670,53 @@ export const PRESETS = {
     ...C('env1.gate', 'kb.gate'), ...C('out.in', 'vca1.out'), ...C('probe1.a', 'env1.out'), ...C('probe1.b', 'vca1.out'),
     'probe1.time': 2, 'probe1.scale': 1, 'vcf1.cutoff': 1800, 'vcf1.cv': 0, 'env1.a': 0.3, 'env1.d': 0.4, 'env1.s': 0.6, 'env1.r': 0.8,
   },
+  // ---- big patches, two racks wide -----------------------------------------------------------
+  // A three-note chord, each note on a different kind of oscillator (a VCO saw, a drawn wave, the
+  // Vowels wavetable), each with its own envelope and VCA; an LFO gives all three vibrato (through an
+  // Attenuverter), a looping Draw sweeps the wavetable, an envelope opens the shared filter on each
+  // chord, an MFO slowly moves a Formant's vowel; a master VCA at the end. Hold a chord.
+  'Paraphonic Orchestra': {
+    'rack.layout': 'poly1,vco1,wave1,table1,mix1|vca1,vca2,vca3,vcf1,formant1,vca4,att1,out|env1,env2,env3,env4,lfo1,mfo1,draw1',
+    'rack.bays': 2,
+    ...C('vco1.pitch', 'poly1.p1,att1.out1'), ...C('wave1.pitch', 'poly1.p2,att1.out1'), ...C('table1.pitch', 'poly1.p3,att1.out1'),
+    ...C('att1.in1', 'lfo1.out'), ...C('table1.pos', 'draw1.out'), ...C('draw1.gate', 'kb.gate'),
+    ...C('env1.gate', 'poly1.g1'), ...C('env2.gate', 'poly1.g2'), ...C('env3.gate', 'poly1.g3'), ...C('env4.gate', 'kb.gate'),
+    ...C('vca1.in', 'vco1.saw'), ...C('vca1.cv', 'env1.out'), ...C('vca2.in', 'wave1.out'), ...C('vca2.cv', 'env2.out'),
+    ...C('vca3.in', 'table1.out'), ...C('vca3.cv', 'env3.out'),
+    ...C('mix1.in1', 'vca1.out'), ...C('mix1.in2', 'vca2.out'), ...C('mix1.in3', 'vca3.out'),
+    ...C('vcf1.in', 'mix1.out'), ...C('vcf1.cv', 'env4.out'), ...C('formant1.in', 'vcf1.lp'), ...C('formant1.vowel', 'mfo1.out'),
+    ...C('vca4.in', 'formant1.out'), ...C('out.in', 'vca4.out'),
+    'poly1.voices': 3, 'kb.mode': 'legato', 'att1.a1': 0.012, 'lfo1.rate': 5.2, 'lfo1.shape': 'sine',
+    'wave1.nodes': '-1;0,0.5,-0.4;0.22,1,0.3;0.5,0.35,-0.2;0.7,0.05,0.4;1,0.5,0', 'wave1.tune': 0.06,
+    'table1.table': 'b:vowels', 'table1.pos': 0.2, 'table1.tune': -0.06,
+    'draw1.mode': 'bounce', 'draw1.time': 3.5, 'draw1.amt': 0.6, 'draw1.nodes': '-1;0,0,0.3;0.5,0.8,-0.3;1,0.3,0',
+    'env1.a': 0.06, 'env1.d': 0.6, 'env1.s': 0.75, 'env1.r': 1.2, 'env2.a': 0.25, 'env2.d': 0.8, 'env2.s': 0.7, 'env2.r': 1.6, 'env2.curve': 'curved',
+    'env3.a': 0.5, 'env3.d': 1, 'env3.s': 0.8, 'env3.r': 2, 'env3.curve': 'curved', 'env4.a': 0.01, 'env4.d': 1.4, 'env4.s': 0.35, 'env4.r': 1.5,
+    'mix1.l1': 6, 'mix1.l2': 6, 'mix1.l3': 6, 'vcf1.cutoff': 800, 'vcf1.res': 0.3, 'vcf1.cv': 0.45,
+    'formant1.vowel': 2, 'formant1.res': 0.45, 'formant1.mix': 0.45, 'mfo1.rate': 0.12, 'mfo1.shape': 'sine',
+    'vca4.level': 0.9, 'out.vol': 0.75,
+  },
+  // Hold a chord and it plays itself: two of its notes go to a Ping and a String, struck by an LFO's
+  // pulse through Chance (each pulse pings the bell or plucks the string), two to a pair of VCOs as a
+  // pad, each with its own envelope and VCA; the lot through a filter swept by a recorded XY circle and
+  // a gently driven Shaper, into a master VCA.
+  'Living Chords': {
+    'rack.layout': 'poly1,ping1,string1,vco1,vco2|chance1,mix1,vcf1,shaper1,vca1,vca2,vca3,out|env1,env2,env3,lfo1,xy1',
+    'rack.bays': 2,
+    ...C('ping1.pitch', 'poly1.p1'), ...C('string1.pitch', 'poly1.p2'), ...C('vco1.pitch', 'poly1.p3'), ...C('vco2.pitch', 'poly1.p4'),
+    ...C('chance1.in', 'lfo1.out'), ...C('ping1.strike', 'chance1.out'), ...C('string1.strike', 'chance1.else'),
+    ...C('env1.gate', 'poly1.g3'), ...C('env2.gate', 'poly1.g4'), ...C('env3.gate', 'kb.gate'),
+    ...C('vca1.in', 'vco1.saw'), ...C('vca1.cv', 'env1.out'), ...C('vca2.in', 'vco2.sq'), ...C('vca2.cv', 'env2.out'),
+    ...C('mix1.in1', 'ping1.out'), ...C('mix1.in2', 'string1.out'), ...C('mix1.in3', 'vca1.out'), ...C('mix1.in4', 'vca2.out'),
+    ...C('vcf1.in', 'mix1.out'), ...C('vcf1.cv', 'xy1.x'), ...C('vcf1.res', 'xy1.y'), ...C('shaper1.in', 'vcf1.lp'),
+    ...C('vca3.in', 'shaper1.out'), ...C('vca3.cv', 'env3.out'), ...C('out.in', 'vca3.out'),
+    'poly1.voices': 4, 'lfo1.rate': 5, 'lfo1.shape': 'square', 'chance1.chance': 0.55,
+    'ping1.partials': 4, 'ping1.stretch': 1.4, 'ping1.tone': 0.6, 'ping1.decay': 1, 'string1.decay': 1.2, 'string1.tone': 0.6,
+    'vco1.range': -1, 'vco2.range': -1, 'vco2.tune': 0.08,
+    'env1.a': 0.4, 'env1.s': 0.85, 'env1.r': 1.4, 'env2.a': 0.6, 'env2.s': 0.85, 'env2.r': 1.6, 'env3.a': 0.01, 'env3.d': 0.3, 'env3.s': 1, 'env3.r': 1.8,
+    'mix1.l1': 7, 'mix1.l2': 7, 'mix1.l3': 4, 'mix1.l4': 3, 'vcf1.cutoff': 1400, 'vcf1.res': 0.3, 'vcf1.cv': 0.4,
+    'shaper1.drive': 1.8, 'shaper1.mix': 0.6, 'xy1.mode': 'loop', 'xy1.path': CIRCLE, 'xy1.rate': 0.5, 'xy1.smooth': 0.05, 'out.vol': 0.7,
+  },
   // a 16-step on/off pattern drawn with Snap, looping on the VCA: hold a chord and it chops it in rhythm
   'Drawn Gate': {
     'rack.layout': 'vco1,vco2,mix1|vcf1,vca1,out|draw1',
