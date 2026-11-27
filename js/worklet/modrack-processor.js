@@ -588,6 +588,59 @@ class Formant extends Module {
   ok() { return Number.isFinite(this.y + this.ic1[0] + this.ic1[1] + this.ic1[2]); }
 }
 
+// XY: a pad played by hand (x, y: where the puck is, sent by the panel as it moves; touch: a
+// finger on it), or a recorded movement played back (path: "duration;x,y;x,y;...", points evenly
+// spaced in time). Live: the outputs follow the pad. Loop: the recording plays round and round (a
+// rising Gate restarts it). Once: it plays once each time the Gate rises. A finger on the pad always
+// takes over. Smooth glides the outputs; Gate is high while touched (or while a recording plays).
+class XY extends Module {
+  static OUTS = ['x', 'y', 'gate'];
+  static INS = ['gate'];
+  constructor(id) { super(id); this.ph = 0; this.playing = false; this.gateWas = 0; this.sx = 0.5; this.sy = 0.5; this.pathStr = null; this.pts = null; }
+  begin(p, sr) {
+    const str = this.q(p, 'path') || '';
+    if (str !== this.pathStr) {
+      this.pathStr = str;
+      const parts = str.split(';'), dur = Number(parts.shift());
+      const pts = parts.map((q) => q.split(',').map(Number)).filter((q) => q.length === 2 && q.every(Number.isFinite));
+      this.pts = pts.length > 1 && dur > 0 ? pts : null;
+      this.dur = dur;
+    }
+    this.mode = this.q(p, 'mode'); this.x = this.q(p, 'x'); this.y = this.q(p, 'y'); this.touch = this.q(p, 'touch') === 1;
+    this.rate = this.q(p, 'rate'); this.bi = this.q(p, 'pol') === 'bi';
+    const sm = this.q(p, 'smooth');
+    this.slew = sm > 0.002 ? 1 - Math.exp(-4.6 / (sm * sr)) : 1;
+    this.sr = sr;
+  }
+  tick(S) {
+    const g = this.r('gate') > 0.5 ? 1 : 0, rise = g && !this.gateWas;
+    this.gateWas = g;
+    let tx = this.x, ty = this.y, on = this.touch;
+    if (this.pts && this.mode !== 'live') {
+      if (this.mode === 'loop') {
+        if (rise) this.ph = 0;
+        this.playing = true;
+      } else if (rise) { this.ph = 0; this.playing = true; }
+      if (this.playing) {
+        this.ph += this.rate / (this.dur * this.sr);
+        if (this.ph >= 1) { if (this.mode === 'loop') this.ph -= Math.floor(this.ph); else { this.ph = 1; this.playing = false; } }
+      }
+      if (!this.touch) { // (a finger on the pad takes over)
+        const pts = this.pts, pos = this.ph * (pts.length - 1), i = Math.min(pts.length - 2, Math.floor(pos)), t = pos - i;
+        tx = pts[i][0] + (pts[i + 1][0] - pts[i][0]) * t;
+        ty = pts[i][1] + (pts[i + 1][1] - pts[i][1]) * t;
+        on = this.playing;
+      }
+    }
+    this.sx += (tx - this.sx) * this.slew;
+    this.sy += (ty - this.sy) * this.slew;
+    const o = this.o;
+    S[o] = this.bi ? 2 * this.sx - 1 : this.sx;
+    S[o + 1] = this.bi ? 2 * this.sy - 1 : this.sy;
+    S[o + 2] = on ? 1 : 0;
+  }
+}
+
 // Draw: a shape you draw (nodes joined by lines that can bend; see js/drawShape.js, which has the
 // same sums), played over Time. Once: start to end when the Gate rises (holding at the sustain node
 // while the Gate stays high), a custom envelope. Loop: round and round (the end jumps back to the
@@ -715,7 +768,7 @@ class Seq extends Module {
   }
 }
 
-const TYPES = { vco: VCO, noise: Noise, mix: Mixer, vcf: VCF, ring: Ring, vca: VCA, att: Att, env: Env, lfo: LFO, mfo: MFO, sh: SH, ping: Ping, string: StringRes, draw: Draw, formant: Formant };
+const TYPES = { vco: VCO, noise: Noise, mix: Mixer, vcf: VCF, ring: Ring, vca: VCA, att: Att, env: Env, lfo: LFO, mfo: MFO, sh: SH, ping: Ping, string: StringRes, draw: Draw, formant: Formant, xy: XY };
 const typeOf = (id) => (id === 'out' ? Out : id === 'seq' ? Seq : TYPES[(/^([a-z]+)\d+$/.exec(id) || [])[1]]);
 
 class ModRackProcessor extends AudioWorkletProcessor {
@@ -850,6 +903,7 @@ class ModRackProcessor extends AudioWorkletProcessor {
         lfo: this.lfo ? S[this.lfo.o] : 0, lfoT: 0, beat: 0, outs,
         seqStep: seq ? seq.step : 0, seqRun: seq ? seq.run : false,
         draws: Object.fromEntries(order.filter((m) => m instanceof Draw).map((m) => [m.id, m.ph])), // the Draw modules' play positions
+        xys: Object.fromEntries(order.filter((m) => m instanceof XY).map((m) => [m.id, [m.sx, m.sy, m.ph]])), // the XY pads' outputs (0..1) and play positions
         over: this.over, resets: this.resets,
       });
       this.over = 0;

@@ -111,7 +111,7 @@ export class NodeEditor {
   down(e) {
     if (e.button !== 0) return;
     e.preventDefault(); e.stopPropagation();
-    this.cv.setPointerCapture(e.pointerId);
+    try { this.cv.setPointerCapture(e.pointerId); } catch { /* (a pointer that cannot be captured: carry on) */ }
     document.body.classList.add('knob-dragging'); // (cables and help hold still meanwhile)
     const p = this.at(e);
     if (this.tool === 'draw') { this.drag = { kind: 'draw', pts: [{ x: p.x, y: p.y }] }; this.draw(); return; }

@@ -7,7 +7,7 @@
 //   × in a module's title bar takes it out (with its cables).
 // Each row is as wide as a row of the NF-Modular's case: a module only goes in where it fits.
 
-import { TYPES, DRAWER, ROW_WIDTH, GAP, widthOf, fits, newId, typeOf } from './synths/modrack.js';
+import { TYPES, DRAWER, ROW_WIDTH, GAP, widthOf, fits as fitsRow, newId, typeOf, tallInto } from './synths/modrack.js';
 
 const el = (tag, cls, parent, html) => {
   const e = document.createElement(tag);
@@ -22,8 +22,9 @@ const HOME_ROW = { Sources: 0, Shaping: 1, Modulation: 2 };
 export class RackEdit {
   // root: the panel's #sections; getRows(): the rack's rows of module ids; change(rows): try a new
   // rack (true if it changed); toast(text)
-  constructor({ root, button, getRows, change, toast }) {
-    Object.assign(this, { root, getRows, change, toast });
+  // isTall(id): a module two rows tall (it takes room in the next row too)
+  constructor({ root, button, getRows, change, toast, isTall = () => false }) {
+    Object.assign(this, { root, getRows, change, toast, isTall });
     this.drag = null;
     this.buildDrawer();
     button.hidden = false;
@@ -79,7 +80,7 @@ export class RackEdit {
     const rows = this.getRows();
     this.drawer.querySelectorAll('.md-card').forEach((c) => {
       const id = newId(rows, c.dataset.type);
-      c.classList.toggle('no-room', !rows.some((r) => fits(r, id)));
+      c.classList.toggle('no-room', !rows.some((r, ri) => this.fits(rows, ri, id)));
     });
   }
 
@@ -89,7 +90,7 @@ export class RackEdit {
     const rows = this.getRows();
     const id = newId(rows, type);
     const home = HOME_ROW[group] ?? 0;
-    const ri = [home, 0, 1, 2].find((r) => fits(rows[r], id));
+    const ri = [home, 0, 1, 2].find((r) => this.fits(rows, r, id));
     if (ri === undefined) { this.toast(`There is no room for a ${TYPES[type].name} in the rack. Take a module out first.`); return; }
     const row = rows[ri];
     const at = row[row.length - 1] === 'out' ? row.length - 1 : row.length;
@@ -104,6 +105,9 @@ export class RackEdit {
     const sec = id && this.root.querySelector(`.rack-rows:not(.max-rows) .section[data-section="${id}"]`);
     if (sec) { sec.classList.add('just-added'); setTimeout(() => sec.classList.remove('just-added'), 900); }
   }
+
+  // room in row ri for a module (allowing for two-row modules reaching into it)
+  fits(rows, ri, id) { return fitsRow(rows[ri], id, tallInto(rows, ri, this.isTall)); }
 
   // ---- grips and remove buttons on the modules ---------------------------------------------
   decorate() {
@@ -173,7 +177,8 @@ export class RackEdit {
     const secs = row.map((m) => rowEls[ri].querySelector(`.section[data-section="${m}"]`));
     let at = secs.findIndex((s) => { const b = s.getBoundingClientRect(); return x < b.left + b.width / 2; });
     if (at < 0) at = row.length;
-    return { ri, at, row, rowEl: rowEls[ri], secs, ok: fits(row, this.drag.id) };
+    const others = rows.map((r) => r.filter((m) => m !== this.drag.id));
+    return { ri, at, row, rowEl: rowEls[ri], secs, ok: this.fits(others, ri, this.drag.id) };
   }
 
   // a bar where the module will go (red, with a note, if it won't fit)
