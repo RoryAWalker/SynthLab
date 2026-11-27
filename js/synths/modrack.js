@@ -446,6 +446,81 @@ export const PRESETS = {
     ...C('ping1.pitch', 'kb.pitch'), ...C('ping1.strike', 'bounce1.hit'), ...C('bounce1.gate', 'kb.gate'), ...C('out.in', 'ping1.out'),
     'ping1.partials': 5, 'ping1.stretch': 1.4, 'ping1.tone': 0.6, 'ping1.decay': 1.2, 'bounce1.time': 0.35, 'bounce1.bounce': 0.75, 'out.vol': 0.9,
   },
+  // ---- more, combining the new modules -------------------------------------------------------
+  // a drawn wave (a square with a sloped top and a notch) through a snappy filter: a growling bass
+  'Drawn Bass': {
+    'rack.layout': 'wave1|vcf1,vca1,out|env1,env2',
+    ...C('wave1.pitch', 'kb.pitch'), ...C('vcf1.in', 'wave1.out'), ...C('vcf1.cv', 'env2.out'), ...C('vca1.in', 'vcf1.lp'), ...C('vca1.cv', 'env1.out'),
+    ...C('env1.gate', 'kb.gate'), ...C('env2.gate', 'kb.gate'), ...C('out.in', 'vca1.out'),
+    'wave1.nodes': '-1;0,0.5,0;0.02,1,0;0.42,0.78,0.4;0.46,0.95,0;0.5,0.1,0;0.75,0,-0.5;0.98,0.35,0;1,0.5,0', 'wave1.range': -1,
+    'vcf1.cutoff': 260, 'vcf1.res': 0.55, 'vcf1.cv': 0.6, 'env1.a': 0.002, 'env1.d': 0.3, 'env1.s': 0.7, 'env1.r': 0.12,
+    'env2.a': 0.001, 'env2.d': 0.22, 'env2.s': 0.15, 'env2.r': 0.1,
+  },
+  // a VCO restarts the drawn wave (hard sync); an envelope sweeps the drawn wave's pitch: a tearing lead
+  'Sync Wave Lead': {
+    'rack.layout': 'vco1,wave1|vca1,out|env1,env2',
+    ...C('vco1.pitch', 'kb.pitch'), ...C('wave1.pitch', 'kb.pitch'), ...C('wave1.sync', 'vco1.sq'), ...C('wave1.fm', 'env2.out'),
+    ...C('vca1.in', 'wave1.out'), ...C('vca1.cv', 'env1.out'), ...C('env1.gate', 'kb.gate'), ...C('env2.gate', 'kb.gate'), ...C('out.in', 'vca1.out'),
+    'wave1.nodes': '-1;0,0.5,-0.5;0.3,1,0.5;0.6,0.15,-0.3;1,0.5,0', 'wave1.fm': 0.55,
+    'env1.a': 0.005, 'env1.s': 0.85, 'env1.r': 0.3, 'env2.a': 0.001, 'env2.d': 0.9, 'env2.s': 0.2, 'env2.r': 0.4, 'out.vol': 0.7,
+  },
+  // the Vowels wavetable, slowly swept by an LFO, beside a detuned saw: a choir-like pad
+  'Vowel Pad': {
+    'rack.layout': 'table1,vco1|mix1,vca1,out|env1,lfo1',
+    ...C('table1.pitch', 'kb.pitch'), ...C('vco1.pitch', 'kb.pitch'), ...C('table1.pos', 'lfo1.out'),
+    ...C('mix1.in1', 'table1.out'), ...C('mix1.in2', 'vco1.saw'), ...C('vca1.in', 'mix1.out'), ...C('vca1.cv', 'env1.out'),
+    ...C('env1.gate', 'kb.gate'), ...C('out.in', 'vca1.out'),
+    'table1.table': 'b:vowels', 'table1.pos': 0.5, 'vco1.tune': 0.12, 'mix1.l1': 8, 'mix1.l2': 3,
+    'lfo1.rate': 0.15, 'lfo1.shape': 'sine', 'env1.a': 0.9, 'env1.s': 1, 'env1.r': 1.8, 'out.vol': 0.75,
+  },
+  // a drawn rhythm, looping, moves through the PWM wavetable: the tone itself plays a pattern
+  'Drawn Wavetable': {
+    'rack.layout': 'table1|vca1,out|env1,draw1',
+    ...C('table1.pitch', 'kb.pitch'), ...C('table1.pos', 'draw1.out'), ...C('draw1.gate', 'kb.gate'),
+    ...C('vca1.in', 'table1.out'), ...C('vca1.cv', 'env1.out'), ...C('env1.gate', 'kb.gate'), ...C('out.in', 'vca1.out'),
+    'table1.table': 'b:pwm', 'table1.pos': 0, 'draw1.mode': 'loop', 'draw1.time': 1.2,
+    'draw1.nodes': steps([0, 0.9, 0.3, 1, 0, 0.6, 0.2, 0.95]), 'env1.a': 0.005, 'env1.s': 1, 'env1.r': 0.3, 'out.vol': 0.7,
+  },
+  // the bouncing ball sweeps the filter: each note goes "bwow-wow-wow-w-w-w" as the ball settles
+  'Bouncing Filter': {
+    'rack.layout': 'vco1,vco2,mix1|vcf1,vca1,out|env1,bounce1',
+    ...C('vco1.pitch', 'kb.pitch'), ...C('vco2.pitch', 'kb.pitch'), ...C('mix1.in1', 'vco1.saw'), ...C('mix1.in2', 'vco2.saw'),
+    ...C('vcf1.in', 'mix1.out'), ...C('vcf1.cv', 'bounce1.out'), ...C('bounce1.gate', 'kb.gate'), ...C('vca1.in', 'vcf1.lp'), ...C('vca1.cv', 'env1.out'),
+    ...C('env1.gate', 'kb.gate'), ...C('out.in', 'vca1.out'),
+    'vco2.tune': 0.1, 'vcf1.cutoff': 300, 'vcf1.res': 0.6, 'vcf1.cv': 0.75, 'bounce1.time': 0.3, 'bounce1.bounce': 0.72,
+    'env1.a': 0.003, 'env1.s': 1, 'env1.r': 0.3, 'out.vol': 0.75,
+  },
+  // the ball strikes a string over and over (Loop): a rattling, slowing-down strum that starts again
+  'Ratchet Strings': {
+    'rack.layout': 'string1|bounce1,out|',
+    ...C('string1.pitch', 'kb.pitch'), ...C('string1.strike', 'bounce1.hit'), ...C('out.in', 'string1.out'),
+    'string1.decay': 1.5, 'string1.tone': 0.7, 'bounce1.mode': 'loop', 'bounce1.time': 0.25, 'bounce1.bounce': 0.78, 'out.vol': 0.65,
+  },
+  // the overdriven one: the ball strikes a String and a Ping, both at full Drive, into the Mixer at 11
+  'Overdriven Ball': {
+    'rack.layout': 'string1,ping1|mix1,vca1,out|bounce1,env1',
+    ...C('string1.pitch', 'kb.pitch'), ...C('ping1.pitch', 'kb.pitch'), ...C('string1.strike', 'bounce1.hit'), ...C('ping1.strike', 'bounce1.hit'),
+    ...C('bounce1.gate', 'kb.gate'), ...C('mix1.in1', 'string1.out'), ...C('mix1.in2', 'ping1.out'),
+    ...C('vca1.in', 'mix1.out'), ...C('vca1.cv', 'env1.out'), ...C('env1.gate', 'kb.gate'), ...C('out.in', 'vca1.out'),
+    'string1.drive': 1, 'string1.tone': 0.8, 'string1.decay': 1.2, 'ping1.drive': 1, 'ping1.partials': 2, 'ping1.stretch': 1.5, 'ping1.decay': 0.6, 'ping1.range': -1,
+    'mix1.l1': 11, 'mix1.l2': 10, 'mix1.mode': 'drive', 'bounce1.time': 0.4, 'bounce1.bounce': 0.8,
+    'env1.a': 0.001, 'env1.s': 1, 'env1.r': 0.8, 'out.vol': 0.6,
+  },
+  // a ringing gong that keeps singing (Feedback), its material swinging back and forth (Bounce, Swing, on Stretch)
+  'Swinging Gong': {
+    'rack.layout': 'ping1|bounce1,out|',
+    ...C('ping1.pitch', 'kb.pitch'), ...C('ping1.strike', 'kb.trig'), ...C('ping1.stretch', 'bounce1.out'), ...C('out.in', 'ping1.out'),
+    'ping1.partials': 6, 'ping1.stretch': 0.9, 'ping1.tone': 0.75, 'ping1.decay': 4, 'ping1.fb': 0.94, 'ping1.range': -1,
+    'bounce1.mode': 'swing', 'bounce1.time': 1.5, 'bounce1.bounce': 0.6, 'out.vol': 0.8,
+  },
+  // play the XY pad with one finger: across moves the vowel, up makes the voice smaller; touching it plays
+  'XY Talker': {
+    'rack.layout': 'vco1,formant1|vca1,env1,out|xy1',
+    ...C('vco1.pitch', 'kb.pitch'), ...C('formant1.in', 'vco1.saw'), ...C('formant1.vowel', 'xy1.x'), ...C('formant1.shift', 'xy1.y'),
+    ...C('vca1.in', 'formant1.out'), ...C('vca1.cv', 'env1.out'), ...C('env1.gate', 'xy1.gate'), ...C('out.in', 'vca1.out'),
+    'vco1.range': -1, 'formant1.vowel': 2, 'formant1.res': 0.7, 'xy1.pol': 'bi', 'xy1.smooth': 0.06,
+    'env1.a': 0.02, 'env1.s': 1, 'env1.r': 0.4, 'out.vol': 0.45,
+  },
   // a 16-step on/off pattern drawn with Snap, looping on the VCA: hold a chord and it chops it in rhythm
   'Drawn Gate': {
     'rack.layout': 'vco1,vco2,mix1|vcf1,vca1,out|draw1',
