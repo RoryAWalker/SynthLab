@@ -33,7 +33,7 @@ const API = '/api/ai';
 //   - otherwise, to the local server (tools/ai/server.mjs), which appends them to
 //     ~/.synthlab-ai/unanswered.jsonl; list them with `node tools/ai/unanswered.mjs`
 // With nowhere answering, nothing is recorded.
-const SHEET_URL = '';
+const SHEET_URL = 'https://script.google.com/macros/s/AKfycbziQe1Q6IQV0xybvE1Er-bMGQk7xLe94xqZ6lbWMLHbyGR4jK2x4sLLFN_s6amU7TQt/exec';
 function recordMiss(entry) {
   const body = JSON.stringify({ synth: SYNTH.id, at: new Date().toISOString(), ...entry });
   try {
