@@ -92,7 +92,13 @@ function applyOp(p, op, k = 1) {
   if (kind === 'when') { if (p[id] === op[2]) applyOps(p, op[3], k); return; }
   const s = PARAMS[id];
   if (!s) return;
-  if (s.type === 'jack') { if (kind === 'set') p[id] = op[2]; return; } // a cable: the output it comes from ('' = none)
+  if (s.type === 'jack') { // a cable: the output it comes from ('' = none), or several, comma-separated
+    const list = String(p[id] || '').split(',').filter(Boolean);
+    if (kind === 'set') p[id] = op[2];
+    else if (kind === 'plug' && !list.includes(op[2])) p[id] = (SYNTH.multiInput ? [...list, op[2]] : [op[2]]).join(','); // add one, keeping the rest
+    else if (kind === 'unplug') p[id] = list.filter((o) => o !== op[2]).join(',');
+    return;
+  }
   const cur = p[id];
   const clamp = (v) => Math.min(s.max, Math.max(s.min, v));
   if (s.type === 'step') {

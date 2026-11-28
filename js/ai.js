@@ -18,7 +18,8 @@ import { lookup } from './helpPanel.js';
 import { helpKeyFor } from './help.js';
 import { AskBook, movable } from './askBook.js';
 import { NF3_BOOK } from './askbooks/nf3.js';
-import { NFM_BOOK, NFMOD_BOOK } from './askbooks/modulars.js';
+import { NFM_BOOK } from './askbooks/modulars.js';
+import { NFMOD_BOOK } from './askbooks/nfmod.js';
 import { NF1_BOOK } from './askbooks/nf1.js';
 
 const BOOKS = { nf1: NF1_BOOK, nf3: NF3_BOOK, nfm: NFM_BOOK, nfmod: NFMOD_BOOK }; // synths with an answer book
