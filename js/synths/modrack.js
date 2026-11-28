@@ -819,7 +819,7 @@ export const MODRACK = {
   OUTPUTS: START.OUTPUTS,
   card: {
     tagline: 'Build your own rack',
-    text: 'An open modular rack: choose your modules from the drawer, as many as fit.',
+    text: 'An open modular rack: choose your modules from the drawer, as many as fit, including experimental ones.',
   },
   PARAMS: START.PARAMS, LAYOUT: START.LAYOUT, KEYBED_SECTIONS, SIDE_SECTIONS, PRESETS,
   initName: INIT_NAME,
