@@ -34,6 +34,8 @@ function findPhrase(t, phrase) {
   const m = new RegExp(' ' + reEsc(phrase.toLowerCase()) + '(?:s|es)? ').exec(t);
   return m ? m.index : -1;
 }
+// controls the answer book may move: knobs, switches and wheels that stay put (not the pitch wheel)
+export const movable = (id) => { const p = PARAMS[id]; return !!p && (p.type === 'cont' || p.type === 'step' || (p.type === 'wheel' && !p.spring)); };
 const round = (v) => (typeof v === 'number' ? Number(v.toPrecision(3)) : v);
 const hasAny = (t, list) => list.some((p) => findPhrase(t, p) >= 0);
 const firstHit = (t, list) => { // the longest phrase from the list found in the text
@@ -59,9 +61,13 @@ const MAKE = ['make', 'give', 'create', 'design', 'build', 'want', 'need', 'id l
 //   ['add', id, delta]            add (a switch: move that many options along)
 //   ['range', id, lo, hi, value]  if it's outside lo..hi, set it to value
 //   ['atLeast', id, v] / ['atMost', id, v]
+//   ['add', id, delta, floor]     a switch: only if the new option's value is >= floor
+//   ['when', id, value, [ops]]    the ops only if the control is at that value
+//                                  (the NiniFoog: change Osc 3's speed only while it is the LFO)
 // `k` scales the strength: 2 for "much brighter", 0.5 for "a bit brighter".
 function applyOp(p, op, k = 1) {
   const [kind, id] = op;
+  if (kind === 'when') { if (p[id] === op[2]) applyOps(p, op[3], k); return; }
   const s = PARAMS[id];
   if (!s) return;
   const cur = p[id];
@@ -69,7 +75,10 @@ function applyOp(p, op, k = 1) {
   if (s.type === 'step') {
     const i = s.options.findIndex((o) => o.v === cur);
     if (kind === 'set') p[id] = op[2];
-    else if (kind === 'add') p[id] = s.options[Math.min(s.options.length - 1, Math.max(0, i + op[2]))].v; // (a switch moves one option, however strongly asked)
+    else if (kind === 'add') { // (a switch moves one option, however strongly asked)
+      const v = s.options[Math.min(s.options.length - 1, Math.max(0, i + op[2]))].v;
+      if (op[3] == null || v >= op[3]) p[id] = v;
+    }
     return;
   }
   if (kind === 'set') p[id] = clamp(op[2]);
@@ -117,6 +126,7 @@ const ID_NAMES = { // extra names for single controls
   'perf.mod': ['mod wheel', 'modulation wheel'], 'perf.bend': ['pitch wheel', 'pitch bend', 'bend'],
   'ctrl.glide': ['glide', 'portamento'], 'kb.glide': ['glide', 'portamento'], 'ctrl.tune': ['tune', 'tuning', 'master tune'],
   'osc3.ctrl': ['oscillator 3 control', 'osc 3 control'], 'osc.mod': ['oscillator modulation'], 'filt.mod': ['filter modulation'],
+  'perf.decay': ['decay switch'], 'perf.glideon': ['glide switch'],
   'mix.noise': ['noise'], 'mix.feedback': ['feedback'], 'ctrl.modmix': ['modulation mix', 'mod mix'],
 };
 const GROUP_NAMES = { filt: ['filter', 'low pass filter', 'lowpass filter'], fenv: ['filter envelope', 'filter contour'], aenv: ['loudness envelope', 'volume envelope', 'amp envelope', 'loudness contour'], lfo: ['lfo'] };
@@ -258,7 +268,7 @@ export class AskBook {
     let tweaks = this.findTweaks(recipe ? this.without(t, recipe.hit) : t);
     const topicsEarly = findTopics(t, this.index, book.prefer);
     const top0 = topicsEarly.length ? topicsEarly[0].e.key : null;
-    let param = top0 && PARAMS[top0] && (PARAMS[top0].type === 'cont' || PARAMS[top0].type === 'step') && topicsEarly[0].e.ids.length === 1 ? top0 : null;
+    let param = top0 && PARAMS[top0] && movable(top0) && topicsEarly[0].e.ids.length === 1 ? top0 : null;
     if (!param && top0 && top0.startsWith('section:')) // "turn the delay up": the section's Amount or Level
       param = topicsEarly[0].e.ids.find((id) => PARAMS[id].type === 'cont' && /^(amount|level|mix|volume)$/i.test(cleanLabel(PARAMS[id].label))) || null;
     // "lower the resonance", "turn the cutoff up": a named control beats the vaguer tweaks

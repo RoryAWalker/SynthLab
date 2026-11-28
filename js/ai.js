@@ -16,10 +16,11 @@
 import { PARAMS, ALL_SECTIONS, SYNTH, defaultPatch, formatValue } from './params.js';
 import { lookup } from './helpPanel.js';
 import { helpKeyFor } from './help.js';
-import { AskBook } from './askBook.js';
+import { AskBook, movable } from './askBook.js';
+import { NF3_BOOK } from './askbooks/nf3.js';
 import { NF1_BOOK } from './askbooks/nf1.js';
 
-const BOOKS = { nf1: NF1_BOOK }; // synths with an answer book
+const BOOKS = { nf1: NF1_BOOK, nf3: NF3_BOOK }; // synths with an answer book
 
 const API = '/api/ai';
 const plain = (s) => String(s || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
@@ -78,7 +79,7 @@ export function checkChanges(changes) {
   const ok = [], dropped = [];
   for (const c of changes || []) {
     const p = PARAMS[c.id];
-    if (!p || !usable(c.id)) { dropped.push(`${c.id} (no such control)`); continue; }
+    if (!p || !movable(c.id)) { dropped.push(`${c.id} (no such control)`); continue; }
     if (p.type === 'step') {
       const raw = String(c.value).trim().replace(/^"|"$/g, '');
       const opt = p.options.find((o) => String(o.v) === raw) || p.options.find((o) => o.label.toLowerCase() === raw.toLowerCase());
@@ -271,7 +272,7 @@ class AskPanel {
       this.host.setPatch(next);
     }
     // what actually changed, old -> new, in the panel's own units
-    const moved = next ? this.ids.filter((id) => next[id] !== before[id]) : [];
+    const moved = next ? Object.keys(PARAMS).filter((id) => movable(id) && next[id] !== before[id]) : [];
     const why = Object.fromEntries(ok.map((c) => [c.id, c.why]));
     const list = moved.map((id) => `<li title="${esc(why[id] || (res.base === 'init' ? 'back to its default (started from Init)' : ''))}"><span class="ask-ctl">${esc(ctlName(id))}</span> ${esc(formatValue(id, before[id]))} → <b>${esc(formatValue(id, next[id]))}</b></li>`).join('');
     const turn = this.addTurn('ai', `

@@ -257,7 +257,7 @@ export const NF1_BOOK = {
       sayUp: 'Both oscillators\' Range switches are up an octave.',
       sayDown: 'Both oscillators\' Range switches are down an octave.',
       howUp: 'Turn the Range switch on both oscillators up one step: each step is an octave.',
-      limit: 'The Range switches can\'t go any further.' },
+      limit: 'The Range switches are already at +2, the highest.', limitDown: 'The Range switches are already at −2, the lowest.' },
     { name: 'glide', words: ['glide', 'slide', 'sliding', 'portamento', 'swoop', 'gliding'],
       up: [['mul', 'ctrl.glide', 2, 0.1]], down: [['mul', 'ctrl.glide', 0.4, null, 0.01]],
       sayUp: 'Glide is up: the pitch now slides from one note to the next. Play notes one after another to hear it.',
