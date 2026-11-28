@@ -1567,6 +1567,10 @@ body[data-skin="modular"] .section[data-type="organ"].even { --mod: #a2703d; }
 .ask-act { background: #2a2d33; color: #d9dbdf; border: 1px solid #3a3d44; border-radius: 5px; padding: 3px 9px; font: inherit; font-size: 12px; cursor: pointer; }
 .ask-act:hover { background: #33363c; }
 .ask-act:disabled { opacity: 0.5; cursor: default; }
+.ask-flag { background: none; border-color: transparent; color: #8a8e96; }
+.ask-flag:hover:not(:disabled) { border-color: #3a3d44; color: #d9dbdf; }
+.ask-flag:disabled { cursor: default; color: #7fb08a; }
+.ask-privacy { margin: 0; padding: 0 12px 4px; font-size: 11px; color: #6f737b; }
 .ask-cost { margin-left: auto; font-size: 11px; color: #6f737b; }
 .ask-examples { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 12px 8px; }
 .ask-chip { background: none; border: 1px solid #3a3d44; color: #b5b8be; border-radius: 999px; padding: 3px 10px; font: inherit; font-size: 12px; cursor: pointer; }

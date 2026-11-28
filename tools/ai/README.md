@@ -21,3 +21,19 @@ Then open http://localhost:8662/?synth=nf1 and press **Ask** (top bar).
   never appears. `main.js` doesn't even load `js/ai.js` unless the page is on localhost.
 - **Other synths**: the AI's description of the synth is generated from its `PARAMS`, sections and
   `help.js` (`buildGuide` in `js/ai.js`). Synths with cables are left out for now.
+
+## Questions it couldn't answer
+
+When the answer book can't answer a question, or someone presses **Not helpful** under an answer,
+the panel sends the question to this server, which adds it to `~/.synthlab-ai/unanswered.jsonl`
+(outside the repo; no names, just the question, the synth, the time and the answer given). To see
+the list, most asked first:
+
+    node tools/ai/unanswered.mjs                  # or --synth nfmod, or --csv > list.csv
+
+Use it to decide what to add to the answer books in `js/askbooks/`.
+
+For the public site there is no server, so nothing is recorded yet. To collect questions from
+visitors, set `MISS_URL` in `js/ai.js` to a hosted endpoint that accepts the same JSON POST
+(`{ synth, at, question, reason, mode, reply }`) and stores one line per question; the list script
+reads such a file with `--file`.

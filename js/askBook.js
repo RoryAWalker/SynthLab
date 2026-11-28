@@ -275,7 +275,7 @@ export class AskBook {
       return this.reply(this.intro());
     const none = !book.recipes.length;
     if (none && hasAny(t, ['what sounds', 'which sounds', 'list of sounds', 'list sounds', 'sounds can you', 'recipes', 'surprise me', 'random sound']))
-      return this.reply(`I don't have sound recipes for the ${this.name} yet. Try the factory patches in the Patch menu, and ask me about any of their controls.`);
+      return this.miss(`I don't have sound recipes for the ${this.name} yet. Try the factory patches in the Patch menu, and ask me about any of their controls.`);
     if (hasAny(t, ['what sounds', 'which sounds', 'list of sounds', 'list sounds', 'sounds can you', 'recipes', 'what presets']))
       return this.reply(`I know these sounds: ${book.recipes.map((r) => r.name.toLowerCase()).join(', ')}. Add a word or two to change them, for example "dark bass" or "pad with vibrato".`);
     if (hasAny(t, ['surprise me', 'random sound', 'anything', 'something cool', 'something random'])) {
@@ -343,9 +343,9 @@ export class AskBook {
     if (tweaks.length) return this.tweak(tweaks, current, k, question);
     if (recipeIsTweak) return this.tweak(this.findTweaks(norm(recipe.hit)), current, k, question);
     if (topics.length) return this.explain(topics, t);
-    if (none && hasAny(t, MAKE)) return this.reply(`I can't make sounds on the ${this.name} yet: its recipes aren't written. Try the factory patches in the Patch menu, then ask me about their controls, or to turn one up or down.`);
-    if (none) return this.reply(`I don't have that in my answer book yet. On the ${this.name} I can explain any control${Object.values(PARAMS).some((p) => p.type === 'jack') ? ' or socket' : ''} ("what does Cutoff do?", "what is an LFO?") and turn a named control up or down ("turn the cutoff up"). I don't make sounds or patch cables here yet.`);
-    return this.reply(`I don't have that in my answer book yet. I can make sounds (${book.recipes.slice(0, 8).map((r) => r.name.toLowerCase()).join(', ')}, and more: ask "what sounds do you know?"), change the current sound ("brighter", "more vibrato", "slower attack"), or explain any control ("what does Cutoff do?").`);
+    if (none && hasAny(t, MAKE)) return this.miss(`I can't make sounds on the ${this.name} yet: its recipes aren't written. Try the factory patches in the Patch menu, then ask me about their controls, or to turn one up or down.`);
+    if (none) return this.miss(`I don't have that in my answer book yet. On the ${this.name} I can explain any control${Object.values(PARAMS).some((p) => p.type === 'jack') ? ' or socket' : ''} ("what does Cutoff do?", "what is an LFO?") and turn a named control up or down ("turn the cutoff up"). I don't make sounds or patch cables here yet.`);
+    return this.miss(`I don't have that in my answer book yet. I can make sounds (${book.recipes.slice(0, 8).map((r) => r.name.toLowerCase()).join(', ')}, and more: ask "what sounds do you know?"), change the current sound ("brighter", "more vibrato", "slower attack"), or explain any control ("what does Cutoff do?").`);
   }
 
   // FM/AM on a modular synth without a book entry: where its FM inputs and VCAs are
@@ -395,6 +395,8 @@ export class AskBook {
   }
 
   reply(text, point_at = []) { return { kind: 'answer', base: 'current', reply: text, changes: [], point_at }; }
+  // a question the book couldn't answer: the panel records these (see recordMiss in js/ai.js)
+  miss(text) { return { ...this.reply(text), unanswered: true }; }
 
   without(t, phrase) { const i = findPhrase(t, phrase); return i < 0 ? t : t.slice(0, i) + ' ' + t.slice(i + phrase.length + 1).replace(/^(s|es) /, ' '); }
 

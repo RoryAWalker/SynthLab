@@ -1,10 +1,12 @@
 // SynthLab's Ask panel: a local-only server. Never deployed (GitHub Pages serves static files only,
 // so on the public site the Ask panel never appears).
 //
-// It does two jobs:
+// It does three jobs:
 //   1. serves the SynthLab folder, like `python3 -m http.server`, on http://localhost:8662
 //   2. answers POST /api/ai/ask by calling the Claude API, so the API key stays in this process
 //      and never reaches the browser, the page's storage, or the repository.
+//   3. records questions the Ask panel couldn't answer (POST /api/ai/miss) in
+//      ~/.synthlab-ai/unanswered.jsonl, outside the repo. List them: node tools/ai/unanswered.mjs
 //
 // The key: the ANTHROPIC_API_KEY environment variable, or the file ~/.synthlab-ai/key (outside the
 // repo). The Ask panel can write that file for you (POST /api/ai/key), once, from this computer.
@@ -25,6 +27,7 @@ const ROOT = path.resolve(arg('root', path.join(here, '..', '..')));
 const KEY_DIR = path.join(os.homedir(), '.synthlab-ai');
 const KEY_FILE = path.join(KEY_DIR, 'key');
 const MODEL = 'claude-opus-5-5';
+const MISS_FILE = path.join(KEY_DIR, 'unanswered.jsonl'); // questions the Ask panel couldn't answer
 
 // ---- the key -------------------------------------------------------------------------------
 function readKey() {
@@ -164,6 +167,15 @@ const server = http.createServer(async (req, res) => {
       if (key && !/^sk-ant-[\w-]{20,}$/.test(key)) return sendJson(res, 400, { error: 'That does not look like an Anthropic API key (they start with sk-ant-).' });
       saveKey(key);
       return sendJson(res, 200, { ok: true, hasKey: !!readKey() });
+    }
+    if (url.pathname === '/api/ai/miss') { // one line per question: list them with `node tools/ai/unanswered.mjs`
+      const str = (v, n) => (typeof v === 'string' ? v.slice(0, n) : '');
+      const entry = { at: new Date().toISOString(), synth: str(body.synth, 20), reason: body.reason === 'not-helpful' ? 'not-helpful' : 'no-answer',
+        mode: body.mode === 'claude' ? 'claude' : 'book', question: str(body.question, 500).trim(), reply: str(body.reply, 300) };
+      if (!entry.question) return sendJson(res, 400, { error: 'No question.' });
+      fs.mkdirSync(KEY_DIR, { recursive: true, mode: 0o700 });
+      fs.appendFileSync(MISS_FILE, JSON.stringify(entry) + '\n', { mode: 0o600 });
+      return sendJson(res, 200, { ok: true });
     }
     if (url.pathname === '/api/ai/ask') { const r = await ask(body); return sendJson(res, r.status, r.json); }
     return sendJson(res, 404, { error: 'Not found.' });

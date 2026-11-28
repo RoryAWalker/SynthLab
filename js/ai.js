@@ -25,6 +25,18 @@ import { NF1_BOOK } from './askbooks/nf1.js';
 const BOOKS = { nf1: NF1_BOOK, nf3: NF3_BOOK, nfm: NFM_BOOK, nfmod: NFMOD_BOOK }; // synths with an answer book
 
 const API = '/api/ai';
+
+// Questions it couldn't answer, and answers someone marked "Not helpful", are sent here so the answer
+// book can grow. Locally that's tools/ai/server.mjs, which appends them to ~/.synthlab-ai/unanswered.jsonl
+// (list them with `node tools/ai/unanswered.mjs`). For the public site, point this at a hosted
+// collector that accepts the same JSON POST. With no server answering, nothing is recorded.
+const MISS_URL = API + '/miss';
+function recordMiss(entry) {
+  try {
+    fetch(MISS_URL, { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ synth: SYNTH.id, at: new Date().toISOString(), ...entry }) }).catch(() => {});
+  } catch { /* recording is best-effort */ }
+}
 const plain = (s) => String(s || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -155,6 +167,7 @@ class AskPanel {
       </div>
       <div class="ask-log" aria-live="polite"></div>
       <div class="ask-examples"></div>
+      <p class="ask-privacy">Questions I can't answer are saved, without your name, to help improve me.</p>
       <form class="ask-form"><textarea class="ask-input" rows="2" placeholder="Ask for a sound (“vibrato lead”) or ask a question…"></textarea><button class="btn ask-send" type="submit">Ask AI</button></form>`;
     document.body.appendChild(this.el);
     this.log = this.el.querySelector('.ask-log');
@@ -288,7 +301,7 @@ class AskPanel {
       <p>${esc(res.reply)}</p>
       ${moved.length ? `<details class="ask-changes"${moved.length <= 6 ? ' open' : ''}><summary>${moved.length} control${moved.length === 1 ? '' : 's'} changed${res.base === 'init' ? ', starting from Init' : ''}</summary><ul>${list}</ul></details>` : ''}
       ${dropped.length ? `<p class="ask-dropped">Ignored: ${esc(dropped.join('; '))}</p>` : ''}
-      <div class="ask-actions">${moved.length ? '<button class="ask-act ask-play">▶ Hear it</button><button class="ask-act ask-undo">Undo</button>' : ''}<span class="ask-cost">${meta.book ? 'answer book' : (meta.ms / 1000).toFixed(1) + ' s · Claude'}</span></div>`);
+      <div class="ask-actions">${moved.length ? '<button class="ask-act ask-play">▶ Hear it</button><button class="ask-act ask-undo">Undo</button>' : ''}<button class="ask-act ask-flag" title="Tell us this answer missed the point, so the answer book can learn">Not helpful</button><span class="ask-cost">${meta.book ? 'answer book' : (meta.ms / 1000).toFixed(1) + ' s · Claude'}</span></div>`);
     if (moved.length) {
       turn.querySelector('.ask-undo').addEventListener('click', (e) => {
         this.host.setPatch(before);
@@ -297,6 +310,13 @@ class AskPanel {
       });
       turn.querySelector('.ask-play').addEventListener('click', () => this.host.play && this.host.play());
     }
+    // record it if the answer book gave up; "Not helpful" records any answer
+    const mode = meta.book ? 'book' : 'claude';
+    if (res.unanswered) { recordMiss({ question: text, reason: 'no-answer', mode, reply: res.reply.slice(0, 300) }); turn.querySelector('.ask-flag').remove(); }
+    else turn.querySelector('.ask-flag').addEventListener('click', (e) => {
+      recordMiss({ question: text, reason: 'not-helpful', mode, reply: res.reply.slice(0, 300) });
+      e.target.disabled = true; e.target.textContent = 'Thanks: noted';
+    });
     this.glow([...new Set([...moved, ...(res.point_at || [])])]);
     // the conversation so far, for follow-ups; the assistant's turn says what it set
     this.history.push({ role: 'user', text }, { role: 'assistant', text: res.reply + (ok.length ? ` [Set: ${ok.map((c) => `${c.id}=${c.value}`).join(', ')}${res.base === 'init' ? ', from init' : ''}]` : '') });
