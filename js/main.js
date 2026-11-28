@@ -29,6 +29,7 @@ import { TableScreen } from './tableScreen.js';
 import { ProbeScreen } from './probeScreen.js';
 import { ScaleScreen } from './scaleScreen.js';
 import { DrawbarBank } from './drawbarBank.js';
+import { floatAll } from './floatStack.js';
 
 const engine = new Engine({ module: SYNTH.module, processor: SYNTH.processor });
 // the Draw module's screen shows where its shape is playing, and whether it is in Once mode
@@ -1304,6 +1305,9 @@ if (PROC) {
 document.addEventListener('touchend', () => {
   if (engine.ctx && engine.ctx.state !== 'running' && !document.hidden) engine.ctx.resume();
 }, { capture: true, passive: true });
+
+// floating panels (Help, Ask, module drawer): the most recently opened or clicked goes in front
+floatAll();
 
 fit();
 window.addEventListener('resize', fit);

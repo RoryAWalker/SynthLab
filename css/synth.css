@@ -1534,7 +1534,7 @@ body[data-skin="modular"] .section[data-type="organ"].even { --mod: #a2703d; }
 .btn-ask.on { background: #3b3220; border-color: #8a6a2c; color: #ffd9a0; }
 .ask-spark { color: var(--accent); font-size: 12px; }
 .ask-panel {
-  position: fixed; left: 12px; bottom: 12px; z-index: 70; width: 390px; max-width: calc(100vw - 24px);
+  position: fixed; left: 12px; bottom: 12px; z-index: 61; width: 390px; max-width: calc(100vw - 24px);
   max-height: calc(100vh - var(--appbar-h, 56px) - 24px); display: flex; flex-direction: column;
   background: rgba(26, 28, 32, 0.97); border: 1px solid #3a3d44; border-radius: 10px;
   box-shadow: 0 14px 40px rgba(0,0,0,0.55); color: #d9dbdf; font-size: 14px;
