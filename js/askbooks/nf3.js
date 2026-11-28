@@ -108,7 +108,15 @@ export const NF3_BOOK = {
       set: { 'osc1.wave': 'tri', 'osc2.wave': 'tri', 'osc2.range': 2, 'osc2.freq': 0.3, ...osc3Voice(1, 7, 'tri', 0.3), 'mix.osc1': 0.7, 'mix.osc2': 0.5,
         'filt.cutoff': 6000, 'filt.kb1': 'on', 'filt.kb2': 'on', 'aenv.a': 0.001, 'aenv.d': 2.5, 'aenv.s': 0, 'perf.decay': 'on', 'fx.reverb': 0.4 },
       key: ['osc2.freq', 'osc3.freq', 'aenv.d'],
-      teach: 'Real bells have overtones that don\'t line up with the note. Three oscillators get closer than two: Oscillator 2 two octaves up and slightly sharp, Oscillator 3 a fifth above the 4\'. An instant attack, a long Decay and no Sustain make it ring away.',
+      teach: 'Real bells have overtones that don\'t line up with the note. Three oscillators get closer than two: Oscillator 2 two octaves up and slightly sharp, Oscillator 3 a fifth above the 4\'. An instant attack, a long Decay and no Sustain make it ring away. This one is additive, not FM; ask for an "FM bell" to hear the difference.',
+    },
+    {
+      name: 'FM bell', words: ['fm bell', 'fm bells', 'fm chime', 'metallic bell', 'glass', 'glassy', 'metallic', 'clang', 'gong'], nouns: ['fm bell'],
+      set: { 'osc1.wave': 'tri', 'mix.osc1': 0.9, 'mix.osc2': 0, 'osc3.range': 0, 'osc3.ctrl': 'on', 'osc3.freq': 5.83, 'osc3.wave': 'tri', 'mix.osc3': 0,
+        'osc.mod': 'on', 'ctrl.modmix': 0, 'perf.mod': 0.55, 'filt.cutoff': 9000, 'filt.kb1': 'on', 'filt.kb2': 'on', 'filt.env': 0.3, 'fenv.a': 0.001, 'fenv.d': 1.2, 'fenv.s': 0,
+        'aenv.a': 0.001, 'aenv.d': 2.5, 'aenv.s': 0, 'perf.decay': 'on', 'fx.reverb': 0.4 },
+      key: ['osc3.freq', 'osc.mod', 'perf.mod'],
+      teach: 'This bell uses FM (frequency modulation). Oscillator 3 follows the keyboard (Osc. 3 Control on) but is out of the Mixer, and with Oscillator Modulation on it bends Oscillator 1\'s pitch hundreds of times a second. Tuned 5.83 semitones up, a ratio of about 1:1.4, the sidebands clash like a bell\'s overtones; the mod wheel sets how deep the FM goes, so how bright. Real FM uses sine waves; the triangle is the nearest here.',
     },
     {
       name: 'Wobble bass', words: ['wobble', 'wobble bass', 'wub', 'wubs', 'wobbly bass', 'wobbling bass'], nouns: ['wobble bass'],
@@ -321,10 +329,36 @@ export const NF3_BOOK = {
       up: [['add', 'fx.chorus', 0.3], ['atLeast', 'fx.chorus', 0.4]], down: [['mul', 'fx.chorus', 0.4, null, 0.06]],
       sayUp: 'I added chorus, which spreads the sound with slightly detuned, moving copies.', sayDown: 'Less chorus.', sayOff: 'Chorus is off.',
       howUp: 'Turn up the Chorus Amount, in the effects below the synth.' },
+    { name: 'fm', words: ['fm', 'frequency modulation', 'fm synthesis'],
+      // if Oscillator 3 is the LFO, it moves up to 4' to become the modulator; if it is already a voice, it keeps its tuning (the ratio)
+      up: [['when', 'osc3.range', -7, [['set', 'osc3.range', 1], ['set', 'osc3.freq', 0], ['set', 'osc3.wave', 'tri']]], ['set', 'osc3.ctrl', 'on'], ['set', 'mix.osc3', 0],
+        ['set', 'osc.mod', 'on'], ['set', 'ctrl.modmix', 0], ['mul', 'perf.mod', 1.3, 0.45], ['atLeast', 'perf.mod', 0.4]],
+      down: [['mul', 'perf.mod', 0.6, null, 0.06]], off: [['set', 'osc.mod', 'off']],
+      sayUp: 'FM is on: Oscillator 3 follows the keyboard at audio speed but is out of the Mixer, and with Oscillator Modulation on it bends the pitch of Oscillators 1 and 2. The mod wheel sets how deep the FM goes: more is brighter and harsher. Oscillator 3\'s Range and Frequency set the ratio: whole octaves sound harmonic, odd tunings sound like bells.',
+      sayDown: 'I pulled the mod wheel down, so the FM is gentler and the tone smoother.',
+      sayOff: 'Oscillator Modulation is off, so Oscillator 3 no longer bends the pitch: no FM.',
+      howUp: 'On the NiniFoog, Oscillator 3 is the modulator: switch Osc. 3 Control on, set its Range to 8\' or 4\' (not LO), turn Osc. 3 down in the Mixer, switch Oscillator Modulation on and raise the mod wheel. Oscillator 3\'s Frequency sets the ratio: whole octaves sound harmonic, odd tunings sound like bells.',
+      howDown: 'Pull the mod wheel down; at zero there is no FM.' },
+    { name: 'am', words: ['amplitude modulation', 'am synthesis'],
+      up: [], down: [],
+      sayUp: 'The NiniFoog can\'t do AM: its modulation goes to pitch (that\'s FM) and to the filter, never to the volume.',
+      howUp: 'The NiniFoog has no amplitude modulation: Oscillator 3 and noise can modulate the pitch (FM) or the filter, not the loudness. The modular synths can do AM with a VCA or the ring modulator.',
+      limit: 'The NiniFoog can\'t do AM: nothing on it can move the volume. It can do FM, though: ask me to add FM.' },
     { name: 'dry', upWords: ['dry', 'drier', 'no effects', 'no fx', 'without effects', 'close up', 'upfront'],
       up: [['set', 'fx.reverb', 0], ['set', 'fx.delay', 0], ['set', 'fx.chorus', 0]], down: [],
       sayUp: 'All the effects are off, so you hear the NiniFoog on its own.', howUp: 'Turn the Chorus, Delay and Reverb Amounts to zero.' },
   ],
+
+  // FM and AM on this synth (the general explanation is in js/askBook.js)
+  concepts: {
+    fm: { here: 'On the NiniFoog, Oscillator 3 can be the modulator: with Osc. 3 Control on, a Range above LO, Osc. 3 out of the Mixer and Oscillator Modulation on, the mod wheel sets the FM depth. With Range on LO the same route gives vibrato, the slow form of FM.',
+      ids: ['osc3.range', 'osc3.freq', 'osc.mod', 'perf.mod'],
+      uses: (p) => p['osc.mod'] === 'on' && p['perf.mod'] > 0.05 && p['ctrl.modmix'] < 0.9 && p['osc3.range'] !== -7,
+      usesYes: 'Yes: Oscillator 3 is running at audio speed with Oscillator Modulation on and the mod wheel up, so it is frequency-modulating Oscillators 1 and 2.',
+      usesNo: 'No: for FM, Oscillator 3 has to run at audio speed (Range above LO) with Oscillator Modulation on and the mod wheel up, and here it isn\'t. The plain Bell recipe is additive: three oscillators at different pitches. Ask for an "FM bell" to compare.' },
+    am: { here: 'The NiniFoog has no amplitude modulation: nothing on it can move the volume.', uses: () => false,
+      usesNo: 'No: the NiniFoog can\'t modulate its volume, so it never uses AM.' },
+  },
 
   // when two controls share a name ("Attack Time"), the one a question means unless it says otherwise
   prefer: ['aenv.a', 'aenv.d', 'aenv.s'],

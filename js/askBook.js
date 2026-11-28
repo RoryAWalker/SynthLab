@@ -27,6 +27,28 @@ const SAME = [
   [/ longer lasting /g, ' last longer '], [/ sawtooth( wave)? /g, ' saw sawtooth '], [/ triangle( wave)? /g, ' tri triangle '],
 ];
 const fold = (t) => { for (const [re, w] of SAME) { t = t.replace(re, w).replace(re, w); } return t; };
+// Ideas that apply to every synth, with their abbreviations. A book adds what they mean on its own
+// synth (book.concepts[id]: here, and uses(patch) for "does this sound use FM?").
+const CONCEPTS = {
+  fm: {
+    names: ['fm', 'f.m.', 'frequency modulation', 'fm synthesis', 'frequency-modulation'],
+    title: 'FM (frequency modulation)',
+    text: 'FM, short for frequency modulation, means one oscillator (the modulator) bends the pitch of another (the carrier). Slowly, below about 20 times a second, you hear that as vibrato. Speed the modulator up into the range you can hear and the wobble disappears: instead, new frequencies called sidebands appear either side of the note. If the two oscillators are tuned to a simple ratio (1:1, 1:2) the sidebands line up as harmonics and the tone just gets richer; at an awkward ratio (such as 1:1.4) they clash, which is why FM is so good at bells, metal and glass. The deeper the modulation (the modulation index), the brighter the sound.',
+  },
+  am: {
+    names: ['amplitude modulation', 'a.m.', 'am synthesis', 'amplitude-modulation'],
+    title: 'AM (amplitude modulation)',
+    text: 'AM, short for amplitude modulation, means one signal moves the volume (amplitude) of another. Slowly, that is tremolo. At audio speed it adds two new frequencies, one at the sum and one at the difference of the two signals, which gives a hollow, bell-like or metallic tone. Ring modulation is a stronger form of AM: only the sum and difference are left and the original notes disappear.',
+  },
+  sidebands: {
+    names: ['sideband', 'sidebands'], title: 'Sidebands',
+    text: 'Sidebands are the new frequencies that FM and AM create either side of the note. With FM there can be many pairs, more the deeper the modulation; with AM there is one pair, at the sum and the difference of the two frequencies.',
+  },
+  carrier: {
+    names: ['carrier', 'modulator', 'carrier and modulator', 'modulation index', 'fm ratio', 'ratio'], title: 'Carrier and modulator',
+    text: 'In FM and AM the carrier is the oscillator you hear, and the modulator is the one changing it. The ratio between their frequencies decides whether the result sounds harmonic (simple ratios like 1:2) or clangorous (awkward ones like 1:1.4); the modulation index, how hard the modulator pushes, decides how bright it gets.',
+  },
+};
 const TIME_SHORTER = ['faster', 'fast', 'shorter', 'short', 'sooner', 'quick', 'less', 'snappier', 'tighter', 'abruptly', 'suddenly'];
 const reEsc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 // does the (normalised) text contain this phrase as whole words? (a plural "s" is allowed)
@@ -70,6 +92,7 @@ function applyOp(p, op, k = 1) {
   if (kind === 'when') { if (p[id] === op[2]) applyOps(p, op[3], k); return; }
   const s = PARAMS[id];
   if (!s) return;
+  if (s.type === 'jack') { if (kind === 'set') p[id] = op[2]; return; } // a cable: the output it comes from ('' = none)
   const cur = p[id];
   const clamp = (v) => Math.min(s.max, Math.max(s.min, v));
   if (s.type === 'step') {
@@ -234,7 +257,9 @@ export class AskBook {
   }
 
   answer(text, current) {
-    const t = fold(norm(text));
+    let t = fold(norm(text));
+    if (/\bAM\b/.test(text) || / (what is|whats|what does|explain|use|uses|using|add|apply|with|and|or|vs|versus|about|is this|its) am /.test(t) || / am (synthesis|sound|and|or|vs|versus) /.test(t))
+      t = t.replace(/ am /g, ' amplitude modulation ');
     const book = this.book;
     const question = QUESTION.test(t) || /\?\s*$/.test(text);
     const k = hasAny(t, MUCH) ? 2 : hasAny(t, LITTLE) ? 0.5 : 1;
@@ -260,6 +285,24 @@ export class AskBook {
     if (this.last && /^ (less|bit less|a bit less|too much|go back a bit|less please|a little less) $/.test(t))
       return this.tweak([{ tw: this.last.tw, dir: this.last.dir === 'up' ? 'down' : 'up' }], current, k, false);
 
+    // FM, AM and friends: "what is FM?", "does this bell use FM?"
+    const concepts = Object.keys(CONCEPTS).filter((id) => hasAny(t, CONCEPTS[id].names));
+    const concept = concepts[0];
+    if (concepts.length > 1 && question && !/^ (does|did|is|was|are|has|have) /.test(t)) // "difference between FM and AM"
+      return this.reply(concepts.slice(0, 2).map((id) => CONCEPTS[id].text + ((book.concepts || {})[id] && book.concepts[id].here ? ' ' + book.concepts[id].here : '')).join(' '), []);
+    if (concept) {
+      const here = (book.concepts || {})[concept] || {};
+      const usesQ = /^ (does|did|is|was|are|has|have) /.test(t) || hasAny(t, ['using', 'made with', 'made using', 'uses']);
+      const apply = !question && !usesQ || hasAny(t, ['how do i', 'how can i', 'can you', 'could you', 'please', 'add', 'apply', 'turn on', 'give it', 'make it']);
+      if (usesQ && here.uses) {
+        const yes = here.uses(current);
+        const say = (v) => (typeof v === 'function' ? v(current) : v);
+        return this.reply((yes ? say(here.usesYes) || `Yes: this sound uses ${CONCEPTS[concept].title}.` : say(here.usesNo) || `No: this sound doesn't use ${CONCEPTS[concept].title}.`) + (here.here ? ' ' + here.here : ''), here.ids || []);
+      }
+      if (!apply || !this.findTweaks(t).length) {
+        if (!this.findRecipe(t) || !apply) return this.reply(CONCEPTS[concept].text + (here.here ? ' ' + here.here : this.modularNote(concept)), here.ids || []);
+      }
+    }
     let recipe = this.findRecipe(t);
     if (recipe) {
       const at = findPhrase(t, recipe.hit);
@@ -297,6 +340,16 @@ export class AskBook {
     if (none && hasAny(t, MAKE)) return this.reply(`I can't make sounds on the ${this.name} yet: its recipes aren't written. Try the factory patches in the Patch menu, then ask me about their controls, or to turn one up or down.`);
     if (none) return this.reply(`I don't have that in my answer book yet. On the ${this.name} I can explain any control${Object.values(PARAMS).some((p) => p.type === 'jack') ? ' or socket' : ''} ("what does Cutoff do?", "what is an LFO?") and turn a named control up or down ("turn the cutoff up"). I don't make sounds or patch cables here yet.`);
     return this.reply(`I don't have that in my answer book yet. I can make sounds (${book.recipes.slice(0, 8).map((r) => r.name.toLowerCase()).join(', ')}, and more: ask "what sounds do you know?"), change the current sound ("brighter", "more vibrato", "slower attack"), or explain any control ("what does Cutoff do?").`);
+  }
+
+  // FM/AM on a modular synth without a book entry: where its FM inputs and VCAs are
+  modularNote(concept) {
+    const jacks = Object.keys(PARAMS).filter((id) => PARAMS[id].type === 'jack');
+    if (!jacks.length) return '';
+    const where = (ids) => [...new Set(ids.map((id) => { const s = ALL_SECTIONS.find((x) => (x.jacks || []).includes(id)); return s ? s.title : null; }).filter(Boolean))].join(' and ');
+    if (concept === 'fm') { const fm = jacks.filter((id) => /\.fm$/.test(id)); return fm.length ? ` On the ${this.name}, patch an oscillator's output into the FM input on ${where(fm)} and turn up its FM amount.` : ''; }
+    if (concept === 'am') { const cv = jacks.filter((id) => /vca\d?\.cv$/.test(id)); return cv.length ? ` On the ${this.name}, patch an oscillator's output into the CV input on ${where(cv)}.` : ''; }
+    return '';
   }
 
   // which way a control was asked to move, or null

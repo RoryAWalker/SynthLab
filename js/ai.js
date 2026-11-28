@@ -18,9 +18,10 @@ import { lookup } from './helpPanel.js';
 import { helpKeyFor } from './help.js';
 import { AskBook, movable } from './askBook.js';
 import { NF3_BOOK } from './askbooks/nf3.js';
+import { NFM_BOOK, NFMOD_BOOK } from './askbooks/modulars.js';
 import { NF1_BOOK } from './askbooks/nf1.js';
 
-const BOOKS = { nf1: NF1_BOOK, nf3: NF3_BOOK }; // synths with an answer book
+const BOOKS = { nf1: NF1_BOOK, nf3: NF3_BOOK, nfm: NFM_BOOK, nfmod: NFMOD_BOOK }; // synths with an answer book
 
 const API = '/api/ai';
 const plain = (s) => String(s || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
@@ -35,7 +36,7 @@ const claudeSupported = () => !(SYNTH.modular || SYNTH.patchable || SYNTH.rack);
 
 // ---- the synth, described for the AI ------------------------------------------------------------
 function idsIn(sec) {
-  const rows = [...(sec.rows || []), ...(sec.parts || []).flatMap((p) => p.rows || []), sec.head || [], sec.titleSwitch || [], sec.fader ? [sec.fader] : []];
+  const rows = [...(sec.rows || []), ...(sec.parts || []).flatMap((p) => p.rows || []), sec.head || [], sec.titleSwitch || [], sec.fader ? [sec.fader] : [], sec.jacks || []];
   return rows.flat(2).filter(Boolean);
 }
 const usable = (id) => PARAMS[id] && (PARAMS[id].type === 'cont' || PARAMS[id].type === 'step');
@@ -79,6 +80,12 @@ export function checkChanges(changes) {
   const ok = [], dropped = [];
   for (const c of changes || []) {
     const p = PARAMS[c.id];
+    if (p && p.type === 'jack') { // a cable: '' (unplugged) or outputs that exist on this synth
+      const v = String(c.value).trim();
+      if (v.split(',').filter(Boolean).every((o) => o in (SYNTH.OUTPUTS || {}))) ok.push({ id: c.id, value: v, why: c.why });
+      else dropped.push(`${p.label} cable from ${v} (no such output)`);
+      continue;
+    }
     if (!p || !movable(c.id)) { dropped.push(`${c.id} (no such control)`); continue; }
     if (p.type === 'step') {
       const raw = String(c.value).trim().replace(/^"|"$/g, '');
@@ -96,6 +103,7 @@ export function checkChanges(changes) {
 
 // ---- the panel ------------------------------------------------------------------------------------
 const EXAMPLES = ['vibrato lead', 'warm pad', 'What does Resonance do?', 'How do I make it brighter?'];
+const EXAMPLES_NO_RECIPES = ['What is FM?', 'What does the filter do?', 'Turn the cutoff up', 'Does this sound use FM?']; // synths without sound recipes yet
 
 export async function startAsk(host) {
   if (!askSupported()) return;
@@ -158,7 +166,7 @@ class AskPanel {
     });
     this.input.addEventListener('keyup', (e) => e.stopPropagation());
     const ex = this.el.querySelector('.ask-examples');
-    for (const t of EXAMPLES) {
+    for (const t of (this.book && this.book.book.recipes.length ? EXAMPLES : EXAMPLES_NO_RECIPES)) {
       const b = document.createElement('button');
       b.type = 'button'; b.className = 'ask-chip'; b.textContent = t;
       b.addEventListener('click', () => this.send(t));
@@ -272,7 +280,7 @@ class AskPanel {
       this.host.setPatch(next);
     }
     // what actually changed, old -> new, in the panel's own units
-    const moved = next ? Object.keys(PARAMS).filter((id) => movable(id) && next[id] !== before[id]) : [];
+    const moved = next ? Object.keys(PARAMS).filter((id) => (movable(id) || PARAMS[id].type === 'jack') && next[id] !== before[id]) : [];
     const why = Object.fromEntries(ok.map((c) => [c.id, c.why]));
     const list = moved.map((id) => `<li title="${esc(why[id] || (res.base === 'init' ? 'back to its default (started from Init)' : ''))}"><span class="ask-ctl">${esc(ctlName(id))}</span> ${esc(formatValue(id, before[id]))} → <b>${esc(formatValue(id, next[id]))}</b></li>`).join('');
     const turn = this.addTurn('ai', `

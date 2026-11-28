@@ -104,7 +104,7 @@ export const NF1_BOOK = {
       set: { 'osc1.wave': 'tri', 'osc2.wave': 'sine', 'osc2.range': 2, 'mix.osc1': 0.7, 'mix.osc2': 0.5,
         'filt.cutoff': 6000, 'aenv.a': 0.001, 'aenv.d': 2.5, 'aenv.s': 0, 'aenv.r': 2, 'fx.reverb': 0.4 },
       key: ['osc2.range', 'aenv.d', 'aenv.s'],
-      teach: 'A bell starts instantly and rings for a long time, so the Attack is as short as it goes and the Decay long, with no Sustain. Real bells have harmonics that are out of tune with each other, which a two-oscillator synth like this can\'t quite do; Oscillator 2 two octaves up gets you close.',
+      teach: 'A bell starts instantly and rings for a long time, so the Attack is as short as it goes and the Decay long, with no Sustain. Real bells have overtones that are out of tune with each other. Synths usually get those with FM (frequency modulation), which the NF-1 can\'t do; Oscillator 2 two octaves up gets you close. For a real FM bell, try the NiniFoog.',
     },
     {
       name: 'Wobble bass', words: ['wobble', 'wobble bass', 'wub', 'wubs', 'wobbly bass', 'wobbling bass'], nouns: ['wobble bass'],
@@ -286,11 +286,32 @@ export const NF1_BOOK = {
       sayUp: 'I added chorus, which mixes in slightly detuned, moving copies of the sound so it shimmers and spreads out.',
       sayDown: 'Less chorus.', sayOff: 'Chorus is off.',
       howUp: 'Turn up the Chorus Amount, in the effects below the synth.' },
+    { name: 'fm', words: ['fm', 'frequency modulation', 'fm synthesis'],
+      up: [], down: [],
+      sayUp: 'The NF-1 can\'t do FM: its only modulator is the LFO, which tops out at 30 cycles a second, too slow to make sidebands. That is vibrato, the slow form of FM.',
+      howUp: 'The NF-1 can\'t do FM. FM needs a modulator running at audio speed, and the NF-1\'s LFO stops at 30 Hz: its → Pitch is the slow form, vibrato. The NiniFoog can (Oscillator 3 bends Oscillators 1 and 2), and so can the modular synths (patch an oscillator into an FM input).',
+      limit: 'The NF-1 can\'t do FM: its LFO tops out at 30 Hz, too slow to make sidebands. The NiniFoog and the modular synths can; ask me there.' },
+    { name: 'am', words: ['amplitude modulation', 'am synthesis'],
+      up: [['set', 'lfo.amp', 0.7], ['set', 'lfo.rate', 30], ['set', 'lfo.shape', 'tri']], down: [['mul', 'lfo.amp', 0.5, null, 0.05]],
+      sayUp: 'This is the fastest AM the NF-1 can make: the LFO moves the volume (→ Amp) 30 times a second, a rough, buzzy flutter. True audio-rate AM, which adds new pitches (sidebands), needs a modulator in the hearing range, beyond this LFO. Slow the LFO Rate down and the same setting becomes tremolo.',
+      sayDown: 'Less AM: I turned → Amp down.', sayOff: '→ Amp is at zero: no amplitude modulation.',
+      howUp: 'On the NF-1, AM is the LFO moving the volume: turn up → Amp in LFO Modulation. Slowly it\'s tremolo; at the top of the LFO Rate (30 Hz) it becomes a buzzy flutter. Audio-rate AM, with new pitches, needs a modular synth.' },
     { name: 'dry', upWords: ['dry', 'drier', 'no effects', 'no fx', 'without effects', 'close up', 'upfront'],
       up: [['set', 'fx.reverb', 0], ['set', 'fx.delay', 0], ['set', 'fx.chorus', 0]], down: [],
       sayUp: 'All the effects are off, so you hear the synth on its own, dry and close.',
       howUp: 'Turn the Chorus, Delay and Reverb Amounts to zero.' },
   ],
+
+  // FM and AM on this synth (the general explanation is in js/askBook.js)
+  concepts: {
+    fm: { here: 'The NF-1 can\'t do audio-rate FM: its LFO stops at 30 Hz, so → Pitch gives vibrato, the slow form of FM. The NiniFoog and the modular synths can do the real thing.',
+      ids: ['lfo.pitch', 'lfo.rate'], uses: () => false,
+      usesNo: 'No. The NF-1 can\'t do FM, so its sounds never use it; the bell, for example, gets its colour from two oscillators two octaves apart and a long Decay.' },
+    am: { here: 'On the NF-1, → Amp in LFO Modulation is AM at LFO speed (tremolo, up to 30 Hz). Audio-rate AM needs a modulator you can hear, which only the modular synths have.',
+      ids: ['lfo.amp', 'lfo.rate'], uses: (p) => p['lfo.amp'] > 0.02,
+      usesYes: 'Yes, at LFO speed: → Amp is turned up, so the LFO moves the volume. Slowly that\'s tremolo; near 30 Hz it\'s a buzzy flutter.',
+      usesNo: 'No: → Amp in LFO Modulation is at zero, so nothing moves the volume.' },
+  },
 
   // when two controls share a name ("Attack"), the one a question means unless it says otherwise
   prefer: ['aenv.a', 'aenv.d', 'aenv.r'],
