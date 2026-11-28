@@ -57,6 +57,12 @@ const jack = (label, def = '') => ({ type: 'jack', label, def,
 // an input meant for sound (its socket's ring is the audio colour; the others are the control colour)
 const audioIn = (label, def = '') => ({ ...jack(label, def), audio: true });
 const pick = (id, extra = {}) => ({ ...NF1_PARAMS[id], ...extra });
+// Range on the modular synths' oscillators: four octaves each way (the NF-1's goes two). At -4 a VCO
+// runs near LFO speed (about 16 Hz at middle C), so any oscillator can be patched in as an LFO.
+// Shared with the NF-MiniModular and the NF-ModRack.
+export const RANGE_WIDE = pick('osc1.range', {
+  options: [-4, -3, -2, -1, 0, 1, 2, 3, 4].map((v) => ({ v, label: v > 0 ? '+' + v : v < 0 ? '\u2212' + -v : '0' })),
+  help: 'Octave shift, four octaves each way. At \u22124 the oscillator runs near LFO speed.' });
 const level = (label, def) => ({ type: 'cont', label, min: 0, max: 1, def, curve: 'lin', fmt: fmtPct });
 const bipolar = (label, def = 0) => ({ type: 'cont', label, min: -1, max: 1, def, curve: 'lin', unit: '%',
   fmt: (v) => (v > 0.005 ? '+' : '') + Math.round(v * 100) + '%',
@@ -88,9 +94,9 @@ export const PARAMS = {
   'kb.glide': pick('ctrl.glide'),
   'kb.mode': pick('ctrl.mode'), // Mono: every new key restarts the Gate; Legato: overlapping keys keep it high
 
-  'osc1.range': pick('osc1.range'), 'osc1.tune': { ...tune }, 'osc1.pw': { ...pw },
+  'osc1.range': { ...RANGE_WIDE }, 'osc1.tune': { ...tune }, 'osc1.pw': { ...pw },
   'osc1.fm': { ...fmAmt }, 'osc1.pwm': level('PWM Amt', 0),
-  'osc2.range': pick('osc1.range'), 'osc2.tune': { ...tune, def: 0.08 }, 'osc2.pw': { ...pw },
+  'osc2.range': { ...RANGE_WIDE }, 'osc2.tune': { ...tune, def: 0.08 }, 'osc2.pw': { ...pw },
   'osc2.fm': { ...fmAmt }, 'osc2.pwm': level('PWM Amt', 0),
 
   'noise.colour': { ...bipolar('Colour'), marks: [[-1, 'dark'], [0, 'white'], [1, 'bright']], unit: '',

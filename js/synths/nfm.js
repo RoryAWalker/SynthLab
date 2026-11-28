@@ -7,6 +7,7 @@
 // An output can feed any number of inputs; each input takes one cable.
 
 import { PARAMS as NF1_PARAMS, fmtPct } from './nf1.js';
+import { RANGE_WIDE } from './nfmod.js';
 
 // Outputs: id -> label on the panel / in help, and the module it belongs to.
 export const OUTPUTS = {
@@ -40,7 +41,7 @@ export const PARAMS = {
   'lfo.shape':   pick('lfo.shape', { options: NF1_PARAMS['lfo.shape'].options.filter((o) => o.v !== 'sh') }),
 
   // oscillator
-  'osc1.range':  pick('osc1.range'),
+  'osc1.range':  { ...RANGE_WIDE },
   'osc1.wave':   pick('osc1.wave', { def: 'saw' }),
   'osc1.tune':   { type: 'cont', label: 'Tune', min: -7, max: 7, def: 0, curve: 'lin', unit: 'semi',
                    fmt: (v) => (v > 0.005 ? '+' : '') + v.toFixed(2) + ' st',
