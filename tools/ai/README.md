@@ -33,7 +33,26 @@ the list, most asked first:
 
 Use it to decide what to add to the answer books in `js/askbooks/`.
 
-For the public site there is no server, so nothing is recorded yet. To collect questions from
-visitors, set `MISS_URL` in `js/ai.js` to a hosted endpoint that accepts the same JSON POST
-(`{ synth, at, question, reason, mode, reply }`) and stores one line per question; the list script
-reads such a file with `--file`.
+### Collecting questions in a Google Sheet (for the public site)
+
+The public site has no server, so visitors' questions go to a Google Sheet instead. Setting it up
+takes about five minutes, in your own Google account:
+
+1. Make a new Google Sheet (for example "SynthLab unanswered questions").
+2. In it, open **Extensions > Apps Script**. Delete what's there, paste in the whole of
+   `tools/ai/google-sheet-collector.gs`, and save.
+3. Choose **setup** in the function menu at the top and press **Run**. Google asks you to allow the
+   script to edit this Sheet: allow it. Two tabs appear, *Questions* and *By question*.
+4. Press **Deploy > New deployment**, choose the type **Web app**, set *Execute as* to **Me** and
+   *Who has access* to **Anyone**, and press **Deploy**. Copy the **Web app URL** it gives you
+   (it ends in `/exec`).
+5. Paste that URL into `SHEET_URL` near the top of `js/ai.js`, between the quotes.
+
+From then on every unanswered question, and every answer marked Not helpful, adds a row to
+*Questions*; *By question* groups them, most asked first. This works on this computer too, so you
+can try it before launch.
+
+"Anyone" means anyone with the URL can add rows (that's how the public page reaches it), not that
+anyone can read the Sheet: only you can. The script trims long entries, keeps formulas out, and
+stops adding rows after 2,000 in a day. If you change the script later, use **Deploy > Manage
+deployments > Edit > New version** so the URL stays the same.

@@ -26,15 +26,21 @@ const BOOKS = { nf1: NF1_BOOK, nf3: NF3_BOOK, nfm: NFM_BOOK, nfmod: NFMOD_BOOK }
 
 const API = '/api/ai';
 
-// Questions it couldn't answer, and answers someone marked "Not helpful", are sent here so the answer
-// book can grow. Locally that's tools/ai/server.mjs, which appends them to ~/.synthlab-ai/unanswered.jsonl
-// (list them with `node tools/ai/unanswered.mjs`). For the public site, point this at a hosted
-// collector that accepts the same JSON POST. With no server answering, nothing is recorded.
-const MISS_URL = API + '/miss';
+// Questions it couldn't answer, and answers someone marked "Not helpful", are recorded so the answer
+// book can grow:
+//   - SHEET_URL set (the Google Sheet's web-app URL, see tools/ai/README.md): they go to the Sheet,
+//     from the public site and from here alike
+//   - otherwise, to the local server (tools/ai/server.mjs), which appends them to
+//     ~/.synthlab-ai/unanswered.jsonl; list them with `node tools/ai/unanswered.mjs`
+// With nowhere answering, nothing is recorded.
+const SHEET_URL = '';
 function recordMiss(entry) {
+  const body = JSON.stringify({ synth: SYNTH.id, at: new Date().toISOString(), ...entry });
   try {
-    fetch(MISS_URL, { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ synth: SYNTH.id, at: new Date().toISOString(), ...entry }) }).catch(() => {});
+    // Apps Script can't answer a browser's cross-site checks, so this goes as plain text without
+    // reading the reply ('no-cors'): the Sheet still gets it
+    if (SHEET_URL) fetch(SHEET_URL, { method: 'POST', mode: 'no-cors', keepalive: true, headers: { 'Content-Type': 'text/plain' }, body }).catch(() => {});
+    else fetch(API + '/miss', { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' }, body }).catch(() => {});
   } catch { /* recording is best-effort */ }
 }
 const plain = (s) => String(s || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
