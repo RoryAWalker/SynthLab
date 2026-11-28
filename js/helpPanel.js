@@ -6,7 +6,7 @@ const HELP_FOR_SYNTH = { ...{ nf3: HELP_NF3, nfm: HELP_NFM, nfmod: HELP_NFMOD, .
 if (SYNTH.id === 'modrack') Object.assign(HELP_FOR_SYNTH, HELP_MODRACK); // (a copy: HELP_NFMOD itself is untouched)
 // (the NF-ModRack's modules share the NF-Modular's help: SYNTH.helpKey finds the entry, e.g. vco3.tune -> osc1.tune)
 const direct = (k) => HELP_FOR_SYNTH[k] || HELP[k];
-const lookup = (k) => {
+export const lookup = (k) => { // (also used by the Ask panel, js/ai.js, to describe the synth)
   const m = SYNTH.helpKey && SYNTH.helpKey(k);
   return direct(k) || (m ? direct(m) || direct(helpKeyFor(m)) : undefined);
 };

@@ -1,0 +1,267 @@
+// The Ask panel: type a request ("vibrato lead", "what does Resonance do?") and Claude sets the
+// controls or answers, in teaching language.
+//
+// Local only. main.js loads this file only on localhost, and the panel appears only when the page
+// is served by tools/ai/server.mjs, which holds the API key and makes the calls. On the public site
+// (GitHub Pages) neither happens.
+//
+// Nothing here is specific to one synth: the description the AI gets (every control, its range,
+// its options and its help text) is generated from the synth's PARAMS, sections and help.js, so a
+// new synth gets the Ask panel for free. Synths with patch cables (the modulars) are left out for
+// now: a cable patch would need its own field in the answer (from/to jacks), and its own checks.
+
+import { PARAMS, ALL_SECTIONS, SYNTH, defaultPatch, formatValue } from './params.js';
+import { lookup } from './helpPanel.js';
+import { helpKeyFor } from './help.js';
+
+const API = '/api/ai';
+const plain = (s) => String(s || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// Which synths can use it: one patch of plain knobs and switches (no cables, no audio player).
+export const askSupported = () => !(SYNTH.modular || SYNTH.patchable || SYNTH.openRack || SYNTH.kind || SYNTH.rack);
+
+// ---- the synth, described for the AI ------------------------------------------------------------
+function idsIn(sec) {
+  const rows = [...(sec.rows || []), ...(sec.parts || []).flatMap((p) => p.rows || []), sec.head || [], sec.titleSwitch || [], sec.fader ? [sec.fader] : []];
+  return rows.flat(2).filter(Boolean);
+}
+const usable = (id) => PARAMS[id] && (PARAMS[id].type === 'cont' || PARAMS[id].type === 'step');
+
+function describeControl(id) {
+  const p = PARAMS[id];
+  const h = lookup(id);
+  const help = plain(h ? [...(h.body || []), h.tip ? 'Try: ' + h.tip : ''].join(' ') : p.help);
+  let range;
+  if (p.type === 'step') {
+    range = 'switch, one of: ' + p.options.map((o) => {
+      const oh = lookup(helpKeyFor(`${id}=${o.v}`));
+      return `${JSON.stringify(o.v)} (${o.label}${oh && oh.body ? ': ' + plain(oh.body[0]) : ''})`;
+    }).join('; ');
+  } else {
+    const curve = p.curve === 'log' ? ', logarithmic knob' : p.curve === 'pow' ? ', finer near the bottom' : '';
+    range = `number from ${p.min} to ${p.max} (the panel shows ${p.fmt(p.min)} to ${p.fmt(p.max)}${curve})`;
+  }
+  return `- ${id} "${p.label}": ${range}. Default ${JSON.stringify(p.def)}. ${help}`;
+}
+
+export function buildGuide() {
+  const lines = [`THE SYNTH: ${SYNTH.name}${SYNTH.brandSub ? ' (' + SYNTH.brandSub.toLowerCase() + ')' : ''}.`];
+  if (SYNTH.card && SYNTH.card.text) lines.push(SYNTH.card.text);
+  lines.push('', 'Its controls, section by section (id "panel label": range. default. what it does):');
+  const ids = [];
+  for (const sec of ALL_SECTIONS) {
+    const own = idsIn(sec).filter(usable).filter((id) => !ids.includes(id));
+    if (!own.length) continue;
+    const sh = lookup('section:' + sec.id);
+    lines.push('', `SECTION ${sec.title || sec.id}${sh && sh.body ? ': ' + plain(sh.body.join(' ')) : ''}`);
+    for (const id of own) { lines.push(describeControl(id)); ids.push(id); }
+  }
+  return { guide: lines.join('\n'), ids };
+}
+
+// ---- checking the AI's settings against PARAMS -------------------------------------------------
+// Every value is checked before it touches the synth: unknown controls are dropped, numbers are
+// clamped to the knob's range, switch values must be one of the switch's options.
+export function checkChanges(changes) {
+  const ok = [], dropped = [];
+  for (const c of changes || []) {
+    const p = PARAMS[c.id];
+    if (!p || !usable(c.id)) { dropped.push(`${c.id} (no such control)`); continue; }
+    if (p.type === 'step') {
+      const raw = String(c.value).trim().replace(/^"|"$/g, '');
+      const opt = p.options.find((o) => String(o.v) === raw) || p.options.find((o) => o.label.toLowerCase() === raw.toLowerCase());
+      if (!opt) { dropped.push(`${p.label} = ${raw} (not one of its options)`); continue; }
+      ok.push({ id: c.id, value: opt.v, why: c.why });
+    } else {
+      const n = parseFloat(String(c.value).replace(/[^\d.eE+-]/g, ''));
+      if (!Number.isFinite(n)) { dropped.push(`${p.label} = ${c.value} (not a number)`); continue; }
+      ok.push({ id: c.id, value: Math.min(p.max, Math.max(p.min, n)), why: c.why, clamped: n < p.min || n > p.max });
+    }
+  }
+  return { ok, dropped };
+}
+
+// ---- the panel ------------------------------------------------------------------------------------
+const EXAMPLES = ['vibrato lead', 'warm pad', 'What does Resonance do?', 'How do I make it brighter?'];
+
+export async function startAsk(host) {
+  if (!askSupported()) return;
+  let status;
+  try {
+    const r = await fetch(API + '/status', { cache: 'no-store' });
+    if (!r.ok) return;
+    status = await r.json();
+    if (!status.ok) return;
+  } catch { return; } // a plain static server (or the public site): no Ask panel
+  new AskPanel(host, status);
+}
+
+const sectionTitle = (id) => { const s = ALL_SECTIONS.find((x) => idsIn(x).includes(id)); return s ? s.title : ''; };
+const ctlName = (id) => `${sectionTitle(id)} · ${PARAMS[id].label}`;
+
+class AskPanel {
+  constructor(host, status) {
+    this.host = host; // { getPatch, setPatch, controlEl, play }
+    this.hasKey = status.hasKey;
+    this.history = []; // the conversation, for follow-ups ("more", "now add delay")
+    this.busy = false;
+    const { guide, ids } = buildGuide();
+    this.guide = guide; this.ids = ids;
+
+    // the toolbar button, next to Help
+    this.btn = document.createElement('button');
+    this.btn.className = 'btn btn-ask'; this.btn.id = 'btn-ask';
+    this.btn.innerHTML = '<span class="ask-spark" aria-hidden="true">✦</span> Ask';
+    this.btn.title = 'Ask for a sound, or ask about the synth (local only)';
+    this.btn.setAttribute('aria-pressed', 'false');
+    const helpBtn = document.getElementById('btn-help');
+    helpBtn.parentNode.insertBefore(this.btn, helpBtn);
+    this.btn.addEventListener('click', () => this.toggle());
+
+    this.el = document.createElement('aside');
+    this.el.className = 'ask-panel'; this.el.hidden = true;
+    this.el.setAttribute('aria-label', 'Ask');
+    this.el.innerHTML = `
+      <div class="ask-head"><span class="ask-title">Ask the ${esc(SYNTH.name)}</span><span class="ask-local">local only</span><button class="ask-close" aria-label="Close">×</button></div>
+      <div class="ask-key" hidden>
+        <p>To use the Ask panel, paste an Anthropic API key. It is saved on this computer only (in <code>~/.synthlab-ai/key</code>), never in the SynthLab project or the browser, and every request is billed to that key.</p>
+        <div class="ask-key-row"><input type="password" class="ask-key-input" placeholder="sk-ant-…" autocomplete="off" spellcheck="false"><button class="btn ask-key-save">Save key</button></div>
+        <div class="ask-key-msg"></div>
+      </div>
+      <div class="ask-log" aria-live="polite"></div>
+      <div class="ask-examples"></div>
+      <form class="ask-form"><textarea class="ask-input" rows="2" placeholder="Ask for a sound (“vibrato lead”) or ask a question…"></textarea><button class="btn ask-send" type="submit">Ask</button></form>`;
+    document.body.appendChild(this.el);
+    this.log = this.el.querySelector('.ask-log');
+    this.input = this.el.querySelector('.ask-input');
+    this.el.querySelector('.ask-close').addEventListener('click', () => this.toggle(false));
+    this.el.querySelector('.ask-form').addEventListener('submit', (e) => { e.preventDefault(); this.send(this.input.value); });
+    this.input.addEventListener('keydown', (e) => {
+      e.stopPropagation(); // typing here must not play the computer keyboard's notes
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.send(this.input.value); }
+    });
+    this.input.addEventListener('keyup', (e) => e.stopPropagation());
+    const ex = this.el.querySelector('.ask-examples');
+    for (const t of EXAMPLES) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'ask-chip'; b.textContent = t;
+      b.addEventListener('click', () => this.send(t));
+      ex.appendChild(b);
+    }
+    const keyInput = this.el.querySelector('.ask-key-input');
+    keyInput.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') this.saveKey(keyInput.value); });
+    keyInput.addEventListener('keyup', (e) => e.stopPropagation());
+    this.el.querySelector('.ask-key-save').addEventListener('click', () => this.saveKey(keyInput.value));
+    this.showKeyBox(!this.hasKey);
+  }
+
+  toggle(on = this.el.hidden) {
+    this.el.hidden = !on;
+    this.btn.classList.toggle('on', on);
+    this.btn.setAttribute('aria-pressed', String(on));
+    if (on) (this.hasKey ? this.input : this.el.querySelector('.ask-key-input')).focus();
+  }
+
+  showKeyBox(show) {
+    this.el.querySelector('.ask-key').hidden = !show;
+    this.el.querySelector('.ask-form').hidden = show;
+    this.el.querySelector('.ask-examples').hidden = show;
+  }
+
+  async saveKey(key) {
+    const msg = this.el.querySelector('.ask-key-msg');
+    msg.textContent = 'Saving…';
+    try {
+      const r = await fetch(API + '/key', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: key.trim() }) });
+      const j = await r.json();
+      if (!r.ok) { msg.textContent = j.error || 'Could not save the key.'; return; }
+      this.hasKey = j.hasKey;
+      this.el.querySelector('.ask-key-input').value = '';
+      msg.textContent = '';
+      this.showKeyBox(!this.hasKey);
+      if (this.hasKey) this.input.focus();
+    } catch { msg.textContent = 'The local Ask server is not answering.'; }
+  }
+
+  addTurn(cls, html) {
+    const d = document.createElement('div');
+    d.className = 'ask-turn ' + cls;
+    d.innerHTML = html;
+    this.log.appendChild(d);
+    this.log.scrollTop = this.log.scrollHeight;
+    return d;
+  }
+
+  async send(text) {
+    text = String(text || '').trim();
+    if (!text || this.busy) return;
+    this.busy = true;
+    this.input.value = '';
+    this.el.classList.add('busy');
+    this.addTurn('you', esc(text));
+    const wait = this.addTurn('ai pending', '<span class="ask-dots"><i></i><i></i><i></i></span>');
+    const before = this.host.getPatch();
+    const patch = {};
+    for (const id of this.ids) patch[id] = before[id];
+    try {
+      const r = await fetch(API + '/ask', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ guide: this.guide, ids: this.ids, patch, history: this.history, request: text }),
+      });
+      const j = await r.json();
+      wait.remove();
+      if (!r.ok || j.error) {
+        this.addTurn('ai error', esc(j.error || 'Something went wrong.'));
+        if (r.status === 401 || (r.status === 400 && /No API key/.test(j.error || ''))) { this.hasKey = false; this.showKeyBox(true); }
+        return;
+      }
+      this.apply(text, j.result, before, j);
+    } catch {
+      wait.remove();
+      this.addTurn('ai error', 'The local Ask server is not answering. Is <code>node tools/ai/server.mjs</code> running?');
+    } finally {
+      this.busy = false;
+      this.el.classList.remove('busy');
+    }
+  }
+
+  apply(text, res, before, meta) {
+    const { ok, dropped } = checkChanges(res.changes);
+    let next = null;
+    if (ok.length || (res.kind === 'sound' && res.base === 'init')) {
+      next = { ...(res.base === 'init' ? defaultPatch() : before) };
+      for (const c of ok) next[c.id] = c.value;
+      this.host.setPatch(next);
+    }
+    // what actually changed, old -> new, in the panel's own units
+    const moved = next ? this.ids.filter((id) => next[id] !== before[id]) : [];
+    const why = Object.fromEntries(ok.map((c) => [c.id, c.why]));
+    const list = moved.map((id) => `<li title="${esc(why[id] || (res.base === 'init' ? 'back to its default (started from Init)' : ''))}"><span class="ask-ctl">${esc(ctlName(id))}</span> ${esc(formatValue(id, before[id]))} → <b>${esc(formatValue(id, next[id]))}</b></li>`).join('');
+    const turn = this.addTurn('ai', `
+      <p>${esc(res.reply)}</p>
+      ${moved.length ? `<details class="ask-changes"${moved.length <= 6 ? ' open' : ''}><summary>${moved.length} control${moved.length === 1 ? '' : 's'} changed${res.base === 'init' ? ', starting from Init' : ''}</summary><ul>${list}</ul></details>` : ''}
+      ${dropped.length ? `<p class="ask-dropped">Ignored: ${esc(dropped.join('; '))}</p>` : ''}
+      <div class="ask-actions">${moved.length ? '<button class="ask-act ask-play">▶ Hear it</button><button class="ask-act ask-undo">Undo</button>' : ''}<span class="ask-cost">${(meta.ms / 1000).toFixed(1)} s</span></div>`);
+    if (moved.length) {
+      turn.querySelector('.ask-undo').addEventListener('click', (e) => {
+        this.host.setPatch(before);
+        e.target.disabled = true; e.target.textContent = 'Undone';
+        this.history.push({ role: 'user', text: '(I pressed Undo: the settings went back to how they were before your last change.)' }, { role: 'assistant', text: 'Understood.' });
+      });
+      turn.querySelector('.ask-play').addEventListener('click', () => this.host.play && this.host.play());
+    }
+    this.glow([...new Set([...moved, ...(res.point_at || [])])]);
+    // the conversation so far, for follow-ups; the assistant's turn says what it set
+    this.history.push({ role: 'user', text }, { role: 'assistant', text: res.reply + (ok.length ? ` [Set: ${ok.map((c) => `${c.id}=${c.value}`).join(', ')}${res.base === 'init' ? ', from init' : ''}]` : '') });
+    this.history = this.history.slice(-8);
+  }
+
+  // highlight the controls the answer is about, for a few seconds
+  glow(ids) {
+    clearTimeout(this.glowTimer);
+    document.querySelectorAll('.ask-glow').forEach((el) => el.classList.remove('ask-glow'));
+    for (const id of ids) { const el = this.host.controlEl(id); if (el) el.classList.add('ask-glow'); }
+    this.glowTimer = setTimeout(() => document.querySelectorAll('.ask-glow').forEach((el) => el.classList.remove('ask-glow')), 5000);
+  }
+}

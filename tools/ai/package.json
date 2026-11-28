@@ -1,0 +1,9 @@
+{
+  "name": "synthlab-ai-server",
+  "private": true,
+  "type": "module",
+  "description": "Local-only server for SynthLab's Ask panel. Never deployed.",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.14.0"
+  }
+}

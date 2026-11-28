@@ -1330,3 +1330,22 @@ window.synth = {
   params: PARAMS,
   noteName,
 };
+
+// The Ask panel (AI, js/ai.js): only on this computer, and only when the page is served by the local
+// Ask server (tools/ai/server.mjs). On the public site this file is never even loaded.
+if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) {
+  import('./ai.js').then((m) => m.startAsk({
+    getPatch: () => ({ ...patch }),
+    setPatch: (p) => { setPatch(p); if (patchMenu) patchMenu.markEdited(); },
+    controlEl: (id) => knobs[id] && knobs[id].el,
+    // a short phrase to hear the new sound: one held note, then a falling and rising pair
+    play: () => {
+      ensureAudio();
+      const seq = [[60, 0, 1400], [67, 1500, 350], [64, 1900, 350], [72, 2300, 900]];
+      for (const [n, at, len] of seq) {
+        setTimeout(() => engine.noteOn(n), at);
+        setTimeout(() => engine.noteOff(n), at + len);
+      }
+    },
+  })).catch((e) => console.warn('Ask panel not started:', e));
+}
