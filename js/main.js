@@ -1335,9 +1335,9 @@ window.synth = {
   noteName,
 };
 
-// The Ask panel (AI, js/ai.js): only on this computer, and only when the page is served by the local
-// Ask server (tools/ai/server.mjs). On the public site this file is never even loaded.
-if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) {
+// The Ask AI panel (js/ai.js), on every site: its answer book works offline in the browser. The paid
+// Claude mode appears only when the page is served by the local Ask server (tools/ai/server.mjs).
+{
   import('./ai.js').then((m) => m.startAsk({
     getPatch: () => ({ ...patch }),
     setPatch: (p) => { setPatch(p); if (patchMenu) patchMenu.markEdited(); },

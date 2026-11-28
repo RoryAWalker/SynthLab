@@ -17,8 +17,8 @@ Then open http://localhost:8662/?synth=nf1 and press **Ask** (top bar).
   file `~/.synthlab-ai/key`, which the panel writes when you paste a key. It's never in the
   repository or in the browser, and this server only answers requests from its own page.
 - **Cost**: each request is billed to that key at Claude API rates (pay per use).
-- **Public site**: GitHub Pages serves static files only, so there is no server there, and the panel
-  never appears. `main.js` doesn't even load `js/ai.js` unless the page is on localhost.
+- **Public site**: GitHub Pages serves static files only, so there is no server there. The panel
+  appears with the free answer book only; the Claude switch never shows, and no key is involved.
 - **Other synths**: the AI's description of the synth is generated from its `PARAMS`, sections and
   `help.js` (`buildGuide` in `js/ai.js`). Synths with cables are left out for now.
 

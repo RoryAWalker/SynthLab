@@ -1,5 +1,5 @@
 // SynthLab's Ask panel: a local-only server. Never deployed (GitHub Pages serves static files only,
-// so on the public site the Ask panel never appears).
+// so on the public site the Ask panel uses its free answer book and never offers Claude).
 //
 // It does three jobs:
 //   1. serves the SynthLab folder, like `python3 -m http.server`, on http://localhost:8662

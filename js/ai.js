@@ -6,7 +6,8 @@
 //   - Claude, when the page is served by tools/ai/server.mjs and that server has an API key
 //     (pay per use; the key never reaches the browser).
 //
-// Local only for now: main.js loads this file only on localhost.
+// On every site, the public one included: the answer book needs no server. Claude only appears
+// when the page comes from the local server, on this computer.
 //
 // Nothing here is specific to one synth: the description the AI gets (every control, its range,
 // its options and its help text) is generated from the synth's PARAMS, sections and help.js, so a
@@ -128,6 +129,8 @@ export async function startAsk(host) {
   if (!askSupported()) return;
   let status = { ok: false, hasKey: false };
   try {
+    // only this computer can have the local server: elsewhere don't ask (it would only log a 404)
+    if (!/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) throw new Error('no local server');
     const r = await fetch(API + '/status', { cache: 'no-store' });
     if (r.ok) status = await r.json();
   } catch { /* a plain static server: no Claude, the answer book only */ }
