@@ -772,6 +772,21 @@ export const HELP_MODRACK = {
     [`out:poly.p${n}`, { title: `Poly: Pitch ${n}`, body: [`The note on channel ${n}, at 1 volt per octave (gliding with the Keyboard\'s Glide). It stays on the note after the key is let go, so a release tail keeps its pitch.`] }],
     [`out:poly.g${n}`, { title: `Poly: Gate ${n}`, body: [`High while the note on channel ${n} is held. Into an ENV\'s Gate, it gives that channel its own envelope.`] }],
   ])),
+  'section:organ': { title: 'Drawbars (additive organ)', body: [
+    'Additive synthesis, as in a tonewheel organ: the sound is built from sine waves added together. Each of the nine drawbars is one sine wave at an organ footage: 16′ is an octave below the note, 8′ the note itself, 4′ an octave above, and the others are harmonics in between (5⅓′ is a fifth above 16′; 2⅔′ the 3rd harmonic, 1⅗′ the 5th, 1⅓′ the 6th). Pull a bar down to bring its sine in, 0 to 8.',
+    'Organists name a sound by its drawbar settings, read left to right: "888000000" is the full, round sound of the first three bars; "800000008" is hollow and whistling.',
+    'The tuning box above each bar retunes it, up to 12 semitones either way. In tune, the partials blend into one note; pulled away from the harmonic series, they stop blending and the sound turns metallic and bell-like: inharmonic, like the Ping\'s partials.'],
+    tip: 'Pull out only 8′ and listen: a pure sine. Then add bars one at a time. Then drag the 2⅔′ tuning box up a little (say +0.5) and hear the note start to clang.' },
+  'organ.bank': { title: 'The drawbars', body: ['Nine sine waves at the organ footages. Drag a bar down to pull it out (0 to 8), up to push it in; double-click a bar to push it right in. Drag a tuning box to retune its bar; double-click to put it back in tune.'] },
+  ...Object.fromEntries(['16′', '5⅓′', '8′', '4′', '2⅔′', '2′', '1⅗′', '1⅓′', '1′'].flatMap((ft, i) => {
+    const what = ['an octave below the note', 'a fifth above 16′ (half the 3rd harmonic)', 'the note itself', 'an octave above (the 2nd harmonic)', 'the 3rd harmonic (an octave and a fifth up)', 'two octaves up (the 4th harmonic)', 'the 5th harmonic (two octaves and a major third up)', 'the 6th harmonic (two octaves and a fifth up)', 'three octaves up (the 8th harmonic)'][i];
+    return [[`organ.d${i + 1}`, { title: `Drawbar ${ft}`, body: [`A sine wave at ${what}. Drag down to pull it out (0 to 8); double-click to push it in.`] }],
+      [`organ.t${i + 1}`, { title: `Tuning ${ft}`, body: [`Retunes the ${ft} drawbar, up to 12 semitones either way (hold Shift for fine steps). Off its harmonic, it no longer blends into the note. Double-click to put it back in tune.`] }]];
+  })),
+  'organ.range': { title: 'Range', body: ['Shifts the whole organ up or down in octaves.'] },
+  'organ.tune': { title: 'Tune', body: ['Tunes the whole organ up or down by up to 7 semitones.'] },
+  'jack.organ.pitch': { title: 'Drawbars: Pitch input', body: ['Sets the note at 1 volt per octave. Patch an LFO in as well (through an Attenuverter) for an organ\'s vibrato.'] },
+  'out:organ.out': { title: 'Drawbars: Out', body: ['The organ sound: all the drawbars added together.'] },
   'section:chance': { title: 'Chance (coin toss)', body: [
     'A weighted coin toss for every gate or trigger that comes in. Each one goes either to Out, with the chance you set, or to Else. The whole gate goes, at its own level, so a held note stays held and a soft hit stays soft.',
     'With only Out patched, some gates simply go missing: a steady rhythm becomes a looser, living one. With Out and Else going to two different sounds, one steady pulse becomes a pattern that never quite repeats.'],

@@ -1047,6 +1047,38 @@ class Chance extends Module {
   }
 }
 
+// Drawbars: additive, like a tonewheel organ. Nine sine waves at the organ's footages (times the
+// note: 1/2, 3/2, 1, 2, 3, 4, 5, 6, 8), each as loud as its drawbar (0-8) and retuned by its own
+// tuning (semitones). Each partial goes silent above the top of hearing rather than folding back.
+const ORGAN = [0.5, 1.5, 1, 2, 3, 4, 5, 6, 8];
+class Drawbars extends Module {
+  static OUTS = ['out'];
+  static INS = ['pitch'];
+  constructor(id) { super(id); this.ph = ORGAN.map(() => Math.random()); this.amp = new Float64Array(9); this.ratio = new Float64Array(9); }
+  begin(p, sr) {
+    this.oct = this.q(p, 'range') + this.q(p, 'tune') / 12;
+    for (let k = 0; k < 9; k++) {
+      this.amp[k] = (this.q(p, `d${k + 1}`) || 0) / 8;
+      this.ratio[k] = ORGAN[k] * Math.pow(2, (this.q(p, `t${k + 1}`) || 0) / 12);
+    }
+    this.sr = sr;
+  }
+  tick(S) {
+    const f = C4 * Math.pow(2, this.oct + this.r('pitch')), top = this.sr * 0.45;
+    let y = 0;
+    for (let k = 0; k < 9; k++) {
+      const a = this.amp[k];
+      if (!a) continue;
+      const fk = f * this.ratio[k];
+      if (fk >= top) continue; // (above the top of hearing: silent)
+      y += a * Math.sin(TWO_PI * this.ph[k]);
+      this.ph[k] += fk / this.sr;
+      if (this.ph[k] >= 1) this.ph[k] -= Math.floor(this.ph[k]);
+    }
+    S[this.o] = y * 0.33; // (all nine full out stays near +-3, as an organ's sum: turned down)
+  }
+}
+
 // Draw: a shape you draw (nodes joined by lines that can bend; see js/drawShape.js, which has the
 // same sums), played over Time. Once: start to end when the Gate rises (holding at the sustain node
 // while the Gate stays high), a custom envelope. Loop: round and round (the end jumps back to the
@@ -1174,7 +1206,7 @@ class Seq extends Module {
   }
 }
 
-const TYPES = { vco: VCO, noise: Noise, mix: Mixer, vcf: VCF, ring: Ring, vca: VCA, att: Att, env: Env, lfo: LFO, mfo: MFO, sh: SH, ping: Ping, string: StringRes, draw: Draw, formant: Formant, xy: XY, wave: WaveVCO, bounce: Bounce, table: Wavetable, poly: Poly, shaper: Shaper, quant: Quantizer, probe: Probe, chance: Chance };
+const TYPES = { vco: VCO, noise: Noise, mix: Mixer, vcf: VCF, ring: Ring, vca: VCA, att: Att, env: Env, lfo: LFO, mfo: MFO, sh: SH, ping: Ping, string: StringRes, draw: Draw, formant: Formant, xy: XY, wave: WaveVCO, bounce: Bounce, table: Wavetable, poly: Poly, shaper: Shaper, quant: Quantizer, probe: Probe, chance: Chance, organ: Drawbars };
 const typeOf = (id) => (id === 'out' ? Out : id === 'seq' ? Seq : TYPES[(/^([a-z]+)\d+$/.exec(id) || [])[1]]);
 
 class ModRackProcessor extends AudioWorkletProcessor {

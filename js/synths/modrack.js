@@ -71,6 +71,8 @@ export const TYPES = {
     params: ['chance'], ins: ['in'], outs: ['out', 'else'] },
   probe: { name: 'Probe', desc: 'A small oscilloscope: patch any signal in to see it (two traces), and on through Thru.', w: 496, p: 'probe', j: 'probe', help: 'probe',
     params: ['view', 'time', 'scale'], ins: ['a', 'b'], outs: ['thru'] },
+  organ: { name: 'Drawbars', desc: 'Additive, like a tonewheel organ: nine sine waves on drawbars, each of which can be retuned.', w: 606, p: 'organ', j: 'organ', help: 'organ',
+    params: ['bank', 'range', 'tune', ...[1, 2, 3, 4, 5, 6, 7, 8, 9].flatMap((n) => [`d${n}`, `t${n}`])], ins: ['pitch'], outs: ['out'] },
   table: { name: 'Wavetable', desc: 'An oscillator that sweeps through a table of waves: built-in ones, or any audio file you load.', w: 662, p: 'table', j: 'table', help: 'table',
     params: ['table', 'pos', 'range', 'tune', 'fm'], ins: ['pitch', 'pos', 'fm', 'sync'], outs: ['out'] },
   formant: { name: 'Formant', desc: 'Makes any sound talk: three filters tuned like a voice, sweeping A, E, I, O, U.', w: 352, p: 'formant', j: 'formant', help: 'formant',
@@ -227,6 +229,26 @@ TYPES.probe.specs = {
   ins: { a: { ...NFP['jack.vco1.fm'], label: 'A' }, b: { ...NFP['jack.vco1.fm'], label: 'B' } },
   outs: { thru: { label: 'Thru' } },
 };
+// Drawbars: nine sine waves at the organ's footages (16' is an octave below the note, 8' the note,
+// 4' an octave above...), each pulled out 0-8 (d1-d9) and retuned up to +-12 semitones (t1-t9). The
+// drawbars and their tuning boxes are one control on the panel (the 'bank': js/drawbarBank.js).
+export const FOOTAGES = [
+  ['16′', 0.5, 'brown'], ['5⅓′', 1.5, 'brown'], ['8′', 1, 'white'], ['4′', 2, 'white'], ['2⅔′', 3, 'black'],
+  ['2′', 4, 'white'], ['1⅗′', 5, 'black'], ['1⅓′', 6, 'black'], ['1′', 8, 'white'],
+];
+TYPES.organ.specs = {
+  params: {
+    bank: { type: 'view', ui: 'drawbars', label: 'Drawbars', def: '', fmt: () => '' },
+    range: { ...NFP['osc1.range'] }, tune: { ...NFP['osc1.tune'] },
+    ...Object.fromEntries(FOOTAGES.flatMap(([ft], i) => [
+      [`d${i + 1}`, { type: 'cont', label: `Drawbar ${ft}`, min: 0, max: 8, def: i < 3 ? 8 : 0, curve: 'lin', unit: '', fmt: (v) => String(Math.round(v)) }],
+      [`t${i + 1}`, { type: 'cont', label: `Tuning ${ft}`, min: -12, max: 12, def: 0, curve: 'lin', unit: 'semi',
+        fmt: (v) => (Math.abs(v) < 0.005 ? 'in tune' : (v > 0 ? '+' : '') + v.toFixed(2) + ' st') }],
+    ])),
+  },
+  ins: { pitch: { ...NFP['jack.vco1.pitch'] } },
+  outs: { out: { label: 'Out', audio: true } },
+};
 // Poly: how many channels it uses (so that notes only go where something is patched)
 TYPES.poly.specs = {
   params: {
@@ -296,7 +318,7 @@ TYPES.string.specs = {
   outs: { out: { label: 'Out', audio: true } },
 };
 // The order of the drawer: sources, shaping, modulation
-export const DRAWER = [['Sources', ['poly', 'vco', 'wave', 'table', 'noise', 'ping', 'string', 'mix']], ['Shaping', ['vcf', 'formant', 'shaper', 'ring', 'vca', 'att']], ['Modulation', ['env', 'draw', 'bounce', 'xy', 'lfo', 'mfo', 'sh', 'quant', 'chance']], ['Tools', ['probe']]];
+export const DRAWER = [['Sources', ['poly', 'vco', 'wave', 'table', 'organ', 'noise', 'ping', 'string', 'mix']], ['Shaping', ['vcf', 'formant', 'shaper', 'ring', 'vca', 'att']], ['Modulation', ['env', 'draw', 'bounce', 'xy', 'lfo', 'mfo', 'sh', 'quant', 'chance']], ['Tools', ['probe']]];
 // always in the rack: the Output (in a row, and can be moved), the Keyboard (on the keyboard) and
 // the Sequencer (its own column)
 const OUT_W = 100;
@@ -324,6 +346,8 @@ const PANELS = {
   quant: { screen: 'mask', jacksBeside: true, rows: [['root']], jacks: ['in', 'out:out', 'out:trig'] },
   chance: { rows: [['chance']], jacks: ['in', 'out:out', 'out:else'] },
   probe: { screen: 'view', jacksBeside: true, rows: [['time', 'scale']], jacks: ['a', 'b', 'out:thru'] },
+  // the drawbars (with their tuning boxes) on the left; Range, Tune and the sockets beside them
+  organ: { screen: 'bank', jacksBeside: true, rows: [['range', 'tune']], jacks: ['pitch', 'out:out'] },
   // its outputs in two rows: the four Pitches over the four Gates
   poly: { titleSwitch: 'voices', rows: [], jacks: [['out:p1', 'out:p2', 'out:p3', 'out:p4'], ['out:g1', 'out:g2', 'out:g3', 'out:g4']] },
   table: { screen: 'table', jacksBeside: true, rows: [['pos', 'range', 'tune', 'fm']], jacks: ['pitch', 'pos', 'fm', 'sync', 'out:out'] },
@@ -669,6 +693,36 @@ export const PRESETS = {
     ...C('vco1.pitch', 'kb.pitch'), ...C('vcf1.in', 'vco1.saw'), ...C('vca1.in', 'vcf1.lp'), ...C('vca1.cv', 'env1.out'),
     ...C('env1.gate', 'kb.gate'), ...C('out.in', 'vca1.out'), ...C('probe1.a', 'env1.out'), ...C('probe1.b', 'vca1.out'),
     'probe1.time': 2, 'probe1.scale': 1, 'vcf1.cutoff': 1800, 'vcf1.cv': 0, 'env1.a': 0.3, 'env1.d': 0.4, 'env1.s': 0.6, 'env1.r': 0.8,
+  },
+  // a tonewheel organ: three drawbars and a touch of the top one, with vibrato (an LFO, through an
+  // Attenuverter, into Pitch beside the Keyboard's), and an organ's instant on and off
+  'Tonewheel Organ': {
+    'rack.layout': 'organ1|vca1,att1,out|env1,lfo1',
+    ...C('organ1.pitch', 'kb.pitch,att1.out1'), ...C('att1.in1', 'lfo1.out'), ...C('vca1.in', 'organ1.out'), ...C('vca1.cv', 'env1.out'),
+    ...C('env1.gate', 'kb.gate'), ...C('out.in', 'vca1.out'),
+    'organ1.d1': 8, 'organ1.d2': 8, 'organ1.d3': 8, 'organ1.d9': 4, 'att1.a1': 0.008, 'lfo1.rate': 6.5, 'lfo1.shape': 'sine',
+    'env1.a': 0.004, 'env1.d': 0.1, 'env1.s': 1, 'env1.r': 0.06, 'env1.curve': 'linear', 'out.vol': 0.7,
+  },
+  // three Drawbars, one per note of a chord (Poly), into one VCA: an organ that plays chords
+  'Organ Chords': {
+    'rack.layout': 'poly1,organ1,organ2,organ3|mix1,vca1,att1,out|env1,lfo1',
+    'rack.bays': 2,
+    ...C('organ1.pitch', 'poly1.p1,att1.out1'), ...C('organ2.pitch', 'poly1.p2,att1.out1'), ...C('organ3.pitch', 'poly1.p3,att1.out1'),
+    ...C('att1.in1', 'lfo1.out'), ...C('mix1.in1', 'organ1.out'), ...C('mix1.in2', 'organ2.out'), ...C('mix1.in3', 'organ3.out'),
+    ...C('vca1.in', 'mix1.out'), ...C('vca1.cv', 'env1.out'), ...C('env1.gate', 'kb.gate'), ...C('out.in', 'vca1.out'),
+    'poly1.voices': 3, 'kb.mode': 'legato',
+    ...Object.fromEntries([1, 2, 3].flatMap((n) => [[`organ${n}.d1`, 8], [`organ${n}.d2`, 6], [`organ${n}.d3`, 8], [`organ${n}.d4`, 5], [`organ${n}.d6`, 3]])),
+    'mix1.l1': 5, 'mix1.l2': 5, 'mix1.l3': 5, 'att1.a1': 0.008, 'lfo1.rate': 6.5, 'lfo1.shape': 'sine',
+    'env1.a': 0.004, 'env1.d': 0.1, 'env1.s': 1, 'env1.r': 0.08, 'env1.curve': 'linear', 'out.vol': 0.7,
+  },
+  // the drawbars pulled off their harmonics by their tuning boxes: they stop blending into one note
+  // and ring like a bell; an envelope that dies away makes each note a strike
+  'Bell Organ': {
+    'rack.layout': 'organ1|vca1,out|env1',
+    ...C('organ1.pitch', 'kb.pitch'), ...C('vca1.in', 'organ1.out'), ...C('vca1.cv', 'env1.out'), ...C('env1.gate', 'kb.gate'), ...C('out.in', 'vca1.out'),
+    'organ1.d1': 0, 'organ1.d2': 0, 'organ1.d3': 8, 'organ1.d4': 6, 'organ1.d5': 7, 'organ1.d6': 4, 'organ1.d7': 5, 'organ1.d8': 3, 'organ1.d9': 4,
+    'organ1.t4': 0.35, 'organ1.t5': 0.7, 'organ1.t6': -0.45, 'organ1.t7': 1.1, 'organ1.t8': -0.8, 'organ1.t9': 0.6,
+    'env1.a': 0.001, 'env1.d': 2.2, 'env1.s': 0, 'env1.r': 1.5, 'out.vol': 0.8,
   },
   // ---- big patches, two racks wide -----------------------------------------------------------
   // A three-note chord, each note on a different kind of oscillator (a VCO saw, a drawn wave, the
