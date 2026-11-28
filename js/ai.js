@@ -25,8 +25,12 @@ const API = '/api/ai';
 const plain = (s) => String(s || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-// Which synths can use it: one patch of plain knobs and switches (no cables, no audio player).
-export const askSupported = () => !(SYNTH.modular || SYNTH.patchable || SYNTH.openRack || SYNTH.kind || SYNTH.rack);
+// Which synths have the panel: all but the NF-ModRack (whose modules change from patch to patch)
+// and the audio processors. Synths without a book of their own get the general answer book:
+// questions from help.js and moving a named control, no sound recipes.
+export const askSupported = () => !(SYNTH.openRack || SYNTH.kind);
+// Claude mode needs a synth without cables: its answers can't patch cables yet.
+const claudeSupported = () => !(SYNTH.modular || SYNTH.patchable || SYNTH.rack);
 
 // ---- the synth, described for the AI ------------------------------------------------------------
 function idsIn(sec) {
@@ -99,9 +103,9 @@ export async function startAsk(host) {
     const r = await fetch(API + '/status', { cache: 'no-store' });
     if (r.ok) status = await r.json();
   } catch { /* a plain static server: no Claude, the answer book only */ }
-  const book = BOOKS[SYNTH.id];
-  if (!book && !status.ok) return;
-  new AskPanel(host, status, book ? new AskBook(book) : null);
+  if (!claudeSupported()) status = { ...status, ok: false, hasKey: false };
+  const book = BOOKS[SYNTH.id] || { synthName: SYNTH.name, recipes: [], tweaks: [], aliases: {} };
+  new AskPanel(host, status, new AskBook(book));
 }
 
 const sectionTitle = (id) => { const s = ALL_SECTIONS.find((x) => idsIn(x).includes(id)); return s ? s.title : ''; };

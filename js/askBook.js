@@ -13,7 +13,7 @@
 // so they work on any synth. The answer has the same shape as the Claude answer in js/ai.js
 // ({ kind, base, reply, changes, point_at }), so both go through the same checks and Undo.
 
-import { PARAMS, ALL_SECTIONS, defaultPatch, toNorm, fromNorm, formatValue } from './params.js';
+import { PARAMS, ALL_SECTIONS, SYNTH, defaultPatch, toNorm, fromNorm, formatValue } from './params.js';
 import { lookup } from './helpPanel.js';
 import { helpKeyFor } from './help.js';
 
@@ -24,7 +24,7 @@ const SAME = [
   [/ more slowly /g, ' slower '], [/ less quickly /g, ' slower '], [/ more quickly /g, ' faster '], [/ less slowly /g, ' faster '],
   [/ quicker /g, ' faster '], [/ slowly /g, ' slow '], [/ quickly /g, ' fast '], [/ a lot /g, ' lot '], [/ a little /g, ' little '],
   [/ (dies|dying|died) /g, ' die '], [/ (fades|fading|faded) /g, ' fade '], [/ (lasts|lasting) /g, ' last '], [/ (rings|ringing) /g, ' ring '],
-  [/ longer lasting /g, ' last longer '],
+  [/ longer lasting /g, ' last longer '], [/ sawtooth( wave)? /g, ' saw sawtooth '], [/ triangle( wave)? /g, ' tri triangle '],
 ];
 const fold = (t) => { for (const [re, w] of SAME) { t = t.replace(re, w).replace(re, w); } return t; };
 const TIME_SHORTER = ['faster', 'fast', 'shorter', 'short', 'sooner', 'quick', 'less', 'snappier', 'tighter', 'abruptly', 'suddenly'];
@@ -93,6 +93,35 @@ function idsIn(sec) {
   const rows = [...(sec.rows || []), ...(sec.parts || []).flatMap((p) => p.rows || []), sec.head || [], sec.titleSwitch || [], sec.fader ? [sec.fader] : []];
   return rows.flat(2).filter(Boolean);
 }
+// Everyday names for the panel's abbreviations, for every synth: a section whose title matches
+// gets these names too ("filter" finds the VCF, "envelope" finds ENV 1 and ENV 2).
+const GLOSSARY = [
+  [/\bvcf\b|filter/i, ['filter', 'vcf']], [/\bvca\b|amplifier/i, ['vca', 'amplifier', 'amp']], [/\bvco\b|oscillator/i, ['oscillator', 'vco', 'osc']],
+  [/\benv\b|envelope/i, ['envelope', 'env', 'adsr']], [/ring mod/i, ['ring modulation', 'ring modulator', 'ring mod']], [/s&h|sample/i, ['sample and hold', 's and h', 's&h']],
+  [/\blfo\b/i, ['lfo', 'low frequency oscillator']], [/\bmfo\b/i, ['mfo']], [/noise/i, ['noise', 'noise generator']], [/mixer|\bmix\b/i, ['mixer']],
+  [/sequencer|\bseq\b/i, ['sequencer', 'step sequencer']], [/attenuverter/i, ['attenuverter', 'attenuator']], [/output|\bout\b/i, ['output', 'master']],
+  [/glide|portamento/i, ['glide', 'portamento']], [/keyboard|\bkb\b/i, ['keyboard', 'keys']],
+];
+const glossFor = (title) => [...new Set(GLOSSARY.filter(([re]) => re.test(title)).flatMap(([, names]) => names))];
+// Everyday names by control id, shared by every synth (the ids follow one pattern across the
+// synths even where the panel labels are vintage: "Emphasis" is filt.res, the resonance).
+const ID_CONTEXT = { // words that point at a whole group: "filter attack" -> fenv.a
+  filt: ['filter'], vcf: ['filter'], fenv: ['filter', 'filter envelope', 'contour'], aenv: ['loudness', 'volume', 'amplitude', 'amp'],
+  lfo: ['lfo'], lfo2: ['mfo'], osc1: ['oscillator 1', 'osc 1'], osc2: ['oscillator 2', 'osc 2'], osc3: ['oscillator 3', 'osc 3'],
+  mix: ['mixer'], fx: ['effect', 'effects'], env1: ['envelope 1'], env2: ['envelope 2'],
+};
+const ID_NAMES = { // extra names for single controls
+  'filt.res': ['resonance', 'emphasis', 'res', 'q'], 'vcf.res': ['resonance', 'res', 'q'],
+  'filt.cutoff': ['cutoff', 'cutoff frequency', 'cut off'], 'vcf.cutoff': ['cutoff', 'cut off'],
+  'filt.env': ['env amount', 'envelope amount', 'contour amount', 'amount of contour'],
+  'perf.mod': ['mod wheel', 'modulation wheel'], 'perf.bend': ['pitch wheel', 'pitch bend', 'bend'],
+  'ctrl.glide': ['glide', 'portamento'], 'kb.glide': ['glide', 'portamento'], 'ctrl.tune': ['tune', 'tuning', 'master tune'],
+  'osc3.ctrl': ['oscillator 3 control', 'osc 3 control'], 'osc.mod': ['oscillator modulation'], 'filt.mod': ['filter modulation'],
+  'mix.noise': ['noise'], 'mix.feedback': ['feedback'], 'ctrl.modmix': ['modulation mix', 'mod mix'],
+};
+const GROUP_NAMES = { filt: ['filter', 'low pass filter', 'lowpass filter'], fenv: ['filter envelope', 'filter contour'], aenv: ['loudness envelope', 'volume envelope', 'amp envelope', 'loudness contour'], lfo: ['lfo'] };
+const LABEL_STOP = ['level', 'amount', 'control', 'frequency', 'time', 'mix', 'filter', 'oscillator', 'modulation', 'keyboard', 'envelope', 'contour'];
+const SOCKET = ['input', 'socket', 'jack', 'in', 'cable'];
 const sectionOf = (id) => ALL_SECTIONS.find((s) => idsIn(s).includes(id));
 const cleanLabel = (l) => String(l).replace(/[→←↑↓]/g, '').trim().toLowerCase();
 
@@ -102,16 +131,43 @@ function buildIndex(book) {
     const ids = idsIn(sec).filter((id) => PARAMS[id]);
     if (!ids.length) continue;
     const title = (sec.title || sec.id).toLowerCase();
-    entries.push({ names: [title], key: 'section:' + sec.id, ids, context: [] });
-    for (const id of ids) {
+    const gloss = glossFor(title);
+    // "VCO 1" is found as "vco 1", "vco1" and, with a glossary word, "oscillator 1"
+    const num = (/(\d+)\s*$/.exec(title) || [])[1];
+    entries.push({ names: [title, title.replace(/\s+(\d)/, '$1'), ...gloss, ...(num ? gloss.map((g) => g + ' ' + num) : [])], key: 'section:' + sec.id, ids, context: num ? [num] : [] });
+    // a modular's input sockets are listed apart from its knobs (sec.jacks)
+    const sockets = (sec.jacks || []).filter((id) => PARAMS[id] && PARAMS[id].type === 'jack');
+    for (const id of [...ids, ...sockets]) {
       const p = PARAMS[id];
-      const ctx = title.split(/\s+/).filter((w) => w.length > 2);
-      entries.push({ names: [cleanLabel(p.label)], key: id, ids: [id], context: ctx });
+      const ctx = [...title.split(/\s+/).filter((w) => w.length > 2 || /^\d$/.test(w)), ...gloss];
+      if (p.type === 'jack') ctx.push(...SOCKET);
+      const tail = p.type === 'jack' ? id.split('.').pop().replace(/\d+$/, '') : ''; // jack.filt.cv is also "cv"
+      const label = cleanLabel(p.label);
+      const words = label.split(/\s+/).filter((w) => w.length >= 5 && !LABEL_STOP.includes(w)); // "Cutoff Frequency" is also "cutoff"
+      const group = id.replace(/^jack\./, '').split('.')[0];
+      ctx.push(...(ID_CONTEXT[group] || []));
+      const names = [label, ...(words.length > 1 || label.includes(' ') ? words : []), ...(ID_NAMES[id] || []), ...(tail.length > 1 && tail !== label ? [tail] : [])];
+      entries.push({ names: [...new Set(names)], key: id, ids: [id], context: ctx, bonus: group === 'aenv' ? 0.2 : 0 });
       if (p.type === 'step') for (const o of p.options) {
         const key = helpKeyFor(`${id}=${o.v}`);
         if (key !== id && lookup(key)) entries.push({ names: [String(o.label).toLowerCase(), String(o.v).toLowerCase()].filter((n) => n.length > 2), key, ids: [id], context: ctx, option: true });
       }
     }
+  }
+  // a group with no section of its own name ("filter" on the NiniFoog, whose filter sits in "Modifiers")
+  for (const [group, names] of Object.entries(GROUP_NAMES)) {
+    if (entries.some((e) => e.key.startsWith('section:') && e.names.some((n) => names.includes(n)))) continue;
+    const ids = Object.keys(PARAMS).filter((id) => id.startsWith(group + '.') && PARAMS[id].type !== 'jack');
+    const secs = ids.map(sectionOf).filter((x) => x && lookup('section:' + x.id)); // the section holding most of the group
+    const sec = secs.sort((a, b) => secs.filter((x) => x === b).length - secs.filter((x) => x === a).length)[0];
+    if (sec && lookup('section:' + sec.id)) entries.push({ names, key: 'section:' + sec.id, ids, context: [], bonus: 0.3 });
+  }
+  // output sockets (modular synths): "VCO 1 Saw", "what is the saw output?"
+  for (const [out, o] of Object.entries(SYNTH.OUTPUTS || {})) {
+    const key = 'out:' + out;
+    if (!lookup(key)) continue;
+    const mod = String(o.module || '').toLowerCase();
+    entries.push({ names: [String(o.label).toLowerCase(), (mod + ' ' + o.label).toLowerCase(), ...(/pulse/i.test(o.label) ? ['square'] : [])], key, ids: [], bonus: 0.2, context: [...mod.split(/\s+/), ...glossFor(mod), 'output', 'out', 'socket', 'jack', 'cable'] });
   }
   for (const [phrase, target] of Object.entries(book.aliases || {})) {
     const ids = [].concat(target.ids || target.key || target);
@@ -131,14 +187,15 @@ function findTopics(t, index, prefer = []) {
     if (!hit) continue;
     let score = 2 + hit.p.length / 20 + (e.alias ? 0.6 : 0) + (e.key.startsWith('section:') ? 0.3 : 0);
     for (const c of e.context) if (findPhrase(t, c) >= 0 && c !== hit.p) score += 1;
-    if (prefer.includes(e.key)) score += 0.5; // the book's choice when a name is shared ("Attack": loudness, not filter)
+    if (prefer.includes(e.key)) score += 0.5;
+    score += e.bonus || 0; // the book's choice when a name is shared ("Attack": loudness, not filter)
     scored.push({ e, score, at: hit.i, len: hit.p.length, p: hit.p });
   }
   scored.sort((a, b) => b.score - a.score);
-  // drop entries whose matched words sit inside a better match ("filter envelope" beats "filter")
+  // drop entries whose matched words sit inside a longer match ("filter envelope" beats "envelope")
   const out = [];
   for (const s of scored) {
-    if (out.some((o) => s.at >= o.at && s.at + s.len <= o.at + o.len && o.e.key !== s.e.key && o.len > s.len)) continue;
+    if (scored.some((o) => s.at >= o.at && s.at + s.len <= o.at + o.len && o.e.key !== s.e.key && o.len > s.len)) continue;
     if (out.some((o) => o.e.key === s.e.key)) continue;
     out.push(s);
   }
@@ -175,6 +232,9 @@ export class AskBook {
     // greetings, "what can you do", "help"
     if (/^ (hi|hello|hey|help|yo|hiya)( there)? $/.test(t) || hasAny(t, ['what can you do', 'what can i ask', 'what do you know', 'how does this work', 'how do you work']))
       return this.reply(this.intro());
+    const none = !book.recipes.length;
+    if (none && hasAny(t, ['what sounds', 'which sounds', 'list of sounds', 'list sounds', 'sounds can you', 'recipes', 'surprise me', 'random sound']))
+      return this.reply(`I don't have sound recipes for the ${this.name} yet. Try the factory patches in the Patch menu, and ask me about any of their controls.`);
     if (hasAny(t, ['what sounds', 'which sounds', 'list of sounds', 'list sounds', 'sounds can you', 'recipes', 'what presets']))
       return this.reply(`I know these sounds: ${book.recipes.map((r) => r.name.toLowerCase()).join(', ')}. Add a word or two to change them, for example "dark bass" or "pad with vibrato".`);
     if (hasAny(t, ['surprise me', 'random sound', 'anything', 'something cool', 'something random'])) {
@@ -197,7 +257,10 @@ export class AskBook {
     }
     let tweaks = this.findTweaks(recipe ? this.without(t, recipe.hit) : t);
     const topicsEarly = findTopics(t, this.index, book.prefer);
-    const param = topicsEarly.length && PARAMS[topicsEarly[0].e.key] && topicsEarly[0].e.ids.length === 1 ? topicsEarly[0].e.key : null;
+    const top0 = topicsEarly.length ? topicsEarly[0].e.key : null;
+    let param = top0 && PARAMS[top0] && (PARAMS[top0].type === 'cont' || PARAMS[top0].type === 'step') && topicsEarly[0].e.ids.length === 1 ? top0 : null;
+    if (!param && top0 && top0.startsWith('section:')) // "turn the delay up": the section's Amount or Level
+      param = topicsEarly[0].e.ids.find((id) => PARAMS[id].type === 'cont' && /^(amount|level|mix|volume)$/i.test(cleanLabel(PARAMS[id].label))) || null;
     // "lower the resonance", "turn the cutoff up": a named control beats the vaguer tweaks
     // ("lower" alone means an octave down, "faster" alone means the LFO)
     if (param && !recipe) {
@@ -221,6 +284,8 @@ export class AskBook {
     if (tweaks.length) return this.tweak(tweaks, current, k, question);
     if (recipeIsTweak) return this.tweak(this.findTweaks(norm(recipe.hit)), current, k, question);
     if (topics.length) return this.explain(topics, t);
+    if (none && hasAny(t, MAKE)) return this.reply(`I can't make sounds on the ${this.name} yet: its recipes aren't written. Try the factory patches in the Patch menu, then ask me about their controls, or to turn one up or down.`);
+    if (none) return this.reply(`I don't have that in my answer book yet. On the ${this.name} I can explain any control${Object.values(PARAMS).some((p) => p.type === 'jack') ? ' or socket' : ''} ("what does Cutoff do?", "what is an LFO?") and turn a named control up or down ("turn the cutoff up"). I don't make sounds or patch cables here yet.`);
     return this.reply(`I don't have that in my answer book yet. I can make sounds (${book.recipes.slice(0, 8).map((r) => r.name.toLowerCase()).join(', ')}, and more: ask "what sounds do you know?"), change the current sound ("brighter", "more vibrato", "slower attack"), or explain any control ("what does Cutoff do?").`);
   }
 
@@ -246,14 +311,17 @@ export class AskBook {
       v = p.options[j].v;
     } else if (typeof v === 'number') v = Number(v.toPrecision(3));
     const sec = sectionOf(id);
-    const name = (sec ? 'the ' + sec.title + '\'s ' : '') + cleanLabel(p.label).replace(/^./, (c) => c.toUpperCase());
+    const name = (sec && sec.title ? 'the ' + sec.title + (/s$/.test(sec.title) ? '\' ' : '\'s ') : '') + cleanLabel(p.label).replace(/^./, (c) => c.toUpperCase());
     const help = helpText(id).split(/(?<=\.)\s/)[0];
     this.last = null;
     if (v === current[id]) return this.reply(`${name.replace(/^./, (c) => c.toUpperCase())} is already at ${formatValue(id, v)}, as far as it goes that way. ${help}`, [id]);
     return { kind: 'sound', base: 'current', reply: `I turned ${name} ${dir === 'up' || dir === 'max' ? 'up' : 'down'}, from ${formatValue(id, current[id])} to ${formatValue(id, v)}. ${help}`, changes: [{ id, value: String(v), why: '' }], point_at: [id] };
   }
 
+  get name() { return this.book.synthName || 'synth'; }
+
   intro() {
+    if (!this.book.recipes.length) return `I'm the ${this.name}'s answer book, and I work offline. Ask me about any control ("what does Resonance do?", "what is an envelope?"), or to turn one up or down ("turn the cutoff up"). Sound recipes for this synth aren't written yet.`;
     return `I'm the ${this.book.synthName || 'synth'}'s answer book, and I work offline. Ask me for a sound ("vibrato lead", "warm pad"), to change the current sound ("brighter", "more vibrato", "longer release"), or about any control ("what does Resonance do?"). Every change I make can be undone.`;
   }
 
