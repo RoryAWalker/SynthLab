@@ -13,9 +13,13 @@ const WAVES = [
   { v: 'narrow', label: 'pulse 10%', icon: 'narrow' },
 ];
 
-// Range: octaves, -4 to +4. At -4 an oscillator runs slowly enough (16 Hz at middle C, a few Hz on
-// low notes) to use as an LFO where it can be patched or routed as one.
-const RANGES = [-4, -3, -2, -1, 0, 1, 2, 3, 4].map((v) => ({ v, label: v > 0 ? '+' + v : v < 0 ? '−' + -v : '0' }));
+const RANGES = [
+  { v: -2, label: '−2' },
+  { v: -1, label: '−1' },
+  { v: 0, label: '0' },
+  { v: 1, label: '+1' },
+  { v: 2, label: '+2' },
+];
 
 const LFO_SHAPES = [
   { v: 'tri', label: 'triangle', icon: 'tri' },
@@ -49,7 +53,7 @@ export const PARAMS = {
                    help: 'Mono: every note restarts the envelopes and glides. Legato: notes played while another is held slide without restarting the envelopes; separate notes do not glide.' },
 
   'osc1.range':  { type: 'step', label: 'Range', options: RANGES, def: 0,
-                   unit: 'oct', help: 'Octave shift. 0 is concert pitch; each step is one octave up or down, four each way. At −4 the oscillator is down near LFO speeds.' },
+                   unit: 'oct', help: 'Octave shift. 0 is concert pitch; each step is one octave up or down.' },
   'osc1.wave':   { type: 'step', label: 'Waveform', options: WAVES, def: 'saw',
                    help: 'The raw shape of the wave, which sets its harmonic content.' },
 

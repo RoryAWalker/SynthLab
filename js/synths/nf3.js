@@ -10,19 +10,14 @@ const NAME = 'NiniFoog'; // the synth's name, shown on the panel, name plate and
 const OFF_ON = [{ v: 'off', label: 'Off' }, { v: 'on', label: 'On' }];
 const sw = (label, def, extra = {}) => ({ type: 'step', ui: 'toggle', titled: !!label, label: label || '', options: OFF_ON, def, ...extra });
 
-// Range in organ-pipe feet, four octaves each way of 8', plus LO (far below hearing: Oscillator 3
-// becomes an LFO). 128' and 64' are low enough to hear the wave as separate clicks.
+// Range in organ-pipe feet, plus LO (far below hearing: Oscillator 3 becomes an LFO).
 const RANGES = [
   { v: -7, label: 'LO' },
-  { v: -4, label: "128'" },
-  { v: -3, label: "64'" },
   { v: -2, label: "32'" },
   { v: -1, label: "16'" },
   { v: 0, label: "8'" },
   { v: 1, label: "4'" },
   { v: 2, label: "2'" },
-  { v: 3, label: "1'" },
-  { v: 4, label: "½'" },
 ];
 const WAVES_12 = [
   { v: 'tri', label: 'triangle', icon: 'tri' },
@@ -64,9 +59,9 @@ export const PARAMS = {
   // By default Osc 3 is a slow LFO routed to pitch: push the mod wheel and you get vibrato.
   'osc.mod':     sw('Oscillator Modulation', 'on'),
   'osc3.ctrl':   sw('Osc. 3 Control', 'off', { vertical: true }),
-  'osc1.range':  { type: 'step', label: 'Range', options: RANGES, def: 0, span: 260 },
-  'osc2.range':  { type: 'step', label: 'Range', options: RANGES, def: 0, span: 260 },
-  'osc3.range':  { type: 'step', label: 'Range', options: RANGES, def: -7, span: 260 },
+  'osc1.range':  { type: 'step', label: 'Range', options: RANGES, def: 0, span: 180 },
+  'osc2.range':  { type: 'step', label: 'Range', options: RANGES, def: 0, span: 180 },
+  'osc3.range':  { type: 'step', label: 'Range', options: RANGES, def: -7, span: 180 },
   'osc2.freq':   { type: 'cont', label: 'Frequency', min: -7, max: 7, def: 0, curve: 'lin', fmt: fmtSt, unit: 'semi', marks: FREQ_MARKS },
   // default: a 5 Hz vibrato (Osc 3 starts as an LFO)
   'osc3.freq':   { type: 'cont', label: 'Frequency', min: -7, max: 7, def: lfoKnob(5), curve: 'lin', fmt: fmtSt, unit: 'semi', marks: FREQ_MARKS,

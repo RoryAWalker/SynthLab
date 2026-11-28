@@ -48,7 +48,7 @@ export const NF3_LESSONS = [
         make: (c) => ({ start: THREE, note: c.note }),
         check: (s) => s.patch['osc1.range'] === -2 && s.patch['osc2.range'] === -1 && s.patch['osc3.range'] === 0 && played(s),
         progress: (s) => share(s.patch['osc1.range'] === -2, s.patch['osc2.range'] === -1, s.patch['osc3.range'] === 0),
-        hint: 'Each Range knob is marked in feet, from 128′ (lowest) to ½′ (highest). Oscillator 1 to 32′, Oscillator 2 to 16′, Oscillator 3 to 8′.',
+        hint: 'Each Range knob is marked in feet: 32′, 16′, 8′, 4′, 2′. Oscillator 1 to 32′, Oscillator 2 to 16′, Oscillator 3 to 8′.',
       },
       {
         type: 'question', title: 'Feet',

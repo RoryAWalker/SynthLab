@@ -72,7 +72,7 @@ export const HELP = {
     title: 'Range',
     body: [
       'Shifts the oscillator up or down in whole octaves. Each octave up doubles the frequency; each octave down halves it.',
-      '0 is normal pitch: the A key above middle C plays 440 Hz. It goes four octaves each way: at −4 middle C is 16 Hz, slow enough to hear the wave as a flutter rather than a note.',
+      '0 is normal pitch: the A key above middle C plays 440 Hz.',
     ],
     tip: 'With both oscillators in the Mixer, set Oscillator 2 Range to −1. The lower octave adds weight underneath, a common trick for basses.',
   },
@@ -433,7 +433,7 @@ export const HELP_NF3 = {
   'section:perf': { title: 'Controllers', body: ['Glide and Decay switches, the pitch wheel (springs back to centre) and the modulation wheel (stays where you leave it).', 'The keyboard plays legato: a new note takes over the pitch straight away, but the contours only restart when you play a note with no other key held. Let go of the newest note and the pitch returns to the one you are still holding.'] },
   'osc1.range': {
     title: 'Range',
-    body: ["The octave, in organ-pipe feet: 8' is normal pitch, each halving (4', 2', 1', ½') is an octave up and each doubling (16', 32', 64', 128') an octave down.",
+    body: ["The octave, in organ-pipe feet: 8' is normal pitch, each halving (4', 2') is an octave up and each doubling (16', 32') an octave down.",
       'LO drops the oscillator far below hearing, so it slowly wobbles rather than sounds. On Oscillator 3 that turns it into a modulation source.'],
     tip: "Set Oscillator 2 to 16' under Oscillator 1 at 8' for a solid octave bass.",
   },
@@ -497,7 +497,7 @@ export const HELP_NFM = {
 
   'kb.mode': { title: 'Mono / Legato', body: ['Mono: every new key restarts the Gate, so the envelope starts again on every note. Legato: when you play a new key before letting go of the last, the Gate stays high, so the envelope carries on and only the pitch changes.'], tip: 'Switch to Legato, add a little Glide, and play overlapping notes: one smooth, joined-up line.' },
   'kb.glide': { title: 'Glide', body: ['How long the keyboard\'s Pitch takes to slide to a new note. 0 jumps straight there.'], tip: 'Set Glide to about 0.25 s and play notes far apart: the pitch slides between them.' },
-  'osc1.range': { title: 'Range', body: ['Shifts the oscillator up or down in whole octaves, four each way. At −4 it is slow enough to work as an LFO.'], tip: 'Change Range by one step while holding a note: the pitch jumps by an octave, twice or half as fast on the scope.' },
+  'osc1.range': { title: 'Range', body: ['Shifts the oscillator up or down in whole octaves.'], tip: 'Change Range by one step while holding a note: the pitch jumps by an octave, twice or half as fast on the scope.' },
   'osc1.tune': { title: 'Tune', body: ['Tunes the oscillator up or down by up to 7 semitones.'] },
   'osc.fm': { title: 'FM Amount', body: ['How far a signal in the FM input bends the pitch. With the LFO patched in, a little gives vibrato and a lot gives a siren.', 'Patch audio (like the VCO\'s own Out) into FM for harsh, metallic frequency-modulation tones.'], tip: 'With the LFO in FM, try 2-10% for vibrato and over 40% for a siren.' },
   'filt.cv': { title: 'CV Amount', body: ['How far, and which way, a signal in the Freq input moves the cutoff. Positive opens the filter as the signal rises; negative closes it.', 'Try the Envelope\'s Out into Freq with a low Cutoff: each note starts bright and gets darker.'], tip: 'With the Envelope in Freq, set Cutoff low and CV Amount to +60% for a pluck; try −60% to hear the sweep go the other way.' },
@@ -538,7 +538,7 @@ const vcoHelp = (n) => {
       'Pitch sets the note at 1 volt per octave, so the Keyboard\'s Pitch plays it in tune. FM and PWM let other modules bend its pitch and reshape its pulse; Sync lets another oscillator restart it.',
       'This is a virtual analogue rack: like a real analogue oscillator, each VCO starts at a random point in its wave, is very slightly out of tune with the other, and drifts by a cent or two over time. That is part of why two VCOs together sound alive rather than sterile.'],
       tip: `Patch VCO ${n}\'s Saw and Pulse into two Mixer inputs at once and play: the harmonics of both waves add together.` },
-    [`osc${n}.range`]: { title: 'Range', body: ['Shifts the VCO up or down in whole octaves, four each way. At −4, with nothing in its Pitch input, it runs at about 16 Hz: patch its output anywhere you would patch an LFO.'], tip: `Set VCO ${other} one octave lower for a solid bass under VCO ${n}.` },
+    [`osc${n}.range`]: { title: 'Range', body: ['Shifts the VCO up or down in whole octaves.'], tip: `Set VCO ${other} one octave lower for a solid bass under VCO ${n}.` },
     [`osc${n}.tune`]: { title: 'Tune', body: ['Tunes the VCO up or down by up to 7 semitones.'], tip: n === 2 ? 'Leave VCO 2 a few hundredths of a semitone off VCO 1 for a slow, thick beating; set it to +7.00 for a fifth, a big "power chord" sound.' : 'Set VCO 2 to +7 against this one for a fifth.' },
     [`osc${n}.pw`]: { title: 'PW (Pulse Width)', body: ['The shape of the Pulse output: how long the wave stays up before dropping. 50% is a square wave (hollow, like a clarinet); narrower pulses lose body and get thinner and more nasal.'], tip: 'Listen to the Pulse output and turn PW slowly from 50% to 5%.' },
     [`osc${n}.fm`]: { title: 'FM Amount', body: ['How far a signal in the FM input bends the pitch. A little gives vibrato from an LFO; a lot gives sirens, pitch drops or, with audio, metallic FM tones.'] },
