@@ -1,9 +1,12 @@
-// The Ask panel: type a request ("vibrato lead", "what does Resonance do?") and Claude sets the
-// controls or answers, in teaching language.
+// The Ask panel: type a request ("vibrato lead", "what does Resonance do?") and the synth's
+// controls are set, or the question answered, in teaching language.
 //
-// Local only. main.js loads this file only on localhost, and the panel appears only when the page
-// is served by tools/ai/server.mjs, which holds the API key and makes the calls. On the public site
-// (GitHub Pages) neither happens.
+// Two answerers:
+//   - the answer book (js/askBook.js + js/askbooks/<synth>.js): free and offline, the default;
+//   - Claude, when the page is served by tools/ai/server.mjs and that server has an API key
+//     (pay per use; the key never reaches the browser).
+//
+// Local only for now: main.js loads this file only on localhost.
 //
 // Nothing here is specific to one synth: the description the AI gets (every control, its range,
 // its options and its help text) is generated from the synth's PARAMS, sections and help.js, so a
@@ -13,6 +16,10 @@
 import { PARAMS, ALL_SECTIONS, SYNTH, defaultPatch, formatValue } from './params.js';
 import { lookup } from './helpPanel.js';
 import { helpKeyFor } from './help.js';
+import { AskBook } from './askBook.js';
+import { NF1_BOOK } from './askbooks/nf1.js';
+
+const BOOKS = { nf1: NF1_BOOK }; // synths with an answer book
 
 const API = '/api/ai';
 const plain = (s) => String(s || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
@@ -87,23 +94,26 @@ const EXAMPLES = ['vibrato lead', 'warm pad', 'What does Resonance do?', 'How do
 
 export async function startAsk(host) {
   if (!askSupported()) return;
-  let status;
+  let status = { ok: false, hasKey: false };
   try {
     const r = await fetch(API + '/status', { cache: 'no-store' });
-    if (!r.ok) return;
-    status = await r.json();
-    if (!status.ok) return;
-  } catch { return; } // a plain static server (or the public site): no Ask panel
-  new AskPanel(host, status);
+    if (r.ok) status = await r.json();
+  } catch { /* a plain static server: no Claude, the answer book only */ }
+  const book = BOOKS[SYNTH.id];
+  if (!book && !status.ok) return;
+  new AskPanel(host, status, book ? new AskBook(book) : null);
 }
 
 const sectionTitle = (id) => { const s = ALL_SECTIONS.find((x) => idsIn(x).includes(id)); return s ? s.title : ''; };
 const ctlName = (id) => `${sectionTitle(id)} · ${PARAMS[id].label}`;
 
 class AskPanel {
-  constructor(host, status) {
+  constructor(host, status, book) {
     this.host = host; // { getPatch, setPatch, controlEl, play }
     this.hasKey = status.hasKey;
+    this.server = status.ok; // the local Claude server is there
+    this.book = book;
+    this.mode = book && !status.hasKey ? 'book' : 'claude';
     this.history = []; // the conversation, for follow-ups ("more", "now add delay")
     this.busy = false;
     const { guide, ids } = buildGuide();
@@ -112,7 +122,7 @@ class AskPanel {
     // the toolbar button, next to Help
     this.btn = document.createElement('button');
     this.btn.className = 'btn btn-ask'; this.btn.id = 'btn-ask';
-    this.btn.innerHTML = '<span class="ask-spark" aria-hidden="true">✦</span> Ask';
+    this.btn.innerHTML = '<span class="ask-spark" aria-hidden="true">✦</span> Ask AI';
     this.btn.title = 'Ask for a sound, or ask about the synth (local only)';
     this.btn.setAttribute('aria-pressed', 'false');
     const helpBtn = document.getElementById('btn-help');
@@ -123,7 +133,7 @@ class AskPanel {
     this.el.className = 'ask-panel'; this.el.hidden = true;
     this.el.setAttribute('aria-label', 'Ask');
     this.el.innerHTML = `
-      <div class="ask-head"><span class="ask-title">Ask the ${esc(SYNTH.name)}</span><span class="ask-local">local only</span><button class="ask-close" aria-label="Close">×</button></div>
+      <div class="ask-head"><span class="ask-title">Ask the ${esc(SYNTH.name)}</span><span class="ask-local"></span><button class="ask-switch" type="button" hidden></button><button class="ask-close" aria-label="Close">×</button></div>
       <div class="ask-key" hidden>
         <p>To use the Ask panel, paste an Anthropic API key. It is saved on this computer only (in <code>~/.synthlab-ai/key</code>), never in the SynthLab project or the browser, and every request is billed to that key.</p>
         <div class="ask-key-row"><input type="password" class="ask-key-input" placeholder="sk-ant-…" autocomplete="off" spellcheck="false"><button class="btn ask-key-save">Save key</button></div>
@@ -131,7 +141,7 @@ class AskPanel {
       </div>
       <div class="ask-log" aria-live="polite"></div>
       <div class="ask-examples"></div>
-      <form class="ask-form"><textarea class="ask-input" rows="2" placeholder="Ask for a sound (“vibrato lead”) or ask a question…"></textarea><button class="btn ask-send" type="submit">Ask</button></form>`;
+      <form class="ask-form"><textarea class="ask-input" rows="2" placeholder="Ask for a sound (“vibrato lead”) or ask a question…"></textarea><button class="btn ask-send" type="submit">Ask AI</button></form>`;
     document.body.appendChild(this.el);
     this.log = this.el.querySelector('.ask-log');
     this.input = this.el.querySelector('.ask-input');
@@ -153,7 +163,19 @@ class AskPanel {
     keyInput.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') this.saveKey(keyInput.value); });
     keyInput.addEventListener('keyup', (e) => e.stopPropagation());
     this.el.querySelector('.ask-key-save').addEventListener('click', () => this.saveKey(keyInput.value));
-    this.showKeyBox(!this.hasKey);
+    this.switchBtn = this.el.querySelector('.ask-switch');
+    this.switchBtn.addEventListener('click', () => this.setMode(this.mode === 'book' ? 'claude' : 'book'));
+    this.setMode(this.mode);
+  }
+
+  // the answer book (free, offline) or Claude (needs the local server and an API key)
+  setMode(mode) {
+    this.mode = mode;
+    this.el.querySelector('.ask-local').textContent = mode === 'book' ? 'offline' : 'Claude · paid';
+    this.el.querySelector('.ask-local').title = mode === 'book' ? 'Answers from a built-in book of sounds and the help text. Free, no internet.' : 'Answers from Claude through the local server. Each request is billed to the API key.';
+    this.switchBtn.hidden = !(this.book && this.server);
+    this.switchBtn.textContent = mode === 'book' ? 'Use Claude' : 'Use answer book';
+    this.showKeyBox(mode === 'claude' && !this.hasKey);
   }
 
   toggle(on = this.el.hidden) {
@@ -202,6 +224,16 @@ class AskPanel {
     this.addTurn('you', esc(text));
     const wait = this.addTurn('ai pending', '<span class="ask-dots"><i></i><i></i><i></i></span>');
     const before = this.host.getPatch();
+    if (this.mode === 'book') {
+      const t0 = performance.now();
+      let res;
+      try { res = this.book.answer(text, before); } catch (e) { console.error(e); res = { kind: 'answer', base: 'current', reply: 'Sorry, something went wrong reading that.', changes: [], point_at: [] }; }
+      wait.remove();
+      this.apply(text, res, before, { ms: performance.now() - t0, book: true });
+      this.busy = false;
+      this.el.classList.remove('busy');
+      return;
+    }
     const patch = {};
     for (const id of this.ids) patch[id] = before[id];
     try {
@@ -242,7 +274,7 @@ class AskPanel {
       <p>${esc(res.reply)}</p>
       ${moved.length ? `<details class="ask-changes"${moved.length <= 6 ? ' open' : ''}><summary>${moved.length} control${moved.length === 1 ? '' : 's'} changed${res.base === 'init' ? ', starting from Init' : ''}</summary><ul>${list}</ul></details>` : ''}
       ${dropped.length ? `<p class="ask-dropped">Ignored: ${esc(dropped.join('; '))}</p>` : ''}
-      <div class="ask-actions">${moved.length ? '<button class="ask-act ask-play">▶ Hear it</button><button class="ask-act ask-undo">Undo</button>' : ''}<span class="ask-cost">${(meta.ms / 1000).toFixed(1)} s</span></div>`);
+      <div class="ask-actions">${moved.length ? '<button class="ask-act ask-play">▶ Hear it</button><button class="ask-act ask-undo">Undo</button>' : ''}<span class="ask-cost">${meta.book ? 'answer book' : (meta.ms / 1000).toFixed(1) + ' s · Claude'}</span></div>`);
     if (moved.length) {
       turn.querySelector('.ask-undo').addEventListener('click', (e) => {
         this.host.setPatch(before);

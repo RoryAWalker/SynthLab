@@ -1,5 +1,9 @@
 # Ask panel: local server (not public)
 
+The Ask AI panel works without this server: on the NF-1 it answers from its free, offline
+answer book (`js/askBook.js`, recipes in `js/askbooks/nf1.js`). This server only adds the
+optional, paid Claude mode (the "Use Claude" button in the panel).
+
 The Ask panel lets you type a request on a synth ("vibrato lead", "what does Resonance do?").
 Claude sets the controls or answers. It only runs on your own computer.
 

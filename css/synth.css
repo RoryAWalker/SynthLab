@@ -1580,3 +1580,7 @@ body[data-skin="modular"] .section[data-type="organ"].even { --mod: #a2703d; }
 .ask-glow { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 8px; animation: ask-glow 1.2s ease-in-out 3; }
 @keyframes ask-glow { 50% { outline-color: transparent; } }
 .ask-form[hidden], .ask-examples[hidden], .ask-key[hidden] { display: none; }
+.ask-switch { margin-left: auto; background: none; border: 1px solid #3a3d44; border-radius: 4px; color: #b5b8be; font: inherit; font-size: 11px; padding: 1px 6px; cursor: pointer; }
+.ask-switch:hover { border-color: #8a6a2c; color: #ffd9a0; }
+.ask-switch:not([hidden]) + .ask-close { margin-left: 4px; }
+.ask-title, .ask-local, .ask-switch { white-space: nowrap; }
