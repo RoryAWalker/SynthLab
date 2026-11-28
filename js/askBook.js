@@ -19,6 +19,15 @@ import { helpKeyFor } from './help.js';
 
 const plain = (s) => String(s || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
 const norm = (s) => ' ' + String(s).toLowerCase().replace(/[’']/g, '').replace(/&/g, ' and ').replace(/[^a-z0-9+#.\- ]+/g, ' ').replace(/\s+/g, ' ').trim() + ' ';
+// everyday ways of saying the same thing, folded into one wording before matching
+const SAME = [
+  [/ more slowly /g, ' slower '], [/ less quickly /g, ' slower '], [/ more quickly /g, ' faster '], [/ less slowly /g, ' faster '],
+  [/ quicker /g, ' faster '], [/ slowly /g, ' slow '], [/ quickly /g, ' fast '], [/ a lot /g, ' lot '], [/ a little /g, ' little '],
+  [/ (dies|dying|died) /g, ' die '], [/ (fades|fading|faded) /g, ' fade '], [/ (lasts|lasting) /g, ' last '], [/ (rings|ringing) /g, ' ring '],
+  [/ longer lasting /g, ' last longer '],
+];
+const fold = (t) => { for (const [re, w] of SAME) { t = t.replace(re, w).replace(re, w); } return t; };
+const TIME_SHORTER = ['faster', 'fast', 'shorter', 'short', 'sooner', 'quick', 'less', 'snappier', 'tighter', 'abruptly', 'suddenly'];
 const reEsc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 // does the (normalised) text contain this phrase as whole words? (a plural "s" is allowed)
 function findPhrase(t, phrase) {
@@ -39,7 +48,7 @@ const MUCH = ['much', 'lot', 'lots', 'way', 'really', 'very', 'loads', 'heaps', 
 const LITTLE = ['bit', 'little', 'slightly', 'touch', 'tad', 'tiny', 'subtle', 'hint'];
 const REFERENT = ['it', 'this', 'that', 'the sound', 'my sound', 'more', 'less', 'add', 'make it', 'turn', 'bit', 'lot', 'slightly'];
 const QUESTION = /^ (what|whats|how|why|which|where|when|who|can|could|does|do|is|are|should|explain|tell me|describe|define|meaning) /;
-const VAGUE = ['lower', 'higher', 'faster', 'slower', 'deeper', 'bigger', 'big', 'more open'];
+const VAGUE = ['lower', 'higher', 'faster', 'slower', 'deeper', 'bigger', 'big', 'more open', 'fast', 'slow'];
 const MAKE = ['make', 'give', 'create', 'design', 'build', 'want', 'need', 'id like', 'patch', 'sound', 'program', 'set up', 'get'];
 
 // ---- operations on a patch ----------------------------------------------------------------------
@@ -158,7 +167,7 @@ export class AskBook {
   }
 
   answer(text, current) {
-    const t = norm(text);
+    const t = fold(norm(text));
     const book = this.book;
     const question = QUESTION.test(t) || /\?\s*$/.test(text);
     const k = hasAny(t, MUCH) ? 2 : hasAny(t, LITTLE) ? 0.5 : 1;
@@ -228,7 +237,8 @@ export class AskBook {
   nudge(id, dir, current, k) {
     const p = PARAMS[id];
     const n = toNorm(id, current[id]);
-    const target = dir === 'max' ? 1 : dir === 'min' ? 0 : Math.min(1, Math.max(0, n + (dir === 'up' ? 1 : -1) * 0.2 * k));
+    const step = p.curve === 'log' ? 0.12 : 0.2;
+    const target = dir === 'max' ? 1 : dir === 'min' ? 0 : Math.min(1, Math.max(0, n + (dir === 'up' ? 1 : -1) * step * k));
     let v = fromNorm(id, target);
     if (p.type === 'step') {
       const i = p.options.findIndex((o) => o.v === current[id]);
@@ -239,7 +249,7 @@ export class AskBook {
     const name = (sec ? 'the ' + sec.title + '\'s ' : '') + cleanLabel(p.label).replace(/^./, (c) => c.toUpperCase());
     const help = helpText(id).split(/(?<=\.)\s/)[0];
     this.last = null;
-    if (v === current[id]) return this.reply(`${name} is already at ${formatValue(id, v)}, as far as it goes that way. ${help}`, [id]);
+    if (v === current[id]) return this.reply(`${name.replace(/^./, (c) => c.toUpperCase())} is already at ${formatValue(id, v)}, as far as it goes that way. ${help}`, [id]);
     return { kind: 'sound', base: 'current', reply: `I turned ${name} ${dir === 'up' || dir === 'max' ? 'up' : 'down'}, from ${formatValue(id, current[id])} to ${formatValue(id, v)}. ${help}`, changes: [{ id, value: String(v), why: '' }], point_at: [id] };
   }
 
@@ -267,7 +277,7 @@ export class AskBook {
       const up = tw.upWords && firstHit(t, tw.upWords), down = tw.downWords && firstHit(t, tw.downWords), subj = tw.words && firstHit(t, tw.words);
       if (down && (!up || down.p.length >= up.p.length)) { dir = 'down'; hit = down; }
       else if (up) { dir = 'up'; hit = up; }
-      else if (subj) { dir = 'up'; hit = subj; }
+      else if (subj) { dir = tw.byTime && hasAny(t, TIME_SHORTER) ? 'down' : 'up'; hit = subj; }
       if (!dir) continue;
       // "less bright", "no vibrato", "without reverb": look just before the matched words
       const before = t.slice(Math.max(0, hit.i - 24), hit.i + 1);
@@ -276,7 +286,10 @@ export class AskBook {
       found.push({ tw, dir, at: hit.i, len: hit.p.length });
     }
     // two tweaks matched on the same words: keep the longer match ("faster attack" over "faster")
-    return found.filter((f) => !found.some((g) => g !== f && g.len > f.len && f.at >= g.at && f.at + f.len <= g.at + g.len)).sort((a, b) => a.at - b.at);
+    let keep = found.filter((f) => !found.some((g) => g !== f && g.len > f.len && f.at >= g.at && f.at + f.len <= g.at + g.len));
+    // "die out faster": "faster" there says how, it isn't a request for a faster LFO
+    if (keep.length > 1) keep = keep.filter((f) => !VAGUE.includes(t.substr(f.at + 1, f.len)));
+    return keep.sort((a, b) => a.at - b.at);
   }
 
   sound(r, tweaks, t) {
